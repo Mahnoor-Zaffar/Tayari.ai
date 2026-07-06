@@ -4,6 +4,7 @@ import type {
   InterviewTurn,
   InterviewStage,
   MatchedResumeChunk,
+  TurnEvaluation,
 } from '@/types/interview';
 import { mapRowToCamel, mapRowsToCamel } from '@/backend/services/utils';
 
@@ -115,4 +116,38 @@ export async function upsertEvaluation(params: {
   if (error) {
     throw new Error(`Failed to upsert evaluation: ${error.message}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Session Report (turns + evaluations joined)
+// ---------------------------------------------------------------------------
+
+export interface TurnWithEvaluation extends InterviewTurn {
+  evaluation: TurnEvaluation | null;
+}
+
+export async function fetchSessionReport(
+  sessionId: string,
+): Promise<TurnWithEvaluation[]> {
+  const { data, error } = await supabase
+    .from('interview_turns')
+    .select('*, turn_evaluations(*)')
+    .eq('session_id', sessionId)
+    .order('sequence_number', { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to fetch session report: ${error.message}`);
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => {
+    const { turn_evaluations, ...turn } = row;
+    return {
+      ...mapRowToCamel<InterviewTurn>(turn as Record<string, unknown>),
+      evaluation: turn_evaluations
+        ? mapRowToCamel<TurnEvaluation>(
+            turn_evaluations as Record<string, unknown>,
+          )
+        : null,
+    };
+  });
 }

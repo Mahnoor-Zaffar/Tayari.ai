@@ -153,6 +153,7 @@ OPENAI_API_KEY=sk-xxx
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxx
 SUPABASE_SERVICE_ROLE_KEY=eyJxxx
 
 # Worker auth (shared secret for internal webhook calls)
