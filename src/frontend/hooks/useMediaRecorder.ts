@@ -5,18 +5,20 @@ import { useRef, useState, useCallback } from 'react';
 export function useMediaRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
   const start = useCallback(async (): Promise<void> => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setStream(mediaStream);
 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : 'audio/webm';
 
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = new MediaRecorder(mediaStream, { mimeType });
       chunksRef.current = [];
 
       recorder.ondataavailable = (e) => {
@@ -51,6 +53,7 @@ export function useMediaRecorder() {
         mediaRecorderRef.current = null;
         chunksRef.current = [];
         setIsRecording(false);
+        setStream(null);
         resolve(blob);
       };
 
@@ -68,7 +71,8 @@ export function useMediaRecorder() {
     }
     chunksRef.current = [];
     setIsRecording(false);
+    setStream(null);
   }, []);
 
-  return { isRecording, error, start, stop, cleanup };
+  return { isRecording, error, stream, start, stop, cleanup };
 }

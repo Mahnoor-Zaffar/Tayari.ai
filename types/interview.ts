@@ -15,7 +15,7 @@ export type InterviewStage = 'INTRO' | 'TECHNICAL' | 'BEHAVIORAL' | 'WRAP_UP';
 
 export type Difficulty = 'Junior' | 'Mid' | 'Senior' | 'Staff';
 
-export type TurnPhase = 'IDLE' | 'RECORDING' | 'PROCESSING' | 'STREAMING';
+export type TurnPhase = 'IDLE' | 'RECORDING' | 'PROCESSING' | 'STREAMING_RESPONSE';
 
 // ---------------------------------------------------------------------------
 // Core Domain Entities

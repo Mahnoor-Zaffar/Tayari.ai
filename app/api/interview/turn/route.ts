@@ -36,13 +36,11 @@ export async function POST(req: NextRequest) {
 
   let audioBlob: Blob;
   let sessionId: string;
-  let userId: string;
 
   try {
     const form = await req.formData();
     const file = form.get('audio');
     const sid = form.get('sessionId');
-    const uid = form.get('userId');
 
     if (!(file instanceof Blob)) {
       return new Response('Missing or invalid "audio" field', { status: 400 });
@@ -50,14 +48,10 @@ export async function POST(req: NextRequest) {
     if (typeof sid !== 'string' || !sid) {
       return new Response('Missing or invalid "sessionId" field', { status: 400 });
     }
-    if (typeof uid !== 'string' || !uid) {
-      return new Response('Missing or invalid "userId" field', { status: 400 });
-    }
 
     audioBlob = file;
     sessionId = sid;
-    userId = uid;
-  } catch (err) {
+  } catch {
     return new Response('Failed to parse request body', { status: 400 });
   }
 

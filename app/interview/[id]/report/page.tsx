@@ -1,5 +1,4 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { fetchSessionReport } from '@/backend/db/database';
+import { fetchSessionReport, type TurnWithEvaluation } from '@/backend/db/database';
 import { ReportView } from './report-view';
 
 export default async function ReportPage({
@@ -9,18 +8,9 @@ export default async function ReportPage({
 }) {
   const { id } = await params;
 
-  let sessionId = id;
-  let userId: string;
+  const sessionId = id;
 
-  try {
-    const supabase = await createSupabaseServerClient();
-    const { data } = await supabase.auth.getSession();
-    userId = data.session?.user?.id ?? '00000000-0000-0000-0000-000000000000';
-  } catch {
-    userId = '00000000-0000-0000-0000-000000000000';
-  }
-
-  let turns;
+  let turns: TurnWithEvaluation[];
 
   try {
     turns = await fetchSessionReport(sessionId);

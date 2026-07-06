@@ -8,7 +8,7 @@ import { SessionCard } from '@/frontend/components/interview/SessionCard';
 import { StreamConsole } from '@/frontend/components/interview/StreamConsole';
 import { MicButton } from '@/frontend/components/interview/MicButton';
 
-export function InterviewView({ userId: defaultUserId }: { userId: string }) {
+export function InterviewView() {
   const params = useParams();
   const sessionId = params.id as string;
 
@@ -34,7 +34,6 @@ export function InterviewView({ userId: defaultUserId }: { userId: string }) {
         const formData = new FormData();
         formData.append('audio', audioBlob, 'recording.webm');
         formData.append('sessionId', sessionId);
-        formData.append('userId', defaultUserId);
 
         const response = await fetch('/api/interview/turn', {
           method: 'POST',
@@ -110,7 +109,7 @@ export function InterviewView({ userId: defaultUserId }: { userId: string }) {
         setError(message);
       }
     },
-    [sessionId, defaultUserId, setPhase, setTranscript, appendChunk, incrementTurnCount, resetToIdle, setError],
+    [sessionId, setPhase, setTranscript, appendChunk, incrementTurnCount, resetToIdle, setError],
   );
 
   const handleToggleMic = useCallback(async () => {
@@ -148,6 +147,7 @@ export function InterviewView({ userId: defaultUserId }: { userId: string }) {
           <MicButton
             onToggle={handleToggleMic}
             isRecording={recorder.isRecording}
+            stream={recorder.stream}
           />
         </div>
       </div>

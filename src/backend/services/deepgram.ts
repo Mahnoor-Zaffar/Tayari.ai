@@ -1,4 +1,20 @@
-import { createClient, type PrerecordedTranscriptionResponse } from '@deepgram/sdk';
+import { createClient } from '@deepgram/sdk';
+
+interface DeepgramAlternative {
+  transcript: string;
+}
+
+interface DeepgramChannel {
+  alternatives: DeepgramAlternative[];
+}
+
+interface DeepgramResult {
+  channels?: DeepgramChannel[];
+}
+
+interface DeepgramResponse {
+  results?: DeepgramResult;
+}
 
 const deepgram = createClient(process.env.DEEPGRAM_API_KEY!);
 
@@ -31,7 +47,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
 }
 
 function extractTranscript(
-  response: PrerecordedTranscriptionResponse,
+  response: DeepgramResponse,
 ): string {
   return (
     response.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? ''

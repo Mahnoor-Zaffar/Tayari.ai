@@ -1,10 +1,12 @@
 'use client';
 
 import { useInterviewStore } from '@/frontend/store/interview-store';
+import { WaveformVisualizer } from './WaveformVisualizer';
 
 interface MicButtonProps {
   onToggle: () => void;
   isRecording: boolean;
+  stream?: MediaStream | null;
 }
 
 const STATE_CONFIG = {
@@ -34,7 +36,7 @@ const STATE_CONFIG = {
   },
 } as const;
 
-export function MicButton({ onToggle, isRecording }: MicButtonProps) {
+export function MicButton({ onToggle, stream }: MicButtonProps) {
   const { phase } = useInterviewStore();
   const cfg = STATE_CONFIG[phase];
 
@@ -42,6 +44,10 @@ export function MicButton({ onToggle, isRecording }: MicButtonProps) {
 
   return (
     <div className="flex flex-col items-center gap-3">
+      {phase === 'RECORDING' && (
+        <WaveformVisualizer stream={stream ?? null} />
+      )}
+
       <button
         onClick={onToggle}
         disabled={isDisabled}
