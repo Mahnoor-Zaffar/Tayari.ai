@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { useInterviewStore } from '@/stores/interview-store';
-import { useMediaRecorder } from '@/hooks/useMediaRecorder';
-import { SessionCard } from '@/components/interview/SessionCard';
-import { StreamConsole } from '@/components/interview/StreamConsole';
-import { MicButton } from '@/components/interview/MicButton';
+import { useInterviewStore } from '@/frontend/store/interview-store';
+import { useMediaRecorder } from '@/frontend/hooks/useMediaRecorder';
+import { SessionCard } from '@/frontend/components/interview/SessionCard';
+import { StreamConsole } from '@/frontend/components/interview/StreamConsole';
+import { MicButton } from '@/frontend/components/interview/MicButton';
 
 export default function InterviewPage() {
   const params = useParams();

@@ -15,9 +15,9 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { evaluateResponse } from '@/lib/openai';
-import { upsertEvaluation } from '@/lib/database';
-import { detectFillerWords } from '@/lib/filler-words';
+import { evaluateResponse } from '@/backend/services/openai';
+import { upsertEvaluation } from '@/backend/db/database';
+import { detectFillerWords } from '@/backend/services/filler-words';
 import type { EvaluateTurnWebhookPayload } from '@/types/interview';
 
 export async function POST(req: NextRequest) {

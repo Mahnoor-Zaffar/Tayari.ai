@@ -1,11 +1,3 @@
-// =============================================================================
-// Tayari.ai — Foreground Interviewer System Prompt Builder
-// -----------------------------------------------------------------------------
-// Assembles the persona prompt by interpolating session parameters and
-// retrieved RAG context.  The string is version-controlled here to keep
-// prompt logic decoupled from inference orchestration.
-// =============================================================================
-
 export interface PromptContext {
   targetRole: string;
   difficulty: string;

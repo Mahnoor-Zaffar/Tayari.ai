@@ -1,11 +1,3 @@
-// =============================================================================
-// Tayari.ai — OpenAI Service (Embeddings + Chat Completions)
-// Models:
-//   text-embedding-3-small (RAG)
-//   gpt-4o-mini            (foreground streaming)
-//   gpt-4o                 (background evaluation)
-// =============================================================================
-
 import OpenAI from 'openai';
 import type { Stream } from 'openai/streaming';
 import type { ShadowEvaluatorContract } from '@/types/interview';

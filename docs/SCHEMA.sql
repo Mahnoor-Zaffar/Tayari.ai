@@ -64,8 +64,6 @@ create table public.resume_embeddings (
 
 -- ============================================================================
 -- 6. match_resume_chunks — Cosine similarity search function
---    Returns the top-N resume chunks whose embeddings are most similar to
---    the supplied query vector, filtering by a minimum similarity threshold.
 -- ============================================================================
 create or replace function public.match_resume_chunks(
     query_embedding vector(1536),

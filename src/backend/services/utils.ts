@@ -1,7 +1,3 @@
-// =============================================================================
-// Tayari.ai — Shared Utilities
-// =============================================================================
-
 import type { SSEEvent } from '@/types/interview';
 
 const TEXT_ENCODER = new TextEncoder();

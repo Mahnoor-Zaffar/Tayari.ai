@@ -1,6 +1,6 @@
 'use client';
 
-import { useInterviewStore } from '@/stores/interview-store';
+import { useInterviewStore } from '@/frontend/store/interview-store';
 
 const PHASE_LABELS: Record<string, { color: string; text: string }> = {
   IDLE: { color: 'bg-zinc-500', text: 'Ready' },

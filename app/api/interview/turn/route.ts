@@ -16,16 +16,16 @@
 // =============================================================================
 
 import { NextRequest } from 'next/server';
-import { transcribeAudio } from '@/lib/deepgram';
-import { generateEmbedding, streamChat } from '@/lib/openai';
+import { transcribeAudio } from '@/backend/services/deepgram';
+import { generateEmbedding, streamChat } from '@/backend/services/openai';
 import {
   fetchSession,
   fetchTurnHistory,
   insertTurn,
   searchResumeContext,
-} from '@/lib/database';
-import { buildInterviewerPrompt } from '@/lib/prompts';
-import { encodeSSE } from '@/lib/utils';
+} from '@/backend/db/database';
+import { buildInterviewerPrompt } from '@/backend/services/prompts';
+import { encodeSSE } from '@/backend/services/utils';
 import type { SSEEvent } from '@/types/interview';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 

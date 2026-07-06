@@ -87,30 +87,40 @@ Tayari.ai is a voice-driven, multi-agent interview simulation platform that prep
 ## Project Structure
 
 ```
-app/
-├── api/
-│   ├── interview/turn/route.ts        # Main turn ingestion + SSE stream
-│   └── workers/evaluate-turn/route.ts # Background evaluation webhook
-└── interview/[id]/page.tsx            # Interview workspace UI
-components/interview/
-├── SessionCard.tsx                     # Left sidebar metadata panel
-├── StreamConsole.tsx                   # Terminal-style chat console
-└── MicButton.tsx                       # Microphone toggle button
-hooks/
-└── useMediaRecorder.ts                 # MediaRecorder abstraction
-stores/
-└── interview-store.ts                  # Zustand state machine
-lib/
-├── deepgram.ts                         # Deepgram transcription client
-├── openai.ts                           # OpenAI embedding + streaming + evaluation
-├── database.ts                         # Supabase data access layer
-├── prompts.ts                          # Interviewer persona prompt builder
-├── filler-words.ts                     # Filler word frequency detector
-└── utils.ts                            # SSE encoder + camelCase mapper
-types/
-└── interview.ts                        # Domain type definitions
-database/
-└── 001_initialize_schema.sql           # PostgreSQL migration (pgvector + tables + indexes)
+├── app/                          # Next.js App Router (Frontend Views & API)
+│   ├── (auth)/login/             # Authentication route group
+│   ├── dashboard/                # Candidate dashboard
+│   ├── interview/[id]/           # Live interview workspace + SSE pipeline
+│   └── api/
+│       ├── interview/turn/       # Main turn ingestion endpoint
+│       └── workers/evaluate-turn/ # Background evaluator webhook
+├── src/
+│   ├── backend/                  # Core infrastructure (decoupled from UI)
+│   │   ├── services/             # Third-party providers + utilities
+│   │   │   ├── deepgram.ts       #   Deepgram Nova-2 transcription
+│   │   │   ├── openai.ts         #   OpenAI embedding + streaming + evaluation
+│   │   │   ├── prompts.ts        #   Interviewer persona prompt builder
+│   │   │   ├── filler-words.ts   #   Filler word frequency detector
+│   │   │   └── utils.ts          #   SSE encoder + camelCase mapper
+│   │   └── db/                   # Database execution & pgvector RPC
+│   │       └── database.ts       #   Supabase data access layer
+│   └── frontend/                 # Component & presentation layer
+│       ├── components/interview/ # Tailwind layout elements
+│       │   ├── SessionCard.tsx   #   Left sidebar metadata panel
+│       │   ├── StreamConsole.tsx #   Terminal-style chat console
+│       │   └── MicButton.tsx     #   Microphone toggle
+│       ├── hooks/                # Custom browser hooks
+│       │   └── useMediaRecorder.ts # MediaRecorder abstraction
+│       └── store/                # Global state (Zustand)
+│           └── interview-store.ts # State machine
+├── types/                        # Domain type definitions
+│   └── interview.ts
+└── docs/                         # System manifestos
+    ├── PRD.md                    # Product requirements
+    ├── PROMPTS.md                # Agent prompt contracts
+    ├── API_SPEC.md               # API specification
+    ├── SCHEMA.sql                # PostgreSQL migration
+    └── ui_flow.md                # UX state machine blueprint
 ```
 
 ---
@@ -158,7 +168,7 @@ Run the migration against your Supabase project:
 supabase db push
 
 # or execute manually in the Supabase SQL editor
-# open database/001_initialize_schema.sql and run
+# open docs/SCHEMA.sql and run
 ```
 
 ### Development

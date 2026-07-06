@@ -1,10 +1,3 @@
-// =============================================================================
-// Tayari.ai — Filler Word Detection
-// -----------------------------------------------------------------------------
-// Scans a transcript for common Urdu/English filler words and returns a
-// frequency map suitable for turn_evaluations.filler_words_detected (jsonb).
-// =============================================================================
-
 const FILLER_PATTERNS: { pattern: RegExp; label: string }[] = [
   { pattern: /\bum\b/gi, label: 'um' },
   { pattern: /\buh\b/gi, label: 'uh' },

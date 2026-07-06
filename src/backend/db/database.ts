@@ -1,7 +1,3 @@
-// =============================================================================
-// Tayari.ai — Supabase / PostgreSQL Data Access Layer
-// =============================================================================
-
 import { createClient } from '@supabase/supabase-js';
 import type {
   InterviewSession,
@@ -9,16 +5,12 @@ import type {
   InterviewStage,
   MatchedResumeChunk,
 } from '@/types/interview';
-import { mapRowToCamel, mapRowsToCamel } from '@/lib/utils';
+import { mapRowToCamel, mapRowsToCamel } from '@/backend/services/utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
-
-// ---------------------------------------------------------------------------
-// Session
-// ---------------------------------------------------------------------------
 
 export async function fetchSession(sessionId: string): Promise<InterviewSession> {
   const { data, error } = await supabase
@@ -33,10 +25,6 @@ export async function fetchSession(sessionId: string): Promise<InterviewSession>
 
   return mapRowToCamel<InterviewSession>(data as Record<string, unknown>);
 }
-
-// ---------------------------------------------------------------------------
-// Conversation History (chronological)
-// ---------------------------------------------------------------------------
 
 export async function fetchTurnHistory(
   sessionId: string,
@@ -53,10 +41,6 @@ export async function fetchTurnHistory(
 
   return mapRowsToCamel<InterviewTurn>((data ?? []) as Record<string, unknown>[]);
 }
-
-// ---------------------------------------------------------------------------
-// Resume Vector Search (RAG)
-// ---------------------------------------------------------------------------
 
 export async function searchResumeContext(
   embedding: number[],
@@ -76,10 +60,6 @@ export async function searchResumeContext(
   return mapRowsToCamel<MatchedResumeChunk>((data ?? []) as Record<string, unknown>[]);
 }
 
-// ---------------------------------------------------------------------------
-// Turn Persistence (insert on stream completion)
-// ---------------------------------------------------------------------------
-
 export async function insertTurn(params: {
   sessionId: string;
   sequenceNumber: number;
@@ -98,10 +78,6 @@ export async function insertTurn(params: {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Session Stage Progression
-// ---------------------------------------------------------------------------
-
 export async function updateSessionStage(
   sessionId: string,
   stage: InterviewStage,
@@ -115,10 +91,6 @@ export async function updateSessionStage(
     throw new Error(`Failed to update session stage: ${error.message}`);
   }
 }
-
-// ---------------------------------------------------------------------------
-// Evaluation Upsert (background worker)
-// ---------------------------------------------------------------------------
 
 export async function upsertEvaluation(params: {
   turnId: string;

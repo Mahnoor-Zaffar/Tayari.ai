@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useInterviewStore } from '@/stores/interview-store';
+import { useInterviewStore } from '@/frontend/store/interview-store';
 
 export function StreamConsole() {
   const { transcript, streamedResponse, phase, error } = useInterviewStore();

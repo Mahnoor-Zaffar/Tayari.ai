@@ -1,6 +1,6 @@
 'use client';
 
-import { useInterviewStore } from '@/stores/interview-store';
+import { useInterviewStore } from '@/frontend/store/interview-store';
 
 interface MicButtonProps {
   onToggle: () => void;

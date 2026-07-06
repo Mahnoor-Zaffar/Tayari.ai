@@ -1,8 +1,3 @@
-// =============================================================================
-// Tayari.ai — Deepgram Speech-to-Text Service
-// Model: Nova-2  |  Latency target: <300ms
-// =============================================================================
-
 import { createClient, type PrerecordedTranscriptionResponse } from '@deepgram/sdk';
 
 const deepgram = createClient(process.env.DEEPGRAM_API_KEY!);
