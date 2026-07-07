@@ -17,7 +17,8 @@
 
 import { NextRequest } from 'next/server';
 import { transcribeAudio } from '@/backend/services/deepgram';
-import { generateEmbedding, streamChat } from '@/backend/services/openai';
+import { streamChat } from '@/backend/services/openai';
+import { generateEmbedding } from '@/backend/services/embeddings';
 import {
   fetchSession,
   fetchTurnHistory,

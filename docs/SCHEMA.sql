@@ -57,7 +57,7 @@ create table public.resume_embeddings (
     id        bigint generated always as identity primary key,
     user_id   uuid not null,
     content   text not null,
-    embedding vector(1536) not null,
+    embedding vector(384) not null,
     metadata  jsonb default '{}'::jsonb,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -66,7 +66,7 @@ create table public.resume_embeddings (
 -- 6. match_resume_chunks — Cosine similarity search function
 -- ============================================================================
 create or replace function public.match_resume_chunks(
-    query_embedding vector(1536),
+    query_embedding vector(384),
     match_threshold float,
     match_count int
 )

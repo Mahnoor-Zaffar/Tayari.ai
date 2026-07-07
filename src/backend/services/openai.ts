@@ -4,6 +4,15 @@ import type { ShadowEvaluatorContract } from '@/types/interview';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
+  baseURL: process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1',
+  ...(process.env.OPENAI_BASE_URL
+    ? {}
+    : {
+        defaultHeaders: {
+          'HTTP-Referer': 'https://tayari.ai',
+          'X-Title': 'Tayari.ai',
+        },
+      }),
 });
 
 export async function generateEmbedding(text: string): Promise<number[]> {

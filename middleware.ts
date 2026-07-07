@@ -1,10 +1,10 @@
-import { updateSession } from '@/lib/supabase/middleware';
+import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  return updateSession(request);
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/interview/:path*', '/dashboard/:path*', '/login'],
+  matcher: [],
 };

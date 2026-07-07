@@ -2,24 +2,48 @@
 
 import { createSupabaseClient } from '@/lib/supabase/client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  async function signInWithGithub() {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     setLoading(true);
     setError(null);
 
     const supabase = createSupabaseClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
 
-    if (error) setError(error.message);
+    if (isSignUp) {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) {
+        setError(error.message);
+      } else {
+        setError(null);
+        setIsSignUp(false);
+        alert('Account created! Check your email to confirm, or sign in below.');
+      }
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        setError(error.message);
+      } else {
+        router.push('/dashboard');
+      }
+    }
+
     setLoading(false);
   }
 
@@ -37,23 +61,61 @@ export default function LoginPage() {
           Voice-driven AI interview coach
         </p>
 
-        <button
-          onClick={signInWithGithub}
-          disabled={loading}
-          className="flex items-center gap-3 rounded-lg border border-zinc-700 bg-zinc-900 px-6 py-3 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-800 disabled:opacity-50"
-        >
-          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
-          </svg>
-          {loading ? 'Redirecting...' : 'Continue with GitHub'}
-        </button>
+        <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-zinc-400">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              className="mt-1.5 block w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+              disabled={loading}
+            />
+          </div>
 
-        {error && (
-          <p className="text-sm text-red-500">{error}</p>
-        )}
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-zinc-400">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+              minLength={6}
+              className="mt-1.5 block w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+              disabled={loading}
+            />
+          </div>
 
-        <p className="max-w-sm text-center text-xs text-zinc-600">
-          Sign in to start or continue your interview practice sessions.
+          {error && (
+            <p className="text-sm text-red-500">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || !email || !password}
+            className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
+          </button>
+        </form>
+
+        <p className="text-sm text-zinc-500">
+          {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+          <button
+            onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
+            className="font-medium text-emerald-400 hover:text-emerald-300 transition"
+          >
+            {isSignUp ? 'Sign in' : 'Create one'}
+          </button>
         </p>
       </div>
     </div>
