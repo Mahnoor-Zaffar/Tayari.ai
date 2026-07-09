@@ -2,65 +2,49 @@
 
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 
-/** Detects Safari/iOS WebKit — used for MIME-type fallback. */
+// ---------------------------------------------------------------------------
+// Browser detection & MIME-type resolution
+// ---------------------------------------------------------------------------
+
 function isWebKit(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent.toLowerCase();
   return ua.includes('safari') && !ua.includes('chrome');
 }
 
-/**
- * Resolves the best supported MIME type for the current browser.
- *   - Chrome/Firefox: audio/webm;codecs=opus
- *   - Safari/iOS:      audio/ogg;codecs=opus  (webm not supported)
- */
 function resolveMimeType(): string {
   const preferred = isWebKit()
     ? 'audio/ogg;codecs=opus'
     : 'audio/webm;codecs=opus';
-
   if (MediaRecorder.isTypeSupported(preferred)) return preferred;
-
-  // Last-resort fallback — browser picks the default.
   const fallback = isWebKit() ? 'audio/ogg' : 'audio/webm';
   if (MediaRecorder.isTypeSupported(fallback)) return fallback;
-
   return '';
 }
 
 // ---------------------------------------------------------------------------
-// Hook return type (consumed by InterviewView, MicButton, etc.)
+// Hook return type
 // ---------------------------------------------------------------------------
-export interface UseMediaRecorderReturn {
-  /** `true` while the microphone is actively recording. */
-  isRecording: boolean;
-  /** The most recently completed recording blob, or `null` if none. */
-  audioBlob: Blob | null;
-  /** Human-readable error string, or `null` when no error is present. */
-  error: string | null;
-  /** The active `MediaStream` while recording, otherwise `null`. */
-  stream: MediaStream | null;
 
-  /** Requests mic access, configures the recorder, and begins capture. */
+export interface UseMediaRecorderReturn {
+  isRecording: boolean;
+  audioBlob: Blob | null;
+  error: string | null;
+  stream: MediaStream | null;
   startRecording: () => Promise<void>;
-  /** Stops the recorder, finalises the blob, releases the mic stream. */
   stopRecording: () => Promise<Blob>;
-  /** Releases all hardware resources immediately (call in `useEffect` cleanup). */
   release: () => void;
 }
 
 /**
  * `useMediaRecorder` — turn-based audio capture hook.
  *
- * Manages the full lifecycle of browser audio recording:
- *   - Requests mic access with transcription-optimised constraints (mono, 16 kHz,
- *     echo cancellation).
- *   - Selects the best codec wrapper for the current browser (WebM for Chrome,
- *     Ogg for Safari).
- *   - Exposes `startRecording` / `stopRecording` for turn-based capture.
- *   - Automatically releases the hardware stream on unmount.
- *
- * @returns {UseMediaRecorderReturn}  Recording state, handlers, and stream ref.
+ * Optimisations for transcription accuracy:
+ *  - Sample rate: prefers 48 kHz, falls back to 16 kHz
+ *  - Channel layout: mono (1 channel) — multi-channel can cause phase
+ *    cancellation in downstream speech engines
+ *  - Echo cancellation, noise suppression, and automatic gain control
+ *    enabled to isolate the speaker's voice from ambient noise
  */
 export function useMediaRecorder(): UseMediaRecorderReturn {
   const [isRecording, setIsRecording] = useState(false);
@@ -68,15 +52,10 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
   const [error, setError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
-  // Mutable refs — never trigger re-renders.
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const startingRef = useRef(false);
-
-  // -----------------------------------------------------------------------
-  // Internal: release all hardware resources
-  // -----------------------------------------------------------------------
 
   function releaseStream(streamToRelease: MediaStream | null) {
     if (!streamToRelease) return;
@@ -99,7 +78,6 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
   // -----------------------------------------------------------------------
 
   const startRecording = useCallback(async (): Promise<void> => {
-    // Guard against concurrent starts.
     if (mediaRecorderRef.current?.state === 'recording') return;
     if (startingRef.current) return;
     startingRef.current = true;
@@ -112,10 +90,11 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
     try {
       micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
+          sampleRate: { ideal: 48000 },
           channelCount: { ideal: 1 },
-          sampleRate: { ideal: 16000 },
           echoCancellation: { ideal: true },
           noiseSuppression: { ideal: true },
+          autoGainControl: { ideal: true },
         },
       });
     } catch (err) {
@@ -144,7 +123,6 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
       throw err;
     }
 
-    // Keep a ref for cleanup.
     streamRef.current = micStream;
 
     const mimeType = resolveMimeType();
@@ -153,7 +131,6 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
     try {
       recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : undefined);
     } catch {
-      // If the constructor throws (bad mime), let the browser pick.
       recorder = new MediaRecorder(micStream);
     }
 
@@ -166,7 +143,6 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
     };
 
     recorder.start();
-
     mediaRecorderRef.current = recorder;
     setStream(micStream);
     setIsRecording(true);
@@ -194,7 +170,6 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
         setIsRecording(false);
         setStream(null);
 
-        // Release the hardware stream.
         releaseStream(streamRef.current);
         streamRef.current = null;
         mediaRecorderRef.current = null;
@@ -209,7 +184,7 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
   }, []);
 
   // -----------------------------------------------------------------------
-  // release  (imperative cleanup — call in useEffect return)
+  // release — imperative cleanup for useEffect
   // -----------------------------------------------------------------------
 
   const release = useCallback(() => {
@@ -226,15 +201,10 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
     resetState();
   }, []);
 
-  // -----------------------------------------------------------------------
-  // Automatic cleanup on unmount
-  // -----------------------------------------------------------------------
-
   useEffect(() => release, [release]);
 
   // -----------------------------------------------------------------------
-  // Public API — stable reference so consumers don't get new objects each
-  // render (which would break useEffect cleanup deps).
+  // Public API
   // -----------------------------------------------------------------------
 
   return useMemo(

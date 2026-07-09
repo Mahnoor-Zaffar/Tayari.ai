@@ -9,8 +9,15 @@ const PHASE_LABELS: Record<string, { color: string; text: string }> = {
   STREAMING_RESPONSE: { color: 'bg-emerald-500', text: 'Streaming' },
 };
 
+const STAGE_LABELS: Record<string, string> = {
+  INTRO: 'Introduction',
+  TECHNICAL: 'Technical',
+  BEHAVIORAL: 'Behavioral',
+  WRAP_UP: 'Wrap Up',
+};
+
 export function SessionCard() {
-  const { sessionId, phase, turnCount } = useInterviewStore();
+  const { sessionId, phase, turnCount, currentStage } = useInterviewStore();
   const status = PHASE_LABELS[phase] ?? PHASE_LABELS.IDLE;
 
   return (
@@ -20,7 +27,7 @@ export function SessionCard() {
           Session
         </h2>
         <p className="truncate font-mono text-xs text-zinc-400">
-          {sessionId ?? '\u2014'}
+          {sessionId?.slice(0, 8) ?? '\u2014'}
         </p>
       </div>
 
@@ -34,13 +41,15 @@ export function SessionCard() {
         </div>
 
         <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-          <div className="text-xs text-zinc-500">Turns Completed</div>
-          <div className="mt-1 font-semibold text-zinc-100">{turnCount}</div>
+          <div className="text-xs text-zinc-500">Stage</div>
+          <div className="mt-1 font-semibold text-zinc-100">
+            {currentStage ? STAGE_LABELS[currentStage] ?? currentStage : '\u2014'}
+          </div>
         </div>
 
         <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-          <div className="text-xs text-zinc-500">Phase</div>
-          <div className="mt-1 font-mono text-xs text-zinc-400">{phase}</div>
+          <div className="text-xs text-zinc-500">Turns Completed</div>
+          <div className="mt-1 font-semibold text-zinc-100">{turnCount}</div>
         </div>
       </div>
     </div>

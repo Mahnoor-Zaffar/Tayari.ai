@@ -113,12 +113,9 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
       if (isSpeech) {
         if (!speechActive) {
           speechActive = true;
-          silenceTimerRunning = false;
-          silenceStart = 0;
-        } else if (silenceTimerRunning) {
-          silenceTimerRunning = false;
-          silenceStart = 0;
         }
+        silenceTimerRunning = false;
+        silenceStart = 0;
       } else if (speechActive && !processingRef.current) {
         if (silenceStart === 0) {
           silenceStart = now;

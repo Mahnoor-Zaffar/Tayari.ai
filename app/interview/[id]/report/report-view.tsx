@@ -8,6 +8,9 @@ interface Aggregate {
   avgTechnical: number | null;
   avgCommunication: number | null;
   starRate: number | null;
+  avgConciseness: number | null;
+  avgConfidence: number | null;
+  avgCodeQuality: number | null;
   totalTurns: number;
   totalFillerWords: number;
 }
@@ -51,6 +54,30 @@ export function ReportView({
             value={
               aggregate.avgCommunication !== null
                 ? `${aggregate.avgCommunication}/10`
+                : '—'
+            }
+          />
+          <ScoreCard
+            label="Conciseness"
+            value={
+              aggregate.avgConciseness !== null
+                ? `${aggregate.avgConciseness}/5`
+                : '—'
+            }
+          />
+          <ScoreCard
+            label="Confidence"
+            value={
+              aggregate.avgConfidence !== null
+                ? `${aggregate.avgConfidence}/5`
+                : '—'
+            }
+          />
+          <ScoreCard
+            label="Code Quality"
+            value={
+              aggregate.avgCodeQuality !== null
+                ? `${aggregate.avgCodeQuality}/5`
                 : '—'
             }
           />
@@ -171,7 +198,7 @@ export function ReportView({
 
                       {ev && (
                         <>
-                          <div className="flex gap-4 text-xs">
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
                             <span className="text-zinc-500">
                               Technical:{' '}
                               <span className="text-zinc-300">
@@ -179,9 +206,27 @@ export function ReportView({
                               </span>
                             </span>
                             <span className="text-zinc-500">
-                              Communication:{' '}
+                              Comm:{' '}
                               <span className="text-zinc-300">
                                 {ev.communicationScore ?? '—'}
+                              </span>
+                            </span>
+                            <span className="text-zinc-500">
+                              Concise:{' '}
+                              <span className="text-zinc-300">
+                                {ev.concisenessScore ?? '—'}
+                              </span>
+                            </span>
+                            <span className="text-zinc-500">
+                              Confidence:{' '}
+                              <span className="text-zinc-300">
+                                {ev.confidenceScore ?? '—'}
+                              </span>
+                            </span>
+                            <span className="text-zinc-500">
+                              Code:{' '}
+                              <span className="text-zinc-300">
+                                {ev.codeQualityScore ?? '—'}
                               </span>
                             </span>
                             <span className="text-zinc-500">

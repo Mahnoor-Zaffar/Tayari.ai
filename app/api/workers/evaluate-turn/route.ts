@@ -118,6 +118,9 @@ export async function POST(req: NextRequest) {
       technicalScore: evaluation.technicalScore,
       communicationScore: evaluation.communicationScore,
       starFrameworkCheck: evaluation.starFrameworkCheck,
+      concisenessScore: evaluation.concisenessScore,
+      confidenceScore: evaluation.confidenceScore,
+      codeQualityScore: evaluation.codeQualityScore,
       constructiveCritique: evaluation.constructiveCritique,
       fillerWordsDetected,
     });

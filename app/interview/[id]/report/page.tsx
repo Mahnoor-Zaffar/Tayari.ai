@@ -58,6 +58,18 @@ export default async function ReportPage({
     return s + Object.values(fw).reduce((a, b) => a + b, 0);
   }, 0);
 
+  const avgScore = (key: 'concisenessScore' | 'confidenceScore' | 'codeQualityScore') =>
+    evaluated.length > 0
+      ? Math.round(
+          (evaluated.reduce(
+            (s, t) => s + (t.evaluation![key] ?? 0),
+            0,
+          ) /
+            evaluated.length) *
+            10,
+        ) / 10
+      : null;
+
   return (
     <ReportView
       sessionId={sessionId}
@@ -66,6 +78,9 @@ export default async function ReportPage({
         avgTechnical,
         avgCommunication,
         starRate,
+        avgConciseness: avgScore('concisenessScore'),
+        avgConfidence: avgScore('confidenceScore'),
+        avgCodeQuality: avgScore('codeQualityScore'),
         totalTurns: turns.length,
         totalFillerWords,
       }}

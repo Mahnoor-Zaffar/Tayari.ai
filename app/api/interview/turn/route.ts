@@ -18,6 +18,7 @@
 import { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { transcribeAudio } from '@/backend/services/deepgram';
+import type { TranscribeOptions } from '@/backend/services/deepgram';
 import { streamChat, evaluateResponse } from '@/backend/services/openai';
 import { generateEmbedding } from '@/backend/services/embeddings';
 import {
@@ -26,36 +27,68 @@ import {
   insertTurn,
   upsertEvaluation,
   searchResumeContext,
+  completeSession,
+  updateSessionStage,
 } from '@/backend/db/database';
 import { detectFillerWords } from '@/backend/services/filler-words';
 import { buildInterviewerPrompt } from '@/backend/services/prompts';
 import { encodeSSE } from '@/backend/services/utils';
-import type { SSEEvent } from '@/types/interview';
+import type { SSEEvent, InterviewStage } from '@/types/interview';
+import { stageForTurnNumber, MAX_TURNS } from '@/types/interview';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+
+// ---------------------------------------------------------------------------
+// Keyword boost list — injected into Deepgram to improve recognition of
+// technical terms and localised Urdu/English filler tokens common in
+// Pakistani tech interviews.
+// ---------------------------------------------------------------------------
+const TECH_KEYWORDS: TranscribeOptions = {
+  keywords: [
+    'Next.js', 'Supabase', 'pgvector', 'Zustand', 'PostgreSQL',
+    'TypeScript', 'JavaScript', 'React', 'Node.js', 'Docker',
+    'Kubernetes', 'AWS', 'Vercel', 'Prisma', 'Tailwind',
+    'yaani', 'matlab', 'acha', 'hai', 'falan',
+    'pandas', 'numpy', 'FastAPI', 'GraphQL', 'Redis',
+    'CI/CD', 'microservices', 'monorepo', 'WebSocket', 'REST',
+  ],
+};
 
 export async function POST(req: NextRequest) {
   // -------------------------------------------------------------------------
   // 1. Parse multipart form data
   // -------------------------------------------------------------------------
 
-  let audioBlob: Blob;
+  let audioBlob: Blob | null = null;
   let sessionId: string;
+  let isSkip = false;
+  let isEnd = false;
 
   try {
     const form = await req.formData();
-    const file = form.get('audio');
+    const skip = form.get('skip');
+    const end = form.get('end');
     const sid = form.get('sessionId');
 
-    if (!(file instanceof Blob)) {
-      return new Response('Missing or invalid "audio" field', { status: 400 });
+    if (end === 'true') {
+      isEnd = true;
+    } else if (skip === 'true') {
+      isSkip = true;
+    } else {
+      const file = form.get('audio');
+      if (!(file instanceof Blob)) {
+        return new Response('Missing or invalid "audio" field', { status: 400 });
+      }
+      audioBlob = file;
     }
+
     if (typeof sid !== 'string' || !sid) {
       return new Response('Missing or invalid "sessionId" field', { status: 400 });
     }
 
-    audioBlob = file;
     sessionId = sid;
-    console.log('[turn] Blob size:', audioBlob.size, 'type:', audioBlob.type);
+    if (audioBlob) {
+      console.log('[turn] Blob size:', audioBlob.size, 'type:', audioBlob.type);
+    }
   } catch (err) {
     console.error('[turn] Form parse error:', err instanceof Error ? err.message : err);
     return new Response('Failed to parse request body', { status: 400 });
@@ -82,31 +115,40 @@ export async function POST(req: NextRequest) {
   }
 
   // -------------------------------------------------------------------------
-  // 3. Transcribe audio → text  (Deepgram Nova-2)
+  // 3. Transcribe audio → text  (Deepgram Nova-2-Phonecall)
+  //    If skip flag is set, use a placeholder transcript instead.
   // -------------------------------------------------------------------------
 
   let transcript: string;
 
-  try {
-    transcript = await transcribeAudio(audioBlob);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Transcription failed';
-    console.error('[turn] Transcription error:', message);
+  if (isEnd) {
+    console.log('[turn] End requested — using placeholder transcript');
+    transcript = "I'd like to end the interview here and get my final feedback.";
+  } else if (isSkip) {
+    console.log('[turn] Skip requested — using placeholder transcript');
+    transcript = "I'd like to skip this question and move on to the next one.";
+  } else {
+    try {
+      transcript = await transcribeAudio(audioBlob!, TECH_KEYWORDS);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Transcription failed';
+      console.error('[turn] Transcription error:', message);
 
-    const errorStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(encodeSSE({ type: 'ERROR', data: { message } }));
-        controller.close();
-      },
-    });
+      const errorStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encodeSSE({ type: 'ERROR', data: { message } }));
+          controller.close();
+        },
+      });
 
-    return new Response(errorStream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      },
-    });
+      return new Response(errorStream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+      });
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -136,7 +178,23 @@ export async function POST(req: NextRequest) {
   }
 
   // -------------------------------------------------------------------------
-  // 7. Build system prompt with RAG anchors
+  // 7. Stage progression — determine current stage from turn number
+  // -------------------------------------------------------------------------
+
+  const thisTurnNumber = turnHistory.length + 1;
+  const stage: InterviewStage = isEnd || thisTurnNumber > MAX_TURNS
+    ? 'WRAP_UP'
+    : stageForTurnNumber(thisTurnNumber);
+
+  if (stage !== session.currentStage) {
+    console.log('[turn] Stage change:', session.currentStage, '→', stage);
+    await updateSessionStage(sessionId, stage).catch((err) =>
+      console.error('[turn] Failed to update stage:', err),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // 8. Build system prompt with RAG anchors
   // -------------------------------------------------------------------------
 
   const contextualBackground = ragChunks.map((c) => c.content).join('\n---\n');
@@ -144,12 +202,12 @@ export async function POST(req: NextRequest) {
   const systemPrompt = buildInterviewerPrompt({
     targetRole: session.targetRole,
     difficulty: session.difficulty,
-    currentStage: session.currentStage,
+    currentStage: stage,
     contextualBackground,
   });
 
   // -------------------------------------------------------------------------
-  // 8. Build message list & initiate OpenAI streaming
+  // 9. Build message list & initiate OpenAI streaming
   // -------------------------------------------------------------------------
 
   const messages: ChatCompletionMessageParam[] = [
@@ -175,6 +233,8 @@ export async function POST(req: NextRequest) {
   // -------------------------------------------------------------------------
   // 9. Return SSE ReadableStream
   // -------------------------------------------------------------------------
+
+  const isCompleted = stage === 'WRAP_UP';
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -214,6 +274,9 @@ export async function POST(req: NextRequest) {
               technicalScore: evaluation.technicalScore,
               communicationScore: evaluation.communicationScore,
               starFrameworkCheck: evaluation.starFrameworkCheck,
+              concisenessScore: evaluation.concisenessScore,
+              confidenceScore: evaluation.confidenceScore,
+              codeQualityScore: evaluation.codeQualityScore,
               constructiveCritique: evaluation.constructiveCritique,
               fillerWordsDetected,
             }),
@@ -222,12 +285,20 @@ export async function POST(req: NextRequest) {
             console.error('[turn] Background evaluation failed:', err);
           });
 
+        // Mark session complete if WRAP_UP
+        if (isCompleted) {
+          completeSession(sessionId, fullResponse).catch((err) =>
+            console.error('[turn] Failed to complete session:', err),
+          );
+        }
+
         enqueue({
           type: 'DONE',
           data: {
             turnId,
             interviewerQuestion: fullResponse,
             candidateResponse: transcript,
+            completed: isCompleted,
           },
         });
       } catch (err) {

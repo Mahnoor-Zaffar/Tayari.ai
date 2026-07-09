@@ -15,7 +15,21 @@ export type InterviewStage = 'INTRO' | 'TECHNICAL' | 'BEHAVIORAL' | 'WRAP_UP';
 
 export type Difficulty = 'Junior' | 'Mid' | 'Senior' | 'Staff';
 
-export type TurnPhase = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'STREAMING_RESPONSE';
+export type TurnPhase = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'STREAMING_RESPONSE' | 'COMPLETE';
+
+// ---------------------------------------------------------------------------
+// Interview lifecycle constants
+// ---------------------------------------------------------------------------
+
+export const MAX_TURNS = 8;
+
+/** Turn-number ranges for each stage (1-indexed). */
+export const STAGE_TURN_RANGES: Record<InterviewStage, [number, number]> = {
+  INTRO: [1, 2],
+  TECHNICAL: [3, 5],
+  BEHAVIORAL: [6, 8],
+  WRAP_UP: [9, 9],
+};
 
 // ---------------------------------------------------------------------------
 // Core Domain Entities
@@ -47,6 +61,9 @@ export interface TurnEvaluation {
   technicalScore: number | null;
   communicationScore: number | null;
   starFrameworkCheck: boolean;
+  concisenessScore: number | null;
+  confidenceScore: number | null;
+  codeQualityScore: number | null;
   constructiveCritique: string | null;
   fillerWordsDetected: Record<string, number>;
   createdAt: string;
@@ -59,6 +76,14 @@ export interface ResumeEmbedding {
   embedding: number[];
   metadata: Record<string, unknown>;
   createdAt: string;
+}
+
+/** Determine which interview stage a turn number belongs to. */
+export function stageForTurnNumber(turnNumber: number): InterviewStage {
+  for (const [stage, [start, end]] of Object.entries(STAGE_TURN_RANGES)) {
+    if (turnNumber >= start && turnNumber <= end) return stage as InterviewStage;
+  }
+  return 'WRAP_UP';
 }
 
 // ---------------------------------------------------------------------------
@@ -85,6 +110,9 @@ export interface ShadowEvaluatorContract {
   technicalScore: number;
   communicationScore: number;
   starFrameworkCheck: boolean;
+  concisenessScore: number;
+  confidenceScore: number;
+  codeQualityScore: number;
   constructiveCritique: string;
 }
 
@@ -104,6 +132,7 @@ export interface DoneEvent {
   turnId: string;
   interviewerQuestion: string;
   candidateResponse: string;
+  completed?: boolean;
 }
 
 export type SSEEvent =

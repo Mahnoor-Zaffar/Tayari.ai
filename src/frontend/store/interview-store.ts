@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import type { TurnPhase } from '@/types/interview';
+import type { TurnPhase, InterviewStage } from '@/types/interview';
 
 export interface ChatMessage {
   type: 'user' | 'assistant';
@@ -15,7 +15,8 @@ interface InterviewState {
   streamedResponse: string;
   turnCount: number;
   error: string | null;
-  /** Accumulated chat history — each completed turn pushed here. */
+  currentStage: InterviewStage | null;
+  isCompleted: boolean;
   turns: ChatMessage[];
 
   setSessionId: (id: string) => void;
@@ -27,6 +28,8 @@ interface InterviewState {
   resetToIdle: () => void;
   setError: (message: string) => void;
   clearError: () => void;
+  setStage: (stage: InterviewStage) => void;
+  setCompleted: () => void;
 }
 
 export const useInterviewStore = create<InterviewState>((set) => ({
@@ -36,6 +39,8 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   streamedResponse: '',
   turnCount: 0,
   error: null,
+  currentStage: null,
+  isCompleted: false,
   turns: [],
 
   setSessionId: (id) => set({ sessionId: id }),
@@ -62,4 +67,6 @@ export const useInterviewStore = create<InterviewState>((set) => ({
     }),
   setError: (message) => set({ error: message, phase: 'LISTENING' }),
   clearError: () => set({ error: null }),
+  setStage: (stage) => set({ currentStage: stage }),
+  setCompleted: () => set({ phase: 'COMPLETE', isCompleted: true }),
 }));

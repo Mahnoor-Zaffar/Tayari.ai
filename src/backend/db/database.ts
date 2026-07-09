@@ -106,23 +106,59 @@ export async function upsertEvaluation(params: {
   technicalScore: number;
   communicationScore: number;
   starFrameworkCheck: boolean;
+  concisenessScore: number;
+  confidenceScore: number;
+  codeQualityScore: number;
   constructiveCritique: string;
   fillerWordsDetected: Record<string, number>;
 }): Promise<void> {
-  const { error } = await supabase.from('turn_evaluations').upsert(
-    {
-      turn_id: params.turnId,
-      technical_score: params.technicalScore,
-      communication_score: params.communicationScore,
-      star_framework_check: params.starFrameworkCheck,
-      constructive_critique: params.constructiveCritique,
-      filler_words_detected: params.fillerWordsDetected,
-    },
-    { onConflict: 'turn_id' },
-  );
+  const payload: Record<string, unknown> = {
+    turn_id: params.turnId,
+    technical_score: params.technicalScore,
+    communication_score: params.communicationScore,
+    star_framework_check: params.starFrameworkCheck,
+    constructive_critique: params.constructiveCritique,
+    filler_words_detected: params.fillerWordsDetected,
+  };
+
+  // New columns — may not exist in older databases; try and catch gracefully
+  try {
+    const { error } = await supabase.from('turn_evaluations').upsert(
+      {
+        ...payload,
+        conciseness_score: params.concisenessScore,
+        confidence_score: params.confidenceScore,
+        code_quality_score: params.codeQualityScore,
+      },
+      { onConflict: 'turn_id' },
+    );
+    if (error) throw error;
+  } catch {
+    // Fallback: columns don't exist yet — try without them
+    const { error } = await supabase.from('turn_evaluations').upsert(
+      payload,
+      { onConflict: 'turn_id' },
+    );
+    if (error) {
+      throw new Error(`Failed to upsert evaluation: ${error.message}`);
+    }
+  }
+}
+
+export async function completeSession(
+  sessionId: string,
+  overallAssessment?: string,
+): Promise<void> {
+  const update: Record<string, unknown> = { is_completed: true };
+  if (overallAssessment) update.overall_assessment = overallAssessment;
+
+  const { error } = await supabase
+    .from('interview_sessions')
+    .update(update)
+    .eq('id', sessionId);
 
   if (error) {
-    throw new Error(`Failed to upsert evaluation: ${error.message}`);
+    throw new Error(`Failed to complete session: ${error.message}`);
   }
 }
 

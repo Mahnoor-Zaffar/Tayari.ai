@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useInterviewStore } from '@/frontend/store/interview-store';
 import { useContinuousRecorder } from '@/frontend/hooks/useContinuousRecorder';
 import { SessionCard } from '@/frontend/components/interview/SessionCard';
@@ -10,6 +10,7 @@ import { MicButton } from '@/frontend/components/interview/MicButton';
 
 export function InterviewView() {
   const params = useParams();
+  const router = useRouter();
   const sessionId = params.id as string;
 
   const {
@@ -21,6 +22,8 @@ export function InterviewView() {
     incrementTurnCount,
     resetToIdle,
     setError,
+    setStage,
+    setCompleted,
   } = useInterviewStore();
 
   const recorder = useContinuousRecorder();
@@ -99,10 +102,16 @@ export function InterviewView() {
                   const doneData = JSON.parse(raw);
                   pushTurn(doneData.candidateResponse, doneData.interviewerQuestion);
                   incrementTurnCount();
-                  setTimeout(() => {
-                    resetToIdle();
-                    resumeRef.current();
-                  }, 1_500);
+                  if (doneData.completed) {
+                    recorder.stop();
+                    setCompleted();
+                    setTimeout(() => router.push(`/interview/${sessionId}/report`), 3_000);
+                  } else {
+                    setTimeout(() => {
+                      resetToIdle();
+                      resumeRef.current();
+                    }, 1_500);
+                  }
                   break;
                 }
 
@@ -152,20 +161,189 @@ export function InterviewView() {
     }
   }, [phase, recorder, onChunkReady, setPhase, setError]);
 
+  const handleSkip = useCallback(async () => {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    setPhase('PROCESSING');
+    try {
+      const formData = new FormData();
+      formData.append('skip', 'true');
+      formData.append('sessionId', sessionId);
+
+      const response = await fetch('/api/interview/turn', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        throw new Error(`Server error (${response.status}): ${body.slice(0, 200)}`);
+      }
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let hasStartedStreaming = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() ?? '';
+        for (const frame of frames) {
+          const lines = frame.split('\n');
+          for (const line of lines) {
+            if (!line.startsWith('DATA:')) continue;
+            const rest = line.slice(5);
+            const colonIdx = rest.indexOf(':');
+            if (colonIdx === -1) continue;
+            const type = rest.slice(0, colonIdx);
+            const raw = rest.slice(colonIdx + 1);
+            switch (type) {
+              case 'CHUNK': {
+                const { text } = JSON.parse(raw);
+                appendChunk(text);
+                if (!hasStartedStreaming) {
+                  hasStartedStreaming = true;
+                  setPhase('STREAMING_RESPONSE');
+                }
+                break;
+              }
+              case 'DONE': {
+                const doneData = JSON.parse(raw);
+                pushTurn(doneData.candidateResponse, doneData.interviewerQuestion);
+                incrementTurnCount();
+                if (doneData.completed) {
+                  recorder.stop();
+                  setCompleted();
+                  setTimeout(() => router.push(`/interview/${sessionId}/report`), 3_000);
+                } else {
+                  setTimeout(() => {
+                    resetToIdle();
+                    resumeRef.current();
+                  }, 1_500);
+                }
+                break;
+              }
+              case 'ERROR': {
+                const { message } = JSON.parse(raw);
+                setError(message);
+                setTimeout(() => resumeRef.current(), 1_500);
+                break;
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Skip request failed';
+      setError(message);
+    } finally {
+      sendingRef.current = false;
+    }
+  }, [sessionId, setPhase, appendChunk, pushTurn, incrementTurnCount, resetToIdle, setError]);
+
+  const handleEnd = useCallback(async () => {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    setPhase('PROCESSING');
+    try {
+      const formData = new FormData();
+      formData.append('end', 'true');
+      formData.append('sessionId', sessionId);
+
+      const response = await fetch('/api/interview/turn', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        throw new Error(`Server error (${response.status}): ${body.slice(0, 200)}`);
+      }
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let hasStartedStreaming = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() ?? '';
+        for (const frame of frames) {
+          const lines = frame.split('\n');
+          for (const line of lines) {
+            if (!line.startsWith('DATA:')) continue;
+            const rest = line.slice(5);
+            const colonIdx = rest.indexOf(':');
+            if (colonIdx === -1) continue;
+            const type = rest.slice(0, colonIdx);
+            const raw = rest.slice(colonIdx + 1);
+            switch (type) {
+              case 'CHUNK': {
+                const { text } = JSON.parse(raw);
+                appendChunk(text);
+                if (!hasStartedStreaming) {
+                  hasStartedStreaming = true;
+                  setPhase('STREAMING_RESPONSE');
+                }
+                break;
+              }
+              case 'DONE': {
+                const doneData = JSON.parse(raw);
+                pushTurn(doneData.candidateResponse, doneData.interviewerQuestion);
+                incrementTurnCount();
+                if (doneData.completed) {
+                  recorder.stop();
+                  setCompleted();
+                  setTimeout(() => router.push(`/interview/${sessionId}/report`), 3_000);
+                }
+                break;
+              }
+              case 'ERROR': {
+                const { message } = JSON.parse(raw);
+                setError(message);
+                break;
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'End interview failed';
+      setError(message);
+    } finally {
+      sendingRef.current = false;
+    }
+  }, [sessionId, setPhase, appendChunk, pushTurn, incrementTurnCount, setCompleted, setError, recorder, router]);
+
   return (
     <div className="flex h-screen bg-black text-zinc-100">
-      <SessionCard />
+      {phase !== 'COMPLETE' && <SessionCard />}
 
       <div className="flex flex-1 flex-col">
         <StreamConsole />
 
-        <div className="flex items-center justify-center border-t border-zinc-800 bg-zinc-950 px-6 py-5">
-          <MicButton
-            onToggle={handleToggleMic}
-            isRecording={recorder.isListening}
-            stream={recorder.stream}
-          />
-        </div>
+        {phase === 'COMPLETE' ? (
+          <div className="flex flex-col items-center justify-center gap-4 border-t border-zinc-800 bg-zinc-950 px-6 py-8">
+            <div className="text-lg font-semibold text-emerald-400">Interview Complete</div>
+            <div className="text-sm text-zinc-400">Redirecting to report...</div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center border-t border-zinc-800 bg-zinc-950 px-6 py-5">
+            <MicButton
+              onToggle={handleToggleMic}
+              onSkip={handleSkip}
+              onEnd={handleEnd}
+              isRecording={recorder.isListening}
+              stream={recorder.stream}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

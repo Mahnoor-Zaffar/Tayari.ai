@@ -111,3 +111,14 @@ create index if not exists idx_turn_evaluations_turn_id
 
 create index if not exists idx_resume_embeddings_user_id
     on public.resume_embeddings(user_id);
+
+-- ============================================================================
+-- 8. v1.1 migration — Enhanced evaluation dimensions
+-- ============================================================================
+alter table public.turn_evaluations
+    add column if not exists conciseness_score integer check (conciseness_score >= 1 and conciseness_score <= 5),
+    add column if not exists confidence_score  integer check (confidence_score >= 1 and confidence_score <= 5),
+    add column if not exists code_quality_score integer check (code_quality_score >= 1 and code_quality_score <= 5);
+
+alter table public.interview_sessions
+    add column if not exists overall_assessment text;
