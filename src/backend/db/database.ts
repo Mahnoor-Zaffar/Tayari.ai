@@ -101,6 +101,10 @@ export async function updateSessionStage(
   }
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
 export async function upsertEvaluation(params: {
   turnId: string;
   technicalScore: number;
@@ -114,8 +118,8 @@ export async function upsertEvaluation(params: {
 }): Promise<void> {
   const payload: Record<string, unknown> = {
     turn_id: params.turnId,
-    technical_score: params.technicalScore,
-    communication_score: params.communicationScore,
+    technical_score: clamp(params.technicalScore, 1, 10),
+    communication_score: clamp(params.communicationScore, 1, 10),
     star_framework_check: params.starFrameworkCheck,
     constructive_critique: params.constructiveCritique,
     filler_words_detected: params.fillerWordsDetected,
@@ -126,9 +130,9 @@ export async function upsertEvaluation(params: {
     const { error } = await supabase.from('turn_evaluations').upsert(
       {
         ...payload,
-        conciseness_score: params.concisenessScore,
-        confidence_score: params.confidenceScore,
-        code_quality_score: params.codeQualityScore,
+        conciseness_score: clamp(params.concisenessScore, 1, 5),
+        confidence_score: clamp(params.confidenceScore, 1, 5),
+        code_quality_score: clamp(params.codeQualityScore, 1, 5),
       },
       { onConflict: 'turn_id' },
     );
@@ -149,16 +153,26 @@ export async function completeSession(
   sessionId: string,
   overallAssessment?: string,
 ): Promise<void> {
-  const update: Record<string, unknown> = { is_completed: true };
-  if (overallAssessment) update.overall_assessment = overallAssessment;
+  try {
+    const update: Record<string, unknown> = { is_completed: true };
+    if (overallAssessment) update.overall_assessment = overallAssessment;
 
-  const { error } = await supabase
-    .from('interview_sessions')
-    .update(update)
-    .eq('id', sessionId);
+    const { error } = await supabase
+      .from('interview_sessions')
+      .update(update)
+      .eq('id', sessionId);
 
-  if (error) {
-    throw new Error(`Failed to complete session: ${error.message}`);
+    if (error) throw error;
+  } catch {
+    // Fallback: overall_assessment column may not exist yet
+    const { error } = await supabase
+      .from('interview_sessions')
+      .update({ is_completed: true })
+      .eq('id', sessionId);
+
+    if (error) {
+      throw new Error(`Failed to complete session: ${error.message}`);
+    }
   }
 }
 
