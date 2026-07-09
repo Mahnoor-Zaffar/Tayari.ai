@@ -100,10 +100,16 @@ export interface ChunkEvent {
   text: string;
 }
 
+export interface DoneEvent {
+  turnId: string;
+  interviewerQuestion: string;
+  candidateResponse: string;
+}
+
 export type SSEEvent =
   | { type: 'TRANSCRIPT'; data: TranscriptEvent }
   | { type: 'CHUNK'; data: ChunkEvent }
-  | { type: 'DONE'; data: null }
+  | { type: 'DONE'; data: DoneEvent }
   | { type: 'ERROR'; data: { message: string } };
 
 // ---------------------------------------------------------------------------

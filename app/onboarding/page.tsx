@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createServiceClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { ResumeUploader } from '@/frontend/components/onboarding/ResumeUploader';
 
@@ -8,7 +8,8 @@ export default async function OnboardingPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const { count } = await supabase
+      const db = createServiceClient();
+      const { count } = await db
         .from('resume_embeddings')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);

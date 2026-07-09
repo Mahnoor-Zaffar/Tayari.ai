@@ -115,7 +115,7 @@ export function InterviewView() {
   const handleToggleMic = useCallback(async () => {
     if (phase === 'IDLE') {
       try {
-        await recorder.start();
+        await recorder.startRecording();
         setPhase('RECORDING');
       } catch {
         setError('Could not start microphone');
@@ -123,7 +123,7 @@ export function InterviewView() {
     } else if (phase === 'RECORDING') {
       setPhase('PROCESSING');
       try {
-        const blob = await recorder.stop();
+        const blob = await recorder.stopRecording();
         await sendAudio(blob);
       } catch {
         setError('Audio capture failed');
@@ -133,7 +133,7 @@ export function InterviewView() {
   }, [phase, recorder, setPhase, setError, sendAudio]);
 
   useEffect(() => {
-    return () => recorder.cleanup();
+    return () => recorder.release();
   }, [recorder]);
 
   return (

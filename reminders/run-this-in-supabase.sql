@@ -1,0 +1,67 @@
+create extension if not exists vector with schema public;
+
+create table if not exists public.interview_sessions (
+    id            uuid default gen_random_uuid() primary key,
+    user_id       uuid not null,
+    target_role   text not null,
+    difficulty    text not null check (difficulty in ('Junior', 'Mid', 'Senior', 'Staff')),
+    current_stage text not null default 'INTRO' check (current_stage in ('INTRO', 'TECHNICAL', 'BEHAVIORAL', 'WRAP_UP')),
+    resume_context text,
+    is_completed  boolean not null default false,
+    created_at    timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create table if not exists public.interview_turns (
+    id                   uuid default gen_random_uuid() primary key,
+    session_id           uuid references public.interview_sessions(id) on delete cascade not null,
+    sequence_number      integer not null,
+    interviewer_question text not null,
+    candidate_response   text not null,
+    created_at           timestamp with time zone default timezone('utc'::text, now()) not null,
+    unique (session_id, sequence_number)
+);
+
+create table if not exists public.turn_evaluations (
+    id                   uuid default gen_random_uuid() primary key,
+    turn_id              uuid references public.interview_turns(id) on delete cascade not null unique,
+    technical_score      integer check (technical_score >= 1 and technical_score <= 10),
+    communication_score  integer check (communication_score >= 1 and communication_score <= 10),
+    star_framework_check boolean not null default false,
+    constructive_critique text,
+    filler_words_detected jsonb not null default '{}'::jsonb,
+    created_at           timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create table if not exists public.resume_embeddings (
+    id        bigint generated always as identity primary key,
+    user_id   uuid not null,
+    content   text not null,
+    embedding vector(384) not null,
+    metadata  jsonb default '{}'::jsonb,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create or replace function public.match_resume_chunks(
+    query_embedding vector(384),
+    query_user_id uuid,
+    match_threshold float,
+    match_count int
+)
+returns table (id bigint, user_id uuid, content text, metadata jsonb, similarity float)
+language plpgsql stable as $$
+begin
+    return query
+    select re.id, re.user_id, re.content, re.metadata,
+           1 - (re.embedding <=> query_embedding) as similarity
+    from public.resume_embeddings re
+    where re.user_id = query_user_id
+      and 1 - (re.embedding <=> query_embedding) > match_threshold
+    order by re.embedding <=> query_embedding
+    limit match_count;
+end;
+$$;
+
+create index if not exists idx_interview_sessions_user_id on public.interview_sessions(user_id);
+create index if not exists idx_interview_turns_session_id on public.interview_turns(session_id, sequence_number);
+create index if not exists idx_turn_evaluations_turn_id on public.turn_evaluations(turn_id);
+create index if not exists idx_resume_embeddings_user_id on public.resume_embeddings(user_id);

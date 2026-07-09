@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createServiceClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { SessionList } from '@/frontend/components/dashboard/SessionList';
 import { NewSessionButton } from '@/frontend/components/dashboard/NewSessionButton';
@@ -12,7 +12,9 @@ export default async function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const { count } = await supabase
+      const db = createServiceClient();
+
+      const { count } = await db
         .from('resume_embeddings')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
@@ -21,7 +23,7 @@ export default async function DashboardPage() {
         redirect('/onboarding');
       }
 
-      const { data: rows } = await supabase
+      const { data: rows } = await db
         .from('interview_sessions')
         .select('*')
         .eq('user_id', user.id)

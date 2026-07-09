@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createServiceClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { NewInterviewForm } from './form';
 
@@ -10,7 +10,8 @@ export default async function NewInterviewPage() {
     redirect('/login');
   }
 
-  const { count } = await supabase
+  const db = createServiceClient();
+  const { count } = await db
     .from('resume_embeddings')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id);
