@@ -4,14 +4,16 @@ import { useEffect, useRef } from 'react';
 import { useInterviewStore } from '@/frontend/store/interview-store';
 
 export function StreamConsole() {
-  const { transcript, streamedResponse, phase, error } = useInterviewStore();
+  const { turns, transcript, streamedResponse, phase, error } =
+    useInterviewStore();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const isStreaming = phase === 'STREAMING_RESPONSE';
+  const hasCurrentTurn = transcript || streamedResponse || isStreaming;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [streamedResponse, transcript]);
+  }, [streamedResponse, transcript, turns]);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-zinc-950">
@@ -30,6 +32,31 @@ export function StreamConsole() {
         )}
 
         <div className="space-y-6">
+          {/* ---------- Completed turn history ---------- */}
+          {turns.map((msg, i) => (
+            <div key={i}>
+              <div
+                className={`mb-1 text-xs font-semibold uppercase tracking-wide ${
+                  msg.type === 'user' ? 'text-zinc-500' : 'text-emerald-400'
+                }`}
+              >
+                {msg.type === 'user' ? 'You' : 'AI Interviewer'}
+              </div>
+              <div
+                className={`rounded-lg border p-3 ${
+                  msg.type === 'user'
+                    ? 'border-zinc-800 bg-zinc-900/50 text-zinc-300'
+                    : 'border-zinc-800 bg-zinc-900/50 text-zinc-100'
+                }`}
+              >
+                {msg.type === 'assistant'
+                  ? msg.text
+                  : msg.text}
+              </div>
+            </div>
+          ))}
+
+          {/* ---------- Current in-progress turn ---------- */}
           {transcript && (
             <div>
               <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -55,7 +82,7 @@ export function StreamConsole() {
             </div>
           )}
 
-          {!transcript && !streamedResponse && phase === 'IDLE' && (
+          {!hasCurrentTurn && turns.length === 0 && phase === 'IDLE' && (
             <div className="py-12 text-center text-zinc-600">
               <p className="text-lg">Press the microphone to start</p>
               <p className="mt-1 text-sm">

@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useInterviewStore } from '@/frontend/store/interview-store';
-import { useMediaRecorder } from '@/frontend/hooks/useMediaRecorder';
+import { useContinuousRecorder } from '@/frontend/hooks/useContinuousRecorder';
 import { SessionCard } from '@/frontend/components/interview/SessionCard';
 import { StreamConsole } from '@/frontend/components/interview/StreamConsole';
 import { MicButton } from '@/frontend/components/interview/MicButton';
@@ -17,12 +17,16 @@ export function InterviewView() {
     setPhase,
     setTranscript,
     appendChunk,
+    pushTurn,
     incrementTurnCount,
     resetToIdle,
     setError,
   } = useInterviewStore();
 
-  const recorder = useMediaRecorder();
+  const recorder = useContinuousRecorder();
+  const sendingRef = useRef(false);
+  const resumeRef = useRef(recorder.resume);
+  resumeRef.current = recorder.resume;
 
   useEffect(() => {
     useInterviewStore.getState().setSessionId(sessionId);
@@ -30,6 +34,8 @@ export function InterviewView() {
 
   const sendAudio = useCallback(
     async (audioBlob: Blob) => {
+      if (sendingRef.current) return;
+      sendingRef.current = true;
       try {
         const formData = new FormData();
         formData.append('audio', audioBlob, 'recording.webm');
@@ -89,8 +95,13 @@ export function InterviewView() {
                 }
 
                 case 'DONE': {
+                  const doneData = JSON.parse(raw);
+                  pushTurn(doneData.candidateResponse, doneData.interviewerQuestion);
                   incrementTurnCount();
-                  setTimeout(() => resetToIdle(), 1_500);
+                  setTimeout(() => {
+                    resetToIdle();
+                    resumeRef.current();
+                  }, 1_500);
                   break;
                 }
 
@@ -107,34 +118,35 @@ export function InterviewView() {
         const message =
           err instanceof Error ? err.message : 'Network request failed';
         setError(message);
+      } finally {
+        sendingRef.current = false;
       }
     },
-    [sessionId, setPhase, setTranscript, appendChunk, incrementTurnCount, resetToIdle, setError],
+    [sessionId, setPhase, setTranscript, appendChunk, pushTurn, incrementTurnCount, resetToIdle, setError],
+  );
+
+  // Called by VAD when silence >3s detected
+  const onChunkReady = useCallback(
+    async (blob: Blob) => {
+      setPhase('PROCESSING');
+      await sendAudio(blob);
+    },
+    [setPhase, sendAudio],
   );
 
   const handleToggleMic = useCallback(async () => {
     if (phase === 'IDLE') {
       try {
-        await recorder.startRecording();
-        setPhase('RECORDING');
+        await recorder.start(onChunkReady);
+        setPhase('LISTENING');
       } catch {
         setError('Could not start microphone');
       }
-    } else if (phase === 'RECORDING') {
-      setPhase('PROCESSING');
-      try {
-        const blob = await recorder.stopRecording();
-        await sendAudio(blob);
-      } catch {
-        setError('Audio capture failed');
-        setPhase('IDLE');
-      }
+    } else if (phase === 'LISTENING') {
+      recorder.stop();
+      setPhase('IDLE');
     }
-  }, [phase, recorder, setPhase, setError, sendAudio]);
-
-  useEffect(() => {
-    return () => recorder.release();
-  }, [recorder]);
+  }, [phase, recorder, onChunkReady, setPhase, setError]);
 
   return (
     <div className="flex h-screen bg-black text-zinc-100">
@@ -146,7 +158,7 @@ export function InterviewView() {
         <div className="flex items-center justify-center border-t border-zinc-800 bg-zinc-950 px-6 py-5">
           <MicButton
             onToggle={handleToggleMic}
-            isRecording={recorder.isRecording}
+            isRecording={recorder.isListening}
             stream={recorder.stream}
           />
         </div>

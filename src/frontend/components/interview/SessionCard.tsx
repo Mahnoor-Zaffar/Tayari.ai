@@ -4,7 +4,7 @@ import { useInterviewStore } from '@/frontend/store/interview-store';
 
 const PHASE_LABELS: Record<string, { color: string; text: string }> = {
   IDLE: { color: 'bg-zinc-500', text: 'Ready' },
-  RECORDING: { color: 'bg-red-500', text: 'Recording' },
+  LISTENING: { color: 'bg-red-500', text: 'Listening' },
   PROCESSING: { color: 'bg-amber-500', text: 'Processing' },
   STREAMING_RESPONSE: { color: 'bg-emerald-500', text: 'Streaming' },
 };

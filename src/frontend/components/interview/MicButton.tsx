@@ -9,17 +9,17 @@ interface MicButtonProps {
   stream?: MediaStream | null;
 }
 
-const STATE_CONFIG = {
+const STATE_CONFIG: Record<string, { bg: string; ring: string; label: string; iconColor: string }> = {
   IDLE: {
     bg: 'bg-zinc-800 hover:bg-zinc-700',
     ring: 'ring-zinc-700',
-    label: 'Start Speaking',
+    label: 'Start Interview',
     iconColor: 'text-zinc-300',
   },
-  RECORDING: {
+  LISTENING: {
     bg: 'bg-red-600 hover:bg-red-700',
     ring: 'ring-red-500/50',
-    label: 'Tap to Stop',
+    label: 'Listening\u2026',
     iconColor: 'text-white',
   },
   PROCESSING: {
@@ -44,7 +44,7 @@ export function MicButton({ onToggle, stream }: MicButtonProps) {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      {phase === 'RECORDING' && (
+      {phase === 'LISTENING' && (
         <WaveformVisualizer stream={stream ?? null} />
       )}
 
@@ -59,7 +59,7 @@ export function MicButton({ onToggle, stream }: MicButtonProps) {
           ring-offset-2 ring-offset-zinc-950
           ${cfg.bg} ${cfg.ring}
           ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
-          ${phase === 'RECORDING' ? 'animate-pulse shadow-lg shadow-red-600/25' : ''}
+          ${phase === 'LISTENING' ? 'animate-pulse shadow-lg shadow-red-600/25' : ''}
           ${phase === 'IDLE' ? 'active:scale-95' : ''}
         `}
         aria-label={cfg.label}

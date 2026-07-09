@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 
 /** Detects Safari/iOS WebKit — used for MIME-type fallback. */
 function isWebKit(): boolean {
@@ -72,6 +72,7 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const startingRef = useRef(false);
 
   // -----------------------------------------------------------------------
   // Internal: release all hardware resources
@@ -100,6 +101,8 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
   const startRecording = useCallback(async (): Promise<void> => {
     // Guard against concurrent starts.
     if (mediaRecorderRef.current?.state === 'recording') return;
+    if (startingRef.current) return;
+    startingRef.current = true;
 
     setError(null);
     setAudioBlob(null);
@@ -116,6 +119,7 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
         },
       });
     } catch (err) {
+      startingRef.current = false;
       let message: string;
       if (err instanceof DOMException) {
         switch (err.name) {
@@ -166,6 +170,7 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
     mediaRecorderRef.current = recorder;
     setStream(micStream);
     setIsRecording(true);
+    startingRef.current = false;
   }, []);
 
   // -----------------------------------------------------------------------
@@ -194,6 +199,7 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
         streamRef.current = null;
         mediaRecorderRef.current = null;
         chunksRef.current = [];
+        startingRef.current = false;
 
         resolve(blob);
       };
@@ -216,6 +222,7 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
 
     releaseStream(streamRef.current);
     streamRef.current = null;
+    startingRef.current = false;
     resetState();
   }, []);
 
@@ -226,16 +233,20 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
   useEffect(() => release, [release]);
 
   // -----------------------------------------------------------------------
-  // Public API
+  // Public API — stable reference so consumers don't get new objects each
+  // render (which would break useEffect cleanup deps).
   // -----------------------------------------------------------------------
 
-  return {
-    isRecording,
-    audioBlob,
-    error,
-    stream,
-    startRecording,
-    stopRecording,
-    release,
-  };
+  return useMemo(
+    () => ({
+      isRecording,
+      audioBlob,
+      error,
+      stream,
+      startRecording,
+      stopRecording,
+      release,
+    }),
+    [isRecording, audioBlob, error, stream, startRecording, stopRecording, release],
+  );
 }
