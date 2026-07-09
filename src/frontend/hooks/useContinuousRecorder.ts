@@ -2,8 +2,9 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 
-const SILENCE_THRESHOLD = 15;
-const SILENCE_TIMEOUT_MS = 3000;
+const SPEECH_THRESHOLD = 6;
+const SILENCE_TIMEOUT_MS = 5000;
+const NOISE_FLOOR_DECAY = 0.995;
 
 function isWebKit(): boolean {
   if (typeof navigator === 'undefined') return false;
@@ -49,7 +50,6 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const rafRef = useRef(0);
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onChunkReadyRef = useRef<((blob: Blob) => Promise<void>) | null>(null);
   const processingRef = useRef(false);
   const activeRef = useRef(false);
@@ -78,56 +78,79 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
   }
 
   // ------------------------------------------------------------------
-  // VAD polling loop
+  // VAD polling loop — speech-first state machine
   // ------------------------------------------------------------------
+  // States: SILENT → SPEAKING → WAITING → (fire chunk) → SILENT
+  //   SILENT:   waiting for speech, no recording timer
+  //   SPEAKING: user has spoken, silence timer may be running
+  //   WAITING:  silence timer fired, chunk being sent
+  // ------------------------------------------------------------------
+
   function startVAD() {
-    function poll() {
+    let noiseFloor = 20;
+    let speechActive = false;
+    let silenceTimerRunning = false;
+    let silenceStart = 0;
+
+    function poll(now: number) {
       if (!activeRef.current) return;
       const a = analyserRef.current;
       const d = dataArrayRef.current;
       if (!a || !d) return;
 
-      a.getByteFrequencyData(d);
-      const sum = d.reduce((a, b) => a + b, 0);
-      const avg = sum / d.length;
+      a.getByteTimeDomainData(d);
+      const sum = d.reduce((acc, v) => acc + Math.abs(v - 128), 0);
+      const rms = sum / d.length;
 
-      if (avg < SILENCE_THRESHOLD) {
-        if (!silenceTimerRef.current && !processingRef.current) {
-          silenceTimerRef.current = setTimeout(() => {
-            silenceTimerRef.current = null;
-            if (processingRef.current) return;
+      const isSpeech = rms >= noiseFloor + SPEECH_THRESHOLD;
 
-            processingRef.current = true;
-            const rec = recorderRef.current;
-            if (rec && rec.state === 'recording') {
-              rec.onstop = () => {
-                const mime = rec.mimeType || 'audio/webm';
-                const blob = new Blob(chunksRef.current, { type: mime });
-                chunksRef.current = [];
+      // Only adapt noise floor during non-speech frames
+      if (!isSpeech) {
+        if (rms < noiseFloor) noiseFloor = rms;
+        else noiseFloor = noiseFloor * NOISE_FLOOR_DECAY + rms * (1 - NOISE_FLOOR_DECAY);
+      }
 
-                const cb = onChunkReadyRef.current;
-                if (cb) {
-                  cb(blob)
-                    .then(() => {
-                      // processing stays true — consumer calls resume() when ready
-                    })
-                    .catch(() => {
-                      processingRef.current = false;
-                    });
-                } else {
-                  processingRef.current = false;
-                }
-              };
-              rec.stop();
-            } else {
-              processingRef.current = false;
-            }
-          }, SILENCE_TIMEOUT_MS);
+      if (isSpeech) {
+        if (!speechActive) {
+          speechActive = true;
+          silenceTimerRunning = false;
+          silenceStart = 0;
+        } else if (silenceTimerRunning) {
+          silenceTimerRunning = false;
+          silenceStart = 0;
         }
-      } else {
-        if (silenceTimerRef.current) {
-          clearTimeout(silenceTimerRef.current);
-          silenceTimerRef.current = null;
+      } else if (speechActive && !processingRef.current) {
+        if (silenceStart === 0) {
+          silenceStart = now;
+        } else if (!silenceTimerRunning && now - silenceStart >= SILENCE_TIMEOUT_MS) {
+          silenceTimerRunning = true;
+
+          processingRef.current = true;
+          const rec = recorderRef.current;
+          if (rec && rec.state === 'recording') {
+            rec.onstop = () => {
+              const mime = rec.mimeType || 'audio/webm';
+              const blob = new Blob(chunksRef.current, { type: mime });
+              chunksRef.current = [];
+
+              const cb = onChunkReadyRef.current;
+              if (cb) {
+                cb(blob)
+                  .then(() => {})
+                  .catch(() => {
+                    processingRef.current = false;
+                  });
+              } else {
+                processingRef.current = false;
+              }
+            };
+            rec.stop();
+          } else {
+            processingRef.current = false;
+          }
+
+          speechActive = false;
+          silenceStart = 0;
         }
       }
 
@@ -163,6 +186,9 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
         restartRecorder();
 
         const audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
         const source = audioCtx.createMediaStreamSource(micStream);
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
@@ -187,7 +213,6 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
   const stop = useCallback(() => {
     activeRef.current = false;
     cancelAnimationFrame(rafRef.current);
-    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
     const rec = recorderRef.current;
     if (rec && rec.state !== 'inactive') {

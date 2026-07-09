@@ -55,7 +55,9 @@ export async function POST(req: NextRequest) {
 
     audioBlob = file;
     sessionId = sid;
-  } catch {
+    console.log('[turn] Blob size:', audioBlob.size, 'type:', audioBlob.type);
+  } catch (err) {
+    console.error('[turn] Form parse error:', err instanceof Error ? err.message : err);
     return new Response('Failed to parse request body', { status: 400 });
   }
 
@@ -74,7 +76,8 @@ export async function POST(req: NextRequest) {
     }
 
     userId = user.id;
-  } catch {
+  } catch (err) {
+    console.error('[turn] Auth error:', err instanceof Error ? err.message : err);
     return new Response('Authentication failed', { status: 500 });
   }
 
@@ -88,7 +91,22 @@ export async function POST(req: NextRequest) {
     transcript = await transcribeAudio(audioBlob);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Transcription failed';
-    return new Response(message, { status: 500 });
+    console.error('[turn] Transcription error:', message);
+
+    const errorStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encodeSSE({ type: 'ERROR', data: { message } }));
+        controller.close();
+      },
+    });
+
+    return new Response(errorStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -113,6 +131,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Pre-stream pipeline failed';
+    console.error('[turn] Pre-stream error:', message);
     return new Response(message, { status: 500 });
   }
 
@@ -149,6 +168,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Failed to start LLM stream';
+    console.error('[turn] LLM stream error:', message);
     return new Response(message, { status: 500 });
   }
 

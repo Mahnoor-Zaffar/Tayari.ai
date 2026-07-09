@@ -22,11 +22,15 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   const arrayBuffer = await audioBlob.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
+  if (buffer.length < 1024) {
+    throw new Error(`Audio too small (${buffer.length} bytes), skipping`);
+  }
+
   const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
     buffer,
     {
       model: 'nova-2',
-      mimetype: 'audio/webm;codecs=opus',
+      mimetype: audioBlob.type || 'audio/webm;codecs=opus',
       smart_format: true,
       punctuate: true,
       filler_words: true,
@@ -40,6 +44,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   const transcript = extractTranscript(result);
 
   if (!transcript) {
+    console.error('[deepgram] Empty transcript for', buffer.length, 'bytes, mimetype:', audioBlob.type);
     throw new Error('Deepgram returned empty transcript');
   }
 

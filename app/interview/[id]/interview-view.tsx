@@ -47,7 +47,8 @@ export function InterviewView() {
         });
 
         if (!response.ok) {
-          throw new Error(`Server error (${response.status})`);
+          const body = await response.text().catch(() => '');
+          throw new Error(`Server error (${response.status}): ${body.slice(0, 200)}`);
         }
 
         const reader = response.body!.getReader();
@@ -108,6 +109,9 @@ export function InterviewView() {
                 case 'ERROR': {
                   const { message } = JSON.parse(raw);
                   setError(message);
+                  setTimeout(() => {
+                    resumeRef.current();
+                  }, 1_500);
                   break;
                 }
               }
