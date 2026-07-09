@@ -198,12 +198,7 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
         resolve(blob);
       };
 
-      // Edge-case: if `stop()` is called before any data fires, force a
-      // final blob with the current buffer.
-      if (recorder.state !== 'inactive') {
-        recorder.requestData?.();
-        recorder.stop();
-      }
+      recorder.stop();
     });
   }, []);
 
