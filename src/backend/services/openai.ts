@@ -19,11 +19,11 @@ export async function streamChat(
   messages: OpenAI.Chat.ChatCompletionMessageParam[],
 ): Promise<Stream<OpenAI.Chat.Completions.ChatCompletionChunk>> {
   return openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o',
     messages,
     stream: true,
     temperature: 0.7,
-    max_tokens: 256,
+    max_tokens: 512,
   });
 }
 
@@ -56,7 +56,7 @@ export async function evaluateResponse(params: {
   candidateResponse: string;
 }): Promise<ShadowEvaluatorContract> {
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: EVALUATION_SYSTEM_PROMPT },
       {
@@ -66,7 +66,7 @@ export async function evaluateResponse(params: {
     ],
     response_format: { type: 'json_object' },
     temperature: 0.3,
-    max_tokens: 256,
+    max_tokens: 512,
   });
 
   const raw = response.choices[0]?.message?.content;

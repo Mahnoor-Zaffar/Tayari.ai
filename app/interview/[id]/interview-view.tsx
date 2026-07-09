@@ -7,6 +7,7 @@ import { useContinuousRecorder } from '@/frontend/hooks/useContinuousRecorder';
 import { SessionCard } from '@/frontend/components/interview/SessionCard';
 import { StreamConsole } from '@/frontend/components/interview/StreamConsole';
 import { MicButton } from '@/frontend/components/interview/MicButton';
+import { MAX_TURNS } from '@/types/interview';
 
 export function InterviewView() {
   const params = useParams();
@@ -35,6 +36,110 @@ export function InterviewView() {
     useInterviewStore.getState().setSessionId(sessionId);
   }, [sessionId]);
 
+  const processSSEStream = useCallback(
+    async (response: Response, isEndCall: boolean) => {
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let hasStartedStreaming = false;
+      let autoEnd = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() ?? '';
+
+        for (const frame of frames) {
+          const lines = frame.split('\n');
+
+          for (const line of lines) {
+            if (!line.startsWith('DATA:')) continue;
+
+            const rest = line.slice(5);
+            const colonIdx = rest.indexOf(':');
+            if (colonIdx === -1) continue;
+
+            const type = rest.slice(0, colonIdx);
+            const raw = rest.slice(colonIdx + 1);
+
+            switch (type) {
+              case 'TRANSCRIPT': {
+                const { text } = JSON.parse(raw);
+                setTranscript(text);
+                break;
+              }
+
+              case 'CHUNK': {
+                const { text } = JSON.parse(raw);
+                appendChunk(text);
+                if (!hasStartedStreaming) {
+                  hasStartedStreaming = true;
+                  setPhase('STREAMING_RESPONSE');
+                }
+                break;
+              }
+
+              case 'DONE': {
+                const doneData = JSON.parse(raw);
+                pushTurn(doneData.candidateResponse, doneData.interviewerQuestion);
+                incrementTurnCount();
+                if (doneData.completed) {
+                  recorder.stop();
+                  setCompleted();
+                  setTimeout(() => router.push(`/interview/${sessionId}/report`), 3_000);
+                } else if (!isEndCall && useInterviewStore.getState().turnCount >= MAX_TURNS) {
+                  autoEnd = true;
+                  recorder.stop();
+                  setPhase('PROCESSING');
+                } else {
+                  setTimeout(() => {
+                    resetToIdle();
+                    resumeRef.current();
+                  }, 1_500);
+                }
+                break;
+              }
+
+              case 'ERROR': {
+                const { message } = JSON.parse(raw);
+                setError(message);
+                setTimeout(() => {
+                  resumeRef.current();
+                }, 1_500);
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      return autoEnd;
+    },
+    [sessionId, setPhase, setTranscript, appendChunk, pushTurn, incrementTurnCount, resetToIdle, setError, recorder, router],
+  );
+
+  const sendEndRequest = useCallback(async () => {
+    const formData = new FormData();
+    formData.append('end', 'true');
+    formData.append('sessionId', sessionId);
+
+    const response = await fetch('/api/interview/turn', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(`Server error (${response.status}): ${body.slice(0, 200)}`);
+    }
+
+    await processSSEStream(response, true);
+  }, [sessionId, processSSEStream]);
+
   const sendAudio = useCallback(
     async (audioBlob: Blob) => {
       if (sendingRef.current) return;
@@ -54,78 +159,10 @@ export function InterviewView() {
           throw new Error(`Server error (${response.status}): ${body.slice(0, 200)}`);
         }
 
-        const reader = response.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let hasStartedStreaming = false;
+        const autoEnd = await processSSEStream(response, false);
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          const frames = buffer.split('\n\n');
-          buffer = frames.pop() ?? '';
-
-          for (const frame of frames) {
-            const lines = frame.split('\n');
-
-            for (const line of lines) {
-              if (!line.startsWith('DATA:')) continue;
-
-              const rest = line.slice(5);
-              const colonIdx = rest.indexOf(':');
-              if (colonIdx === -1) continue;
-
-              const type = rest.slice(0, colonIdx);
-              const raw = rest.slice(colonIdx + 1);
-
-              switch (type) {
-                case 'TRANSCRIPT': {
-                  const { text } = JSON.parse(raw);
-                  setTranscript(text);
-                  break;
-                }
-
-                case 'CHUNK': {
-                  const { text } = JSON.parse(raw);
-                  appendChunk(text);
-                  if (!hasStartedStreaming) {
-                    hasStartedStreaming = true;
-                    setPhase('STREAMING_RESPONSE');
-                  }
-                  break;
-                }
-
-                case 'DONE': {
-                  const doneData = JSON.parse(raw);
-                  pushTurn(doneData.candidateResponse, doneData.interviewerQuestion);
-                  incrementTurnCount();
-                  if (doneData.completed) {
-                    recorder.stop();
-                    setCompleted();
-                    setTimeout(() => router.push(`/interview/${sessionId}/report`), 3_000);
-                  } else {
-                    setTimeout(() => {
-                      resetToIdle();
-                      resumeRef.current();
-                    }, 1_500);
-                  }
-                  break;
-                }
-
-                case 'ERROR': {
-                  const { message } = JSON.parse(raw);
-                  setError(message);
-                  setTimeout(() => {
-                    resumeRef.current();
-                  }, 1_500);
-                  break;
-                }
-              }
-            }
-          }
+        if (autoEnd) {
+          await sendEndRequest();
         }
       } catch (err) {
         const message =
@@ -135,7 +172,7 @@ export function InterviewView() {
         sendingRef.current = false;
       }
     },
-    [sessionId, setPhase, setTranscript, appendChunk, pushTurn, incrementTurnCount, resetToIdle, setError],
+    [sessionId, sendEndRequest, processSSEStream],
   );
 
   // Called by VAD when silence >3s detected
@@ -180,61 +217,10 @@ export function InterviewView() {
         throw new Error(`Server error (${response.status}): ${body.slice(0, 200)}`);
       }
 
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let hasStartedStreaming = false;
+      const autoEnd = await processSSEStream(response, false);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const frames = buffer.split('\n\n');
-        buffer = frames.pop() ?? '';
-        for (const frame of frames) {
-          const lines = frame.split('\n');
-          for (const line of lines) {
-            if (!line.startsWith('DATA:')) continue;
-            const rest = line.slice(5);
-            const colonIdx = rest.indexOf(':');
-            if (colonIdx === -1) continue;
-            const type = rest.slice(0, colonIdx);
-            const raw = rest.slice(colonIdx + 1);
-            switch (type) {
-              case 'CHUNK': {
-                const { text } = JSON.parse(raw);
-                appendChunk(text);
-                if (!hasStartedStreaming) {
-                  hasStartedStreaming = true;
-                  setPhase('STREAMING_RESPONSE');
-                }
-                break;
-              }
-              case 'DONE': {
-                const doneData = JSON.parse(raw);
-                pushTurn(doneData.candidateResponse, doneData.interviewerQuestion);
-                incrementTurnCount();
-                if (doneData.completed) {
-                  recorder.stop();
-                  setCompleted();
-                  setTimeout(() => router.push(`/interview/${sessionId}/report`), 3_000);
-                } else {
-                  setTimeout(() => {
-                    resetToIdle();
-                    resumeRef.current();
-                  }, 1_500);
-                }
-                break;
-              }
-              case 'ERROR': {
-                const { message } = JSON.parse(raw);
-                setError(message);
-                setTimeout(() => resumeRef.current(), 1_500);
-                break;
-              }
-            }
-          }
-        }
+      if (autoEnd) {
+        await sendEndRequest();
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Skip request failed';
@@ -242,84 +228,21 @@ export function InterviewView() {
     } finally {
       sendingRef.current = false;
     }
-  }, [sessionId, setPhase, appendChunk, pushTurn, incrementTurnCount, resetToIdle, setError]);
+  }, [sessionId, processSSEStream, sendEndRequest, setPhase, setError]);
 
   const handleEnd = useCallback(async () => {
     if (sendingRef.current) return;
     sendingRef.current = true;
     setPhase('PROCESSING');
     try {
-      const formData = new FormData();
-      formData.append('end', 'true');
-      formData.append('sessionId', sessionId);
-
-      const response = await fetch('/api/interview/turn', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        throw new Error(`Server error (${response.status}): ${body.slice(0, 200)}`);
-      }
-
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let hasStartedStreaming = false;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const frames = buffer.split('\n\n');
-        buffer = frames.pop() ?? '';
-        for (const frame of frames) {
-          const lines = frame.split('\n');
-          for (const line of lines) {
-            if (!line.startsWith('DATA:')) continue;
-            const rest = line.slice(5);
-            const colonIdx = rest.indexOf(':');
-            if (colonIdx === -1) continue;
-            const type = rest.slice(0, colonIdx);
-            const raw = rest.slice(colonIdx + 1);
-            switch (type) {
-              case 'CHUNK': {
-                const { text } = JSON.parse(raw);
-                appendChunk(text);
-                if (!hasStartedStreaming) {
-                  hasStartedStreaming = true;
-                  setPhase('STREAMING_RESPONSE');
-                }
-                break;
-              }
-              case 'DONE': {
-                const doneData = JSON.parse(raw);
-                pushTurn(doneData.candidateResponse, doneData.interviewerQuestion);
-                incrementTurnCount();
-                if (doneData.completed) {
-                  recorder.stop();
-                  setCompleted();
-                  setTimeout(() => router.push(`/interview/${sessionId}/report`), 3_000);
-                }
-                break;
-              }
-              case 'ERROR': {
-                const { message } = JSON.parse(raw);
-                setError(message);
-                break;
-              }
-            }
-          }
-        }
-      }
+      await sendEndRequest();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'End interview failed';
       setError(message);
     } finally {
       sendingRef.current = false;
     }
-  }, [sessionId, setPhase, appendChunk, pushTurn, incrementTurnCount, setCompleted, setError, recorder, router]);
+  }, [sendEndRequest, setPhase, setError]);
 
   return (
     <div className="flex h-screen bg-black text-zinc-100">

@@ -6,14 +6,29 @@ import { useInterviewStore } from '@/frontend/store/interview-store';
 export function StreamConsole() {
   const { turns, transcript, streamedResponse, phase, error } =
     useInterviewStore();
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
 
   const isStreaming = phase === 'STREAMING_RESPONSE';
   const hasCurrentTurn = transcript || streamedResponse || isStreaming;
 
+  /** Only auto-scroll if the user hasn't scrolled up. */
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [streamedResponse, transcript, turns]);
+    if (isNearBottomRef.current) {
+      scrollRef.current?.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [streamedResponse, transcript, turns.length]);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const threshold = 100;
+    isNearBottomRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  };
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-zinc-950">
@@ -24,7 +39,11 @@ export function StreamConsole() {
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 font-mono text-sm leading-relaxed">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-6 font-mono text-sm leading-relaxed"
+      >
         {error && (
           <div className="mb-4 rounded border border-red-900 bg-red-950/50 p-3 text-red-400">
             {error}
@@ -49,9 +68,7 @@ export function StreamConsole() {
                     : 'border-zinc-800 bg-zinc-900/50 text-zinc-100'
                 }`}
               >
-                {msg.type === 'assistant'
-                  ? msg.text
-                  : msg.text}
+                {msg.text}
               </div>
             </div>
           ))}
@@ -91,8 +108,6 @@ export function StreamConsole() {
             </div>
           )}
         </div>
-
-        <div ref={bottomRef} />
       </div>
     </div>
   );
