@@ -67,6 +67,7 @@ create table public.resume_embeddings (
 -- ============================================================================
 create or replace function public.match_resume_chunks(
     query_embedding vector(384),
+    query_user_id uuid,
     match_threshold float,
     match_count int
 )
@@ -89,7 +90,8 @@ begin
         re.metadata,
         1 - (re.embedding <=> query_embedding) as similarity
     from public.resume_embeddings re
-    where 1 - (re.embedding <=> query_embedding) > match_threshold
+    where re.user_id = query_user_id
+      and 1 - (re.embedding <=> query_embedding) > match_threshold
     order by re.embedding <=> query_embedding
     limit match_count;
 end;

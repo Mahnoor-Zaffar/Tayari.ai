@@ -1,10 +1,7 @@
 import sys
 import io
-from pypdf import PdfReader
+from pdfminer.high_level import extract_text
 
 pdf_bytes = sys.stdin.buffer.read()
-reader = PdfReader(io.BytesIO(pdf_bytes))
-for page in reader.pages:
-    text = page.extract_text()
-    if text:
-        sys.stdout.write(text + "\n")
+text = extract_text(io.BytesIO(pdf_bytes))
+sys.stdout.write(text)

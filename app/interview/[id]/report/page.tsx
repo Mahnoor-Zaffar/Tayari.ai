@@ -4,9 +4,9 @@ import { ReportView } from './report-view';
 export default async function ReportPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = await params;
+  const { id } = params;
 
   const sessionId = id;
 

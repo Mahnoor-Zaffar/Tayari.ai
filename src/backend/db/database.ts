@@ -45,11 +45,13 @@ export async function fetchTurnHistory(
 
 export async function searchResumeContext(
   embedding: number[],
+  userId: string,
   matchThreshold = 0.7,
   matchCount = 5,
 ): Promise<MatchedResumeChunk[]> {
   const { data, error } = await supabase.rpc('match_resume_chunks', {
-    query_embedding: `[${embedding.join(',')}]`,
+    query_embedding: embedding,
+    query_user_id: userId,
     match_threshold: matchThreshold,
     match_count: matchCount,
   });
@@ -66,17 +68,23 @@ export async function insertTurn(params: {
   sequenceNumber: number;
   interviewerQuestion: string;
   candidateResponse: string;
-}): Promise<void> {
-  const { error } = await supabase.from('interview_turns').insert({
-    session_id: params.sessionId,
-    sequence_number: params.sequenceNumber,
-    interviewer_question: params.interviewerQuestion,
-    candidate_response: params.candidateResponse,
-  });
+}): Promise<string> {
+  const { data, error } = await supabase
+    .from('interview_turns')
+    .insert({
+      session_id: params.sessionId,
+      sequence_number: params.sequenceNumber,
+      interviewer_question: params.interviewerQuestion,
+      candidate_response: params.candidateResponse,
+    })
+    .select('id')
+    .single();
 
   if (error) {
     throw new Error(`Failed to persist turn: ${error.message}`);
   }
+
+  return data.id;
 }
 
 export async function updateSessionStage(

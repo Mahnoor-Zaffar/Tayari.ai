@@ -16,15 +16,18 @@
 // =============================================================================
 
 import { NextRequest } from 'next/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { transcribeAudio } from '@/backend/services/deepgram';
-import { streamChat } from '@/backend/services/openai';
+import { streamChat, evaluateResponse } from '@/backend/services/openai';
 import { generateEmbedding } from '@/backend/services/embeddings';
 import {
   fetchSession,
   fetchTurnHistory,
   insertTurn,
+  upsertEvaluation,
   searchResumeContext,
 } from '@/backend/db/database';
+import { detectFillerWords } from '@/backend/services/filler-words';
 import { buildInterviewerPrompt } from '@/backend/services/prompts';
 import { encodeSSE } from '@/backend/services/utils';
 import type { SSEEvent } from '@/types/interview';
@@ -57,7 +60,26 @@ export async function POST(req: NextRequest) {
   }
 
   // -------------------------------------------------------------------------
-  // 2. Transcribe audio → text  (Deepgram Nova-2)
+  // 2. Authenticate user (required for user-scoped RAG)
+  // -------------------------------------------------------------------------
+
+  let userId: string;
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return new Response('Unauthorised', { status: 401 });
+    }
+
+    userId = user.id;
+  } catch {
+    return new Response('Authentication failed', { status: 500 });
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. Transcribe audio → text  (Deepgram Nova-2)
   // -------------------------------------------------------------------------
 
   let transcript: string;
@@ -70,9 +92,9 @@ export async function POST(req: NextRequest) {
   }
 
   // -------------------------------------------------------------------------
-  // 3. Embed transcript  (text-embedding-3-small)
-  // 4. RAG — retrieve matching resume context
-  // 5. Fetch session details & historical conversation
+  // 4. Embed transcript  (text-embedding-3-small)
+  // 5. RAG — retrieve matching resume context (scoped to current user)
+  // 6. Fetch session details & historical conversation
   // -------------------------------------------------------------------------
 
   let embedding: number[];
@@ -87,7 +109,7 @@ export async function POST(req: NextRequest) {
       fetchTurnHistory(sessionId),
     ]);
 
-    ragChunks = await searchResumeContext(embedding, 0.7, 5);
+    ragChunks = await searchResumeContext(embedding, userId, 0.7, 5);
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Pre-stream pipeline failed';
@@ -95,7 +117,7 @@ export async function POST(req: NextRequest) {
   }
 
   // -------------------------------------------------------------------------
-  // 6. Build system prompt with RAG anchors
+  // 7. Build system prompt with RAG anchors
   // -------------------------------------------------------------------------
 
   const contextualBackground = ragChunks.map((c) => c.content).join('\n---\n');
@@ -108,7 +130,7 @@ export async function POST(req: NextRequest) {
   });
 
   // -------------------------------------------------------------------------
-  // 7. Build message list & initiate OpenAI streaming
+  // 8. Build message list & initiate OpenAI streaming
   // -------------------------------------------------------------------------
 
   const messages: ChatCompletionMessageParam[] = [
@@ -131,7 +153,7 @@ export async function POST(req: NextRequest) {
   }
 
   // -------------------------------------------------------------------------
-  // 8. Return SSE ReadableStream
+  // 9. Return SSE ReadableStream
   // -------------------------------------------------------------------------
 
   const stream = new ReadableStream({
@@ -153,14 +175,41 @@ export async function POST(req: NextRequest) {
 
         const nextSequenceNumber = turnHistory.length + 1;
 
-        await insertTurn({
+        const turnId = await insertTurn({
           sessionId,
           sequenceNumber: nextSequenceNumber,
           interviewerQuestion: fullResponse,
           candidateResponse: transcript,
         });
 
-        enqueue({ type: 'DONE', data: null });
+        // Background evaluation (fire-and-forget — never blocks the SSE stream)
+        const fillerWordsDetected = detectFillerWords(transcript);
+        evaluateResponse({
+          interviewerQuestion: fullResponse,
+          candidateResponse: transcript,
+        })
+          .then((evaluation) =>
+            upsertEvaluation({
+              turnId,
+              technicalScore: evaluation.technicalScore,
+              communicationScore: evaluation.communicationScore,
+              starFrameworkCheck: evaluation.starFrameworkCheck,
+              constructiveCritique: evaluation.constructiveCritique,
+              fillerWordsDetected,
+            }),
+          )
+          .catch((err) => {
+            console.error('[turn] Background evaluation failed:', err);
+          });
+
+        enqueue({
+          type: 'DONE',
+          data: {
+            turnId,
+            interviewerQuestion: fullResponse,
+            candidateResponse: transcript,
+          },
+        });
       } catch (err) {
         const message =
           err instanceof Error ? err.message : 'Stream error';

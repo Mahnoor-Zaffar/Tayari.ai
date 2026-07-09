@@ -3,8 +3,6 @@ import { redirect } from 'next/navigation';
 import { ResumeUploader } from '@/frontend/components/onboarding/ResumeUploader';
 
 export default async function OnboardingPage() {
-  let hasResume = false;
-
   try {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -21,10 +19,6 @@ export default async function OnboardingPage() {
     }
   } catch {
     // Not authenticated — show onboarding anyway
-  }
-
-  if (hasResume) {
-    redirect('/dashboard');
   }
 
   return (
