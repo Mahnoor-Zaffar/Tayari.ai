@@ -64,12 +64,11 @@ export function InterviewView() {
   }
 
   const processSSEStream = useCallback(
-    async (response: Response, isEndCall: boolean) => {
+    async (response: Response) => {
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
       let hasStartedStreaming = false;
-      let autoEnd = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -121,10 +120,6 @@ export function InterviewView() {
                   setCompleted();
                   playEndChime();
                   setTimeout(() => router.push(`/interview/${sessionId}/report`), 3_000);
-                } else if (!isEndCall && useInterviewStore.getState().turnCount >= MAX_TURNS) {
-                  autoEnd = true;
-                  recorder.stop();
-                  setPhase('PROCESSING');
                 } else {
                   speakResponse(responseTextRef.current);
                   setTimeout(() => {
@@ -149,7 +144,6 @@ export function InterviewView() {
         }
       }
 
-      return autoEnd;
     },
     [sessionId, setPhase, setTranscript, appendChunk, pushTurn, clearCurrentTurn, incrementTurnCount, setError, recorder, router],
   );
@@ -169,7 +163,7 @@ export function InterviewView() {
       throw new Error(`Server error (${response.status}): ${body.slice(0, 200)}`);
     }
 
-    await processSSEStream(response, true);
+    await processSSEStream(response);
   }, [sessionId, processSSEStream]);
 
   const sendAudio = useCallback(
@@ -191,11 +185,7 @@ export function InterviewView() {
           throw new Error(`Server error (${response.status}): ${body.slice(0, 200)}`);
         }
 
-        const autoEnd = await processSSEStream(response, false);
-
-        if (autoEnd) {
-          await sendEndRequest();
-        }
+        await processSSEStream(response);
       } catch (err) {
         const message =
           err instanceof Error ? err.message : 'Network request failed';
@@ -205,10 +195,9 @@ export function InterviewView() {
         sendingRef.current = false;
       }
     },
-    [sessionId, sendEndRequest, processSSEStream, recorder],
+    [sessionId, processSSEStream, recorder],
   );
 
-  // Called by VAD when silence >3s detected
   const onChunkReady = useCallback(
     async (blob: Blob) => {
       cancelSpeech();
@@ -252,11 +241,7 @@ export function InterviewView() {
         throw new Error(`Server error (${response.status}): ${body.slice(0, 200)}`);
       }
 
-      const autoEnd = await processSSEStream(response, false);
-
-      if (autoEnd) {
-        await sendEndRequest();
-      }
+      await processSSEStream(response);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Skip request failed';
       setError(message);
