@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { generateEmbeddings } from '@/backend/services/embeddings';
-import { spawn } from 'child_process';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 const CHUNK_SIZE = 2000;
 const CHUNK_OVERLAP = 200;
@@ -19,29 +19,30 @@ function chunkText(text: string): string[] {
 }
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
-  const scriptPath = process.cwd() + '/scripts/extract_pdf_text.py';
-  return new Promise((resolve, reject) => {
-    const proc = spawn('python3', [scriptPath]);
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mod: any = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const data = new Uint8Array(buffer);
+  const doc = await mod.getDocument({ data }).promise;
 
-    proc.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
-    proc.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
-
-    proc.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(Buffer.concat(stderr).toString()));
-      } else {
-        resolve(Buffer.concat(stdout).toString());
-      }
-    });
-
-    proc.on('error', reject);
-    proc.stdin.end(buffer);
-  });
+  let text = '';
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map((item: { str: string }) => item.str).join(' ') + '\n';
+  }
+  return text.trim();
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  const { allowed, retryAfter } = checkRateLimit(`resume-upload:${ip}`);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    );
+  }
+
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 

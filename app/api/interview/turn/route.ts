@@ -5,14 +5,15 @@
 // Content-Type: multipart/form-data
 //
 // Pipeline:
-//   1. Parse audio blob + metadata from the multipart payload
-//   2. Transcribe audio via Deepgram Nova-2
-//   3. Embed transcript via text-embedding-3-small
-//   4. RAG search over resume vectors via match_resume_chunks
-//   5. Fetch session config & chronological turn history
-//   6. Build the persona system prompt with RAG anchors
-//   7. Stream gpt-4o-mini response as SSE events
-//   8. Persist the completed turn on stream end
+//   1. Rate limit check (per-IP)
+//   2. Parse audio blob + metadata from the multipart payload
+//   3. Transcribe audio via Deepgram Nova-2
+//   4. Embed transcript via text-embedding-3-small
+//   5. RAG search over resume vectors via match_resume_chunks
+//   6. Fetch session config & chronological turn history
+//   7. Build the persona system prompt with RAG anchors
+//   8. Stream gpt-4o-mini response as SSE events
+//   9. Persist the completed turn on stream end & fire evaluation
 // =============================================================================
 
 import { NextRequest } from 'next/server';
@@ -36,6 +37,7 @@ import { encodeSSE } from '@/backend/services/utils';
 import type { SSEEvent, InterviewStage } from '@/types/interview';
 import { stageForTurnNumber, MAX_TURNS } from '@/types/interview';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // ---------------------------------------------------------------------------
 // Keyword boost list — injected into Deepgram to improve recognition of
@@ -55,7 +57,20 @@ const TECH_KEYWORDS: TranscribeOptions = {
 
 export async function POST(req: NextRequest) {
   // -------------------------------------------------------------------------
-  // 1. Parse multipart form data
+  // 1. Rate limit
+  // -------------------------------------------------------------------------
+
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  const { allowed, retryAfter } = checkRateLimit(`turn:${ip}`);
+  if (!allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { 'Retry-After': String(retryAfter) },
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // 2. Parse multipart form data
   // -------------------------------------------------------------------------
 
   let audioBlob: Blob | null = null;

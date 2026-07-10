@@ -8,7 +8,6 @@ import { useContinuousRecorder } from '@/frontend/hooks/useContinuousRecorder';
 import { SessionCard } from '@/frontend/components/interview/SessionCard';
 import { StreamConsole } from '@/frontend/components/interview/StreamConsole';
 import { MicButton } from '@/frontend/components/interview/MicButton';
-import { MAX_TURNS } from '@/types/interview';
 
 export function InterviewView() {
   const params = useParams();
