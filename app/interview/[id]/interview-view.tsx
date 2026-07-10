@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { playStartChime, playEndChime } from '@/frontend/lib/sounds';
 import { useParams, useRouter } from 'next/navigation';
 import { useInterviewStore } from '@/frontend/store/interview-store';
 import { useContinuousRecorder } from '@/frontend/hooks/useContinuousRecorder';
@@ -119,6 +120,7 @@ export function InterviewView() {
                 if (doneData.completed) {
                   recorder.stop();
                   setCompleted();
+                  playEndChime();
                   setTimeout(() => router.push(`/interview/${sessionId}/report`), 3_000);
                 } else if (!isEndCall && useInterviewStore.getState().turnCount >= MAX_TURNS) {
                   autoEnd = true;
@@ -199,11 +201,12 @@ export function InterviewView() {
         const message =
           err instanceof Error ? err.message : 'Network request failed';
         setError(message);
+        recorder.resume();
       } finally {
         sendingRef.current = false;
       }
     },
-    [sessionId, sendEndRequest, processSSEStream],
+    [sessionId, sendEndRequest, processSSEStream, recorder],
   );
 
   // Called by VAD when silence >3s detected
@@ -221,6 +224,7 @@ export function InterviewView() {
       try {
         await recorder.start(onChunkReady);
         setPhase('LISTENING');
+        playStartChime();
       } catch {
         setError('Could not start microphone');
       }
@@ -257,10 +261,11 @@ export function InterviewView() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Skip request failed';
       setError(message);
+      recorder.resume();
     } finally {
       sendingRef.current = false;
     }
-  }, [sessionId, processSSEStream, sendEndRequest, setPhase, setError]);
+  }, [sessionId, processSSEStream, sendEndRequest, setPhase, setError, recorder]);
 
   const handleEnd = useCallback(async () => {
     if (sendingRef.current) return;

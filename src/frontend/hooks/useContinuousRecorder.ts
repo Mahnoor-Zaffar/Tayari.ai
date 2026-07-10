@@ -171,14 +171,27 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
       onChunkReadyRef.current = onChunkReady;
 
       try {
-        const micStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: { ideal: 1 },
-            sampleRate: { ideal: 16000 },
-            echoCancellation: { exact: true },
-            noiseSuppression: { exact: true },
-          },
-        });
+        let micStream: MediaStream;
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              channelCount: { ideal: 1 },
+              sampleRate: { ideal: 16000 },
+              echoCancellation: { exact: true },
+              noiseSuppression: { exact: true },
+            },
+          });
+        } catch {
+          // Fall back to ideal constraints if exact ones aren't supported
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              channelCount: { ideal: 1 },
+              sampleRate: { ideal: 16000 },
+              echoCancellation: { ideal: true },
+              noiseSuppression: { ideal: true },
+            },
+          });
+        }
 
         streamRef.current = micStream;
         setStream(micStream);
