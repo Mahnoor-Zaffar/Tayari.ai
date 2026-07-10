@@ -71,10 +71,6 @@ export async function POST(req: NextRequest) {
 
   try {
     fillerWordsDetected = detectFillerWords(candidateResponse);
-    console.log(
-      `[evaluate-turn] Filler words detected for turn ${turnId}:`,
-      fillerWordsDetected,
-    );
   } catch (err) {
     // Filler detection is local & should never throw; but guard anyway.
     fillerWordsDetected = {};
@@ -92,13 +88,6 @@ export async function POST(req: NextRequest) {
       interviewerQuestion,
       candidateResponse,
     });
-    console.log(
-      `[evaluate-turn] Evaluation received for turn ${turnId}:`,
-      {
-        technicalScore: evaluation.technicalScore,
-        communicationScore: evaluation.communicationScore,
-      },
-    );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('[evaluate-turn] LLM evaluation failed', { error: message, turnId });
@@ -124,8 +113,6 @@ export async function POST(req: NextRequest) {
       constructiveCritique: evaluation.constructiveCritique,
       fillerWordsDetected,
     });
-
-    console.log(`[evaluate-turn] Evaluation persisted for turn ${turnId}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('[evaluate-turn] Database upsert failed', { error: message, turnId });

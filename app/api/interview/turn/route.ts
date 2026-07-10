@@ -86,9 +86,6 @@ export async function POST(req: NextRequest) {
     }
 
     sessionId = sid;
-    if (audioBlob) {
-      console.log('[turn] Blob size:', audioBlob.size, 'type:', audioBlob.type);
-    }
   } catch (err) {
     console.error('[turn] Form parse error:', err instanceof Error ? err.message : err);
     return new Response('Failed to parse request body', { status: 400 });
@@ -122,10 +119,8 @@ export async function POST(req: NextRequest) {
   let transcript: string;
 
   if (isEnd) {
-    console.log('[turn] End requested — using placeholder transcript');
     transcript = "I'd like to end the interview here and get my final feedback.";
   } else if (isSkip) {
-    console.log('[turn] Skip requested — using placeholder transcript');
     transcript = "I'd like to skip this question and move on to the next one.";
   } else {
     try {
@@ -152,24 +147,18 @@ export async function POST(req: NextRequest) {
   }
 
   // -------------------------------------------------------------------------
-  // 4. Embed transcript  (text-embedding-3-small)
-  // 5. RAG — retrieve matching resume context (scoped to current user)
-  // 6. Fetch session details & historical conversation
+  // 4. Fetch session details & historical conversation
+  // 5. Embed transcript & RAG (only for real audio — skip for skip/end)
   // -------------------------------------------------------------------------
 
-  let embedding: number[];
-  let ragChunks: Awaited<ReturnType<typeof searchResumeContext>>;
   let session: Awaited<ReturnType<typeof fetchSession>>;
   let turnHistory: Awaited<ReturnType<typeof fetchTurnHistory>>;
 
   try {
-    [embedding, session, turnHistory] = await Promise.all([
-      generateEmbedding(transcript),
+    [session, turnHistory] = await Promise.all([
       fetchSession(sessionId),
       fetchTurnHistory(sessionId),
     ]);
-
-    ragChunks = await searchResumeContext(embedding, userId, 0.7, 5);
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Pre-stream pipeline failed';
@@ -179,8 +168,19 @@ export async function POST(req: NextRequest) {
 
   // Guard: reject turns on already-completed sessions
   if (session.isCompleted) {
-    console.log('[turn] Rejected — session already completed');
     return new Response('This interview session is already completed. Please start a new interview.', { status: 400 });
+  }
+
+  let ragChunks: Awaited<ReturnType<typeof searchResumeContext>> = [];
+
+  if (!isSkip && !isEnd) {
+    try {
+      const embedding = await generateEmbedding(transcript);
+      ragChunks = await searchResumeContext(embedding, userId, 0.7, 5);
+    } catch (err) {
+      console.error('[turn] Embedding/RAG error:', err instanceof Error ? err.message : err);
+      // Non-fatal — proceed without RAG context
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -192,9 +192,7 @@ export async function POST(req: NextRequest) {
     ? 'WRAP_UP'
     : stageForTurnNumber(thisTurnNumber);
 
-  console.log('[turn] session.currentStage=', session.currentStage, 'stage=', stage, 'turnNumber=', thisTurnNumber, 'historyLength=', turnHistory.length);
   if (stage !== session.currentStage) {
-    console.log('[turn] Stage change:', session.currentStage, '→', stage);
     await updateSessionStage(sessionId, stage).catch((err) =>
       console.error('[turn] Failed to update stage:', err),
     );
@@ -273,14 +271,12 @@ export async function POST(req: NextRequest) {
 
         // Background evaluation (fire-and-forget — never blocks the SSE stream)
         const fillerWordsDetected = detectFillerWords(transcript);
-        console.log('[turn] Starting evaluation for turn', turnId);
         evaluateResponse({
           interviewerQuestion: fullResponse,
           candidateResponse: transcript,
         })
-          .then((evaluation) => {
-            console.log('[turn] Evaluation received for turn', turnId, evaluation.technicalScore, evaluation.communicationScore);
-            return upsertEvaluation({
+          .then((evaluation) =>
+            upsertEvaluation({
               turnId,
               technicalScore: evaluation.technicalScore,
               communicationScore: evaluation.communicationScore,
@@ -290,9 +286,8 @@ export async function POST(req: NextRequest) {
               codeQualityScore: evaluation.codeQualityScore,
               constructiveCritique: evaluation.constructiveCritique,
               fillerWordsDetected,
-            });
-          })
-          .then(() => console.log('[turn] Evaluation upserted for turn', turnId))
+            }),
+          )
           .catch((err) => {
             console.error('[turn] Background evaluation failed:', err.message);
           });
@@ -304,7 +299,6 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        console.log('[turn] DONE event: completed=', isCompleted, 'stage=', stage, 'turnNumber=', nextSequenceNumber, 'historyLength=', turnHistory.length);
         enqueue({
           type: 'DONE',
           data: {

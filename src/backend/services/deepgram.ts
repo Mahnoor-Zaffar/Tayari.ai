@@ -1,6 +1,4 @@
 import { createClient } from '@deepgram/sdk';
-import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,16 +51,6 @@ export async function transcribeAudio(
 
   if (buffer.length < 1024) {
     throw new Error(`Audio too small (${buffer.length} bytes), skipping`);
-  }
-
-  // -----------------------------------------------------------------------
-  // Diagnostic: dump raw audio to /tmp in development
-  // -----------------------------------------------------------------------
-
-  if (process.env.NODE_ENV === 'development') {
-    const tmpPath = join('/tmp', `deepgram-raw-${Date.now()}.webm`);
-    writeFileSync(tmpPath, buffer);
-    console.log('[deepgram] Debug: wrote raw audio to', tmpPath);
   }
 
   // -----------------------------------------------------------------------

@@ -136,10 +136,8 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
               const cb = onChunkReadyRef.current;
               if (cb) {
                 cb(blob)
-                  .then(() => {})
-                  .catch(() => {
-                    processingRef.current = false;
-                  });
+                  .then(() => { processingRef.current = false; })
+                  .catch(() => { processingRef.current = false; });
               } else {
                 processingRef.current = false;
               }

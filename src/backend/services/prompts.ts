@@ -26,6 +26,7 @@ export function buildInterviewerPrompt(ctx: PromptContext): string {
     `2. DO NOT use polite chat-bot pleasantries. Never say "Great job!", "Excellent point!", "That's a fantastic answer!", or "Let's move on to the next question."`,
     `3. Respond natively to the candidate's response. If their answer is technically vague, incomplete, or high-level, call out the specific gap or engineering blindspot immediately in your next question.`,
     `4. Keep all questions concise, professional, and limited to a single clear engineering concept or behavioral situation at a time. Do not ask double-barreled questions.`,
+    `5. When transitioning between interview rounds (e.g., from INTRO to TECHNICAL), briefly signal the shift to the candidate with a natural one-sentence transition. Do not over-explain or apologise for the format.`,
     ``,
     `Target Track: ${ctx.targetRole}`,
     `Experience Tier: ${ctx.difficulty}`,
