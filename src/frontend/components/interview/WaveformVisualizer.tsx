@@ -4,25 +4,34 @@ import { useEffect, useRef, useState } from 'react';
 
 const BAR_COUNT = 24;
 const SPEECH_THRESHOLD = 6;
+const THROTTLE_FRAMES = 4;
+
+interface BarState {
+  levels: number[];
+  isSpeech: boolean;
+}
 
 interface WaveformVisualizerProps {
   stream: MediaStream | null;
 }
 
 export function WaveformVisualizer({ stream }: WaveformVisualizerProps) {
-  const [levels, setLevels] = useState<number[]>(Array(BAR_COUNT).fill(0));
-  const [rms, setRms] = useState(0);
-  const ctxRef = useRef<AudioContext | null>(null);
+  const [barState, setBarState] = useState<BarState>({
+    levels: Array(BAR_COUNT).fill(0),
+    isSpeech: false,
+  });
+
+  const isSpeechRef = useRef(false);
+  const frameRef = useRef(0);
 
   useEffect(() => {
     if (!stream) {
-      setLevels(Array(BAR_COUNT).fill(0));
-      setRms(0);
+      setBarState({ levels: Array(BAR_COUNT).fill(0), isSpeech: false });
       return;
     }
 
     const audioContext = new AudioContext();
-    ctxRef.current = audioContext;
+    if (audioContext.state === 'suspended') audioContext.resume();
     const source = audioContext.createMediaStreamSource(stream);
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = 256;
@@ -33,19 +42,30 @@ export function WaveformVisualizer({ stream }: WaveformVisualizerProps) {
 
     const tick = () => {
       analyser.getByteTimeDomainData(timeData);
+
       const sum = timeData.reduce((acc, v) => acc + Math.abs(v - 128), 0);
       const currentRms = sum / timeData.length;
-      setRms(currentRms);
+      const currentIsSpeech = currentRms >= SPEECH_THRESHOLD;
 
-      const barHeights = Array.from({ length: BAR_COUNT }, (_, i) => {
+      frameRef.current++;
+      const shouldPaintBars = frameRef.current % THROTTLE_FRAMES === 0;
+      const speechChanged = currentIsSpeech !== isSpeechRef.current;
+
+      if (shouldPaintBars || speechChanged) {
+        isSpeechRef.current = currentIsSpeech;
+
         const chunkSize = Math.floor(timeData.length / BAR_COUNT);
-        let chunkSum = 0;
-        for (let j = 0; j < chunkSize; j++) {
-          chunkSum += Math.abs((timeData[i * chunkSize + j] ?? 128) - 128);
-        }
-        return Math.min(1, chunkSum / (chunkSize * 64));
-      });
-      setLevels(barHeights);
+        const barHeights = Array.from({ length: BAR_COUNT }, (_, i) => {
+          let chunkSum = 0;
+          for (let j = 0; j < chunkSize; j++) {
+            chunkSum += Math.abs((timeData[i * chunkSize + j] ?? 128) - 128);
+          }
+          return Math.min(1, chunkSum / (chunkSize * 64));
+        });
+
+        setBarState({ levels: barHeights, isSpeech: currentIsSpeech });
+      }
+
       animId = requestAnimationFrame(tick);
     };
 
@@ -54,11 +74,10 @@ export function WaveformVisualizer({ stream }: WaveformVisualizerProps) {
     return () => {
       cancelAnimationFrame(animId);
       audioContext.close();
-      ctxRef.current = null;
     };
   }, [stream]);
 
-  const isSpeech = rms >= SPEECH_THRESHOLD;
+  const { levels, isSpeech } = barState;
 
   return (
     <div className="flex flex-col items-center gap-1.5">
