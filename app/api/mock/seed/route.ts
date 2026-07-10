@@ -106,7 +106,7 @@ export async function GET() {
         code_quality_score: 5,
         constructive_critique:
           'Excellent technical depth covering WebSocket architecture, database choice, and scaling strategy. The FIFO queue detail shows strong distributed systems knowledge.',
-        filler_words_detected: {},
+        filler_words_detected: {} as Record<string, number>,
       },
       {
         turn_id: insertedTurns[2].id,

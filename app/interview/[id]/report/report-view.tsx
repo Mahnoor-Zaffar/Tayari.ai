@@ -45,6 +45,21 @@ export function ReportView({
           >
             {copied ? 'Copied!' : 'Copy Link'}
           </button>
+          <button
+            onClick={() => {
+              const data = { sessionId, turns, aggregate };
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `report-${sessionId}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="rounded bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-700"
+          >
+            Download JSON
+          </button>
           <Link
             href={`/interview/${sessionId}`}
             className="rounded bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-700"

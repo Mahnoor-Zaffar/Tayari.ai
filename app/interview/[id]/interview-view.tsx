@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useInterviewStore } from '@/frontend/store/interview-store';
 import { useContinuousRecorder } from '@/frontend/hooks/useContinuousRecorder';
@@ -23,7 +23,6 @@ export function InterviewView() {
     incrementTurnCount,
     resetToIdle,
     setError,
-    setStage,
     setCompleted,
   } = useInterviewStore();
 
@@ -49,10 +48,19 @@ export function InterviewView() {
     synthRef.current?.cancel();
   }
 
+  const [showInstructions, setShowInstructions] = useState(false);
+
   useEffect(() => {
     useInterviewStore.getState().setSessionId(sessionId);
+    const seen = localStorage.getItem('tayari_instructions_seen');
+    if (!seen) setShowInstructions(true);
     return () => cancelSpeech();
   }, [sessionId]);
+
+  function dismissInstructions() {
+    localStorage.setItem('tayari_instructions_seen', '1');
+    setShowInstructions(false);
+  }
 
   const processSSEStream = useCallback(
     async (response: Response, isEndCall: boolean) => {
@@ -269,6 +277,45 @@ export function InterviewView() {
   }, [sendEndRequest, setPhase, setError]);
 
   return (
+    <>
+      {showInstructions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+          <div className="w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-zinc-100">How the Interview Works</h2>
+
+            <div className="mt-4 space-y-3 text-sm text-zinc-400">
+              <div className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-xs font-bold text-emerald-400">1</span>
+                <span><strong className="text-zinc-200">Speak naturally</strong> — the mic detects your voice automatically. No buttons needed.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-xs font-bold text-emerald-400">2</span>
+                <span><strong className="text-zinc-200">Pause to send</strong> — after ~3s of silence, your answer is sent to the AI.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-xs font-bold text-emerald-400">3</span>
+                <span><strong className="text-zinc-200">AI responds</strong> — you will hear the response spoken aloud while text appears.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-xs font-bold text-emerald-400">4</span>
+                <span><strong className="text-zinc-200">Skip or End</strong> — use the buttons to skip a question or end the interview early.</span>
+              </div>
+            </div>
+
+            <div className="mt-1 text-xs text-zinc-600">
+              16 questions across Intro, Technical, Behavioral, and Wrap-up stages.
+            </div>
+
+            <button
+              onClick={dismissInstructions}
+              className="mt-5 w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
     <div className="flex h-screen bg-black text-zinc-100">
       {phase !== 'COMPLETE' && <SessionCard />}
 
@@ -293,5 +340,6 @@ export function InterviewView() {
         )}
       </div>
     </div>
+    </>
   );
 }
