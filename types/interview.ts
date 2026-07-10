@@ -21,14 +21,14 @@ export type TurnPhase = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'STREAMING_RESPONS
 // Interview lifecycle constants
 // ---------------------------------------------------------------------------
 
-export const MAX_TURNS = 8;
+export const MAX_TURNS = 16;
 
 /** Turn-number ranges for each stage (1-indexed). */
 export const STAGE_TURN_RANGES: Record<InterviewStage, [number, number]> = {
   INTRO: [1, 2],
-  TECHNICAL: [3, 5],
-  BEHAVIORAL: [6, 8],
-  WRAP_UP: [9, 9],
+  TECHNICAL: [3, 9],
+  BEHAVIORAL: [10, 15],
+  WRAP_UP: [16, 16],
 };
 
 // ---------------------------------------------------------------------------
