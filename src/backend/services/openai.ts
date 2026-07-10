@@ -55,19 +55,26 @@ export async function evaluateResponse(params: {
   interviewerQuestion: string;
   candidateResponse: string;
 }): Promise<ShadowEvaluatorContract> {
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: EVALUATION_SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: `Question: ${params.interviewerQuestion}\n\nAnswer: ${params.candidateResponse}`,
-      },
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.3,
-    max_tokens: 512,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  const response = await openai.chat.completions.create(
+    {
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: EVALUATION_SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: `Question: ${params.interviewerQuestion}\n\nAnswer: ${params.candidateResponse}`,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 512,
+    },
+    { signal: controller.signal },
+  );
+
+  clearTimeout(timeout);
 
   const raw = response.choices[0]?.message?.content;
   if (!raw) {

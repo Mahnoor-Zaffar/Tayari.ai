@@ -177,6 +177,12 @@ export async function POST(req: NextRequest) {
     return new Response(message, { status: 500 });
   }
 
+  // Guard: reject turns on already-completed sessions
+  if (session.isCompleted) {
+    console.log('[turn] Rejected — session already completed');
+    return new Response('This interview session is already completed. Please start a new interview.', { status: 400 });
+  }
+
   // -------------------------------------------------------------------------
   // 7. Stage progression — determine current stage from turn number
   // -------------------------------------------------------------------------
@@ -186,6 +192,7 @@ export async function POST(req: NextRequest) {
     ? 'WRAP_UP'
     : stageForTurnNumber(thisTurnNumber);
 
+  console.log('[turn] session.currentStage=', session.currentStage, 'stage=', stage, 'turnNumber=', thisTurnNumber, 'historyLength=', turnHistory.length);
   if (stage !== session.currentStage) {
     console.log('[turn] Stage change:', session.currentStage, '→', stage);
     await updateSessionStage(sessionId, stage).catch((err) =>
@@ -264,12 +271,14 @@ export async function POST(req: NextRequest) {
 
         // Background evaluation (fire-and-forget — never blocks the SSE stream)
         const fillerWordsDetected = detectFillerWords(transcript);
+        console.log('[turn] Starting evaluation for turn', turnId);
         evaluateResponse({
           interviewerQuestion: fullResponse,
           candidateResponse: transcript,
         })
-          .then((evaluation) =>
-            upsertEvaluation({
+          .then((evaluation) => {
+            console.log('[turn] Evaluation received for turn', turnId, evaluation.technicalScore, evaluation.communicationScore);
+            return upsertEvaluation({
               turnId,
               technicalScore: evaluation.technicalScore,
               communicationScore: evaluation.communicationScore,
@@ -279,10 +288,11 @@ export async function POST(req: NextRequest) {
               codeQualityScore: evaluation.codeQualityScore,
               constructiveCritique: evaluation.constructiveCritique,
               fillerWordsDetected,
-            }),
-          )
+            });
+          })
+          .then(() => console.log('[turn] Evaluation upserted for turn', turnId))
           .catch((err) => {
-            console.error('[turn] Background evaluation failed:', err);
+            console.error('[turn] Background evaluation failed:', err.message);
           });
 
         // Mark session complete if WRAP_UP
@@ -292,6 +302,7 @@ export async function POST(req: NextRequest) {
           );
         }
 
+        console.log('[turn] DONE event: completed=', isCompleted, 'stage=', stage, 'turnNumber=', nextSequenceNumber, 'historyLength=', turnHistory.length);
         enqueue({
           type: 'DONE',
           data: {

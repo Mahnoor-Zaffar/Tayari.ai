@@ -130,6 +130,9 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
               const blob = new Blob(chunksRef.current, { type: mime });
               chunksRef.current = [];
 
+              // Restart recorder immediately so there's no gap
+              restartRecorder();
+
               const cb = onChunkReadyRef.current;
               if (cb) {
                 cb(blob)
@@ -238,9 +241,6 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
 
   const resume = useCallback(() => {
     if (!activeRef.current) return;
-    if (streamRef.current) {
-      restartRecorder();
-    }
     processingRef.current = false;
   }, []);
 

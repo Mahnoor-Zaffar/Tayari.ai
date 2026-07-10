@@ -85,6 +85,8 @@ export function InterviewView() {
 
               case 'DONE': {
                 const doneData = JSON.parse(raw);
+                console.log('[interview] DONE data:', JSON.stringify(doneData));
+                console.log('[interview] turnCount after increment:', useInterviewStore.getState().turnCount + 1);
                 pushTurn(doneData.candidateResponse, doneData.interviewerQuestion);
                 incrementTurnCount();
                 if (doneData.completed) {
