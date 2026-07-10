@@ -91,7 +91,7 @@ export function StreamConsole() {
             </div>
           )}
 
-          {(streamedResponse || isStreaming) && (
+          {streamedResponse && (
             <div>
               <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-400">
                 AI Interviewer
