@@ -48,8 +48,11 @@ export function SessionCard() {
         </div>
 
         <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-          <div className="text-xs text-zinc-500">Turns Completed</div>
-          <div className="mt-1 font-semibold text-zinc-100">{turnCount}</div>
+          <div className="text-xs text-zinc-500">Question</div>
+          <div className="mt-1 font-semibold text-zinc-100">
+            {turnCount + 1}
+            <span className="text-xs text-zinc-500"> / 16</span>
+          </div>
         </div>
       </div>
     </div>

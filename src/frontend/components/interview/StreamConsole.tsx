@@ -17,7 +17,7 @@ export function StreamConsole() {
     if (isNearBottomRef.current) {
       scrollRef.current?.scrollTo({
         top: scrollRef.current.scrollHeight,
-        behavior: 'smooth',
+        behavior: isStreaming ? 'auto' : 'smooth',
       });
     }
   }, [streamedResponse, transcript, turns.length]);
