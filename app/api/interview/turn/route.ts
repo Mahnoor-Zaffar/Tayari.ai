@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
       { role: 'assistant' as const, content: t.interviewerQuestion },
       { role: 'user' as const, content: t.candidateResponse },
     ]),
-    ...(ragContextMessage ? [{ role: 'user' as const, content: ragContextMessage }] : []),
+    ...(ragContextMessage ? [{ role: 'system' as const, content: ragContextMessage }] : []),
     { role: 'user', content: transcript },
   ];
 

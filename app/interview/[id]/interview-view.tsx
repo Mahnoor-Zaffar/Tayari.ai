@@ -21,8 +21,8 @@ export function InterviewView() {
     setTranscript,
     appendChunk,
     pushTurn,
+    clearCurrentTurn,
     incrementTurnCount,
-    resetToIdle,
     setError,
     setCompleted,
   } = useInterviewStore();
@@ -113,9 +113,8 @@ export function InterviewView() {
 
               case 'DONE': {
                 const doneData = JSON.parse(raw);
-                console.log('[interview] DONE data:', JSON.stringify(doneData));
-                console.log('[interview] turnCount after increment:', useInterviewStore.getState().turnCount + 1);
                 pushTurn(doneData.candidateResponse, doneData.interviewerQuestion);
+                clearCurrentTurn();
                 incrementTurnCount();
                 if (doneData.completed) {
                   recorder.stop();
@@ -129,7 +128,7 @@ export function InterviewView() {
                 } else {
                   speakResponse(responseTextRef.current);
                   setTimeout(() => {
-                    resetToIdle();
+                    setPhase('LISTENING');
                     resumeRef.current();
                   }, 1_500);
                 }
@@ -152,7 +151,7 @@ export function InterviewView() {
 
       return autoEnd;
     },
-    [sessionId, setPhase, setTranscript, appendChunk, pushTurn, incrementTurnCount, resetToIdle, setError, recorder, router],
+    [sessionId, setPhase, setTranscript, appendChunk, pushTurn, clearCurrentTurn, incrementTurnCount, setError, recorder, router],
   );
 
   const sendEndRequest = useCallback(async () => {

@@ -24,6 +24,7 @@ interface InterviewState {
   setTranscript: (text: string) => void;
   appendChunk: (text: string) => void;
   pushTurn: (userText: string, assistantText: string) => void;
+  clearCurrentTurn: () => void;
   incrementTurnCount: () => void;
   resetToIdle: () => void;
   setError: (message: string) => void;
@@ -56,6 +57,8 @@ export const useInterviewStore = create<InterviewState>((set) => ({
         { type: 'assistant', text: assistantText },
       ],
     })),
+  clearCurrentTurn: () =>
+    set({ transcript: null, streamedResponse: '', error: null }),
   incrementTurnCount: () =>
     set((state) => ({ turnCount: state.turnCount + 1 })),
   resetToIdle: () =>
