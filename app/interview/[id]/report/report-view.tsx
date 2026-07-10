@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import type { TurnWithEvaluation } from '@/backend/db/database';
 
@@ -25,17 +25,33 @@ export function ReportView({
   aggregate: Aggregate;
 }) {
   const [expandedTurn, setExpandedTurn] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = useCallback(() => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2_000);
+    }).catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-zinc-100">
       <header className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
         <h1 className="text-lg font-semibold">Session Report</h1>
-        <Link
-          href={`/interview/${sessionId}`}
-          className="rounded bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-700"
-        >
-          Back to Interview
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCopyLink}
+            className="rounded bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-700"
+          >
+            {copied ? 'Copied!' : 'Copy Link'}
+          </button>
+          <Link
+            href={`/interview/${sessionId}`}
+            className="rounded bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-700"
+          >
+            Back to Interview
+          </Link>
+        </div>
       </header>
 
       <div className="mx-auto max-w-4xl space-y-8 p-6">

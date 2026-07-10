@@ -2,7 +2,6 @@ export interface PromptContext {
   targetRole: string;
   difficulty: string;
   currentStage: string;
-  contextualBackground: string;
 }
 
 const STAGE_INSTRUCTIONS: Record<string, string> = {
@@ -35,7 +34,7 @@ export function buildInterviewerPrompt(ctx: PromptContext): string {
     `Stage Instructions:`,
     stageInstruction,
     ``,
-    `Candidate Background Context (RAG Anchors):`,
-    ctx.contextualBackground || `No background context available.`,
+    `Candidate Background Context:`,
+    `Relevant resume context for this turn is provided in the conversation below.`,
   ].join(`\n`);
 }

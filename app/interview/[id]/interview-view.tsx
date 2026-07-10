@@ -31,9 +31,27 @@ export function InterviewView() {
   const sendingRef = useRef(false);
   const resumeRef = useRef(recorder.resume);
   resumeRef.current = recorder.resume;
+  const responseTextRef = useRef('');
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  if (typeof window !== 'undefined') synthRef.current = window.speechSynthesis;
+
+  function speakResponse(text: string) {
+    if (!synthRef.current) return;
+    synthRef.current.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 0.7;
+    synthRef.current.speak(utterance);
+  }
+
+  function cancelSpeech() {
+    synthRef.current?.cancel();
+  }
 
   useEffect(() => {
     useInterviewStore.getState().setSessionId(sessionId);
+    return () => cancelSpeech();
   }, [sessionId]);
 
   const processSSEStream = useCallback(
@@ -75,6 +93,7 @@ export function InterviewView() {
 
               case 'CHUNK': {
                 const { text } = JSON.parse(raw);
+                responseTextRef.current += text;
                 appendChunk(text);
                 if (!hasStartedStreaming) {
                   hasStartedStreaming = true;
@@ -98,11 +117,13 @@ export function InterviewView() {
                   recorder.stop();
                   setPhase('PROCESSING');
                 } else {
+                  speakResponse(responseTextRef.current);
                   setTimeout(() => {
                     resetToIdle();
                     resumeRef.current();
                   }, 1_500);
                 }
+                responseTextRef.current = '';
                 break;
               }
 
@@ -180,6 +201,7 @@ export function InterviewView() {
   // Called by VAD when silence >3s detected
   const onChunkReady = useCallback(
     async (blob: Blob) => {
+      cancelSpeech();
       setPhase('PROCESSING');
       await sendAudio(blob);
     },

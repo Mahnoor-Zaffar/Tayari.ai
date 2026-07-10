@@ -204,18 +204,19 @@ export async function POST(req: NextRequest) {
   // 8. Build system prompt with RAG anchors
   // -------------------------------------------------------------------------
 
-  const contextualBackground = ragChunks.map((c) => c.content).join('\n---\n');
-
   const systemPrompt = buildInterviewerPrompt({
     targetRole: session.targetRole,
     difficulty: session.difficulty,
     currentStage: stage,
-    contextualBackground,
   });
 
   // -------------------------------------------------------------------------
   // 9. Build message list & initiate OpenAI streaming
   // -------------------------------------------------------------------------
+
+  const ragContextMessage = ragChunks.length > 0
+    ? `Relevant context from the candidate's resume (use this to tailor your next question):\n${ragChunks.map((c) => c.content).join('\n---\n')}`
+    : null;
 
   const messages: ChatCompletionMessageParam[] = [
     { role: 'system', content: systemPrompt },
@@ -223,6 +224,7 @@ export async function POST(req: NextRequest) {
       { role: 'assistant' as const, content: t.interviewerQuestion },
       { role: 'user' as const, content: t.candidateResponse },
     ]),
+    ...(ragContextMessage ? [{ role: 'user' as const, content: ragContextMessage }] : []),
     { role: 'user', content: transcript },
   ];
 

@@ -2,8 +2,8 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 
-const SPEECH_THRESHOLD = 6;
-const SILENCE_TIMEOUT_MS = 5000;
+const SPEECH_THRESHOLD = 4;
+const SILENCE_TIMEOUT_MS = 3000;
 const NOISE_FLOOR_DECAY = 0.995;
 
 function isWebKit(): boolean {
@@ -175,8 +175,8 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
           audio: {
             channelCount: { ideal: 1 },
             sampleRate: { ideal: 16000 },
-            echoCancellation: { ideal: true },
-            noiseSuppression: { ideal: true },
+            echoCancellation: { exact: true },
+            noiseSuppression: { exact: true },
           },
         });
 
