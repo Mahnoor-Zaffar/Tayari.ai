@@ -6,6 +6,7 @@ import type { SessionSummary } from '@/frontend/components/dashboard/SessionList
 
 export default async function DashboardPage() {
   let sessions: SessionSummary[] = [];
+  let needsOnboarding = false;
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -20,27 +21,29 @@ export default async function DashboardPage() {
         .eq('user_id', user.id);
 
       if (!count || count === 0) {
-        redirect('/onboarding');
+        needsOnboarding = true;
+      } else {
+        const { data: rows } = await db
+          .from('interview_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        sessions = (rows ?? []).map((r) => ({
+          id: r.id,
+          targetRole: r.target_role,
+          difficulty: r.difficulty,
+          currentStage: r.current_stage,
+          isCompleted: r.is_completed,
+          createdAt: r.created_at,
+        }));
       }
-
-      const { data: rows } = await db
-        .from('interview_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      sessions = (rows ?? []).map((r) => ({
-        id: r.id,
-        targetRole: r.target_role,
-        difficulty: r.difficulty,
-        currentStage: r.current_stage,
-        isCompleted: r.is_completed,
-        createdAt: r.created_at,
-      }));
     }
   } catch {
     // Not authenticated — show empty dashboard
   }
+
+  if (needsOnboarding) redirect('/onboarding');
 
   return (
     <div className="min-h-screen bg-black text-zinc-100">

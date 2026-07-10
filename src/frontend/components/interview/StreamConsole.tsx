@@ -45,8 +45,14 @@ export function StreamConsole() {
         className="flex-1 overflow-y-auto p-6 font-mono text-sm leading-relaxed"
       >
         {error && (
-          <div className="mb-4 rounded border border-red-900 bg-red-950/50 p-3 text-red-400">
-            {error}
+          <div className="mb-4 flex items-start justify-between gap-3 rounded border border-red-900 bg-red-950/50 p-3 text-red-400">
+            <span className="flex-1">{error}</span>
+            <button
+              onClick={() => useInterviewStore.getState().clearError()}
+              className="shrink-0 rounded px-2 py-0.5 text-xs font-medium text-red-300 transition hover:bg-red-900/50"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
