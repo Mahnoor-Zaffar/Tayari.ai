@@ -1,0 +1,14 @@
+{
+  "name": "@tayari/config",
+  "private": true,
+  "version": "0.1.0",
+  "exports": {
+    "./*": "./src/*.ts",
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./eslint/base.json": "./eslint/base.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "eslint": "^9.0.0"
+  }
+}
