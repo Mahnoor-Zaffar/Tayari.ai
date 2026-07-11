@@ -25,10 +25,7 @@ export function WaveformVisualizer({ stream }: WaveformVisualizerProps) {
   const frameRef = useRef(0);
 
   useEffect(() => {
-    if (!stream) {
-      setBarState({ levels: Array(BAR_COUNT).fill(0), isSpeech: false });
-      return;
-    }
+    if (!stream) return;
 
     const audioContext = new AudioContext();
     if (audioContext.state === 'suspended') audioContext.resume();

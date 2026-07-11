@@ -34,12 +34,23 @@ export function InterviewView({ language = 'en' }: InterviewViewProps) {
   const recorder = useContinuousRecorder();
   const sendingRef = useRef(false);
   const resumeRef = useRef(recorder.resume);
-  resumeRef.current = recorder.resume;
   const responseTextRef = useRef('');
   const synthRef = useRef<SpeechSynthesis | null>(null);
-  if (typeof window !== 'undefined') synthRef.current = window.speechSynthesis;
   const languageRef = useRef(language);
-  languageRef.current = language;
+
+  useEffect(() => {
+    resumeRef.current = recorder.resume;
+  }, [recorder.resume]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      synthRef.current = window.speechSynthesis;
+    }
+  }, []);
+
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   function speakResponse(text: string) {
     if (!synthRef.current) return;
@@ -63,16 +74,18 @@ export function InterviewView({ language = 'en' }: InterviewViewProps) {
     synthRef.current?.cancel();
   }
 
-  const [showInstructions, setShowInstructions] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('tayari_instructions_seen');
+  });
 
   useEffect(() => {
     const store = useInterviewStore.getState();
     store.setSessionId(sessionId);
     store.setLanguage(language);
-    const seen = localStorage.getItem('tayari_instructions_seen');
-    if (!seen) setShowInstructions(true);
-    return () => cancelSpeech();
   }, [sessionId, language]);
+
+  useEffect(() => () => cancelSpeech(), []);
 
   function dismissInstructions() {
     localStorage.setItem('tayari_instructions_seen', '1');
