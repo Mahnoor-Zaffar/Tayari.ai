@@ -1,9 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['onnxruntime-node'],
-    instrumentationHook: true,
-  },
+  serverExternalPackages: ['onnxruntime-node'],
 };
 
 export default nextConfig;

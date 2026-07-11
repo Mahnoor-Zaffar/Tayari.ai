@@ -14,5 +14,8 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['**/*.test.ts'],
+    env: {
+      DEEPGRAM_API_KEY: 'test-key',
+    },
   },
 });

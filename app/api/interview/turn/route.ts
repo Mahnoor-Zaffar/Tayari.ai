@@ -18,8 +18,7 @@
 
 import { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { transcribeAudio } from '@/backend/services/deepgram';
-import type { TranscribeOptions } from '@/backend/services/deepgram';
+import { transcribeAudioBuffer } from '@/backend/services/deepgram';
 import { streamChat, evaluateResponse } from '@/backend/services/openai';
 import { generateEmbedding } from '@/backend/services/embeddings';
 import {
@@ -38,22 +37,6 @@ import type { SSEEvent, InterviewStage } from '@/types/interview';
 import { stageForTurnNumber, MAX_TURNS } from '@/types/interview';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { checkRateLimit } from '@/lib/rate-limit';
-
-// ---------------------------------------------------------------------------
-// Keyword boost list — injected into Deepgram to improve recognition of
-// technical terms and localised Urdu/English filler tokens common in
-// Pakistani tech interviews.
-// ---------------------------------------------------------------------------
-const TECH_KEYWORDS: TranscribeOptions = {
-  keywords: [
-    'Next.js', 'Supabase', 'pgvector', 'Zustand', 'PostgreSQL',
-    'TypeScript', 'JavaScript', 'React', 'Node.js', 'Docker',
-    'Kubernetes', 'AWS', 'Vercel', 'Prisma', 'Tailwind',
-    'yaani', 'matlab', 'acha', 'hai', 'falan',
-    'pandas', 'numpy', 'FastAPI', 'GraphQL', 'Redis',
-    'CI/CD', 'microservices', 'monorepo', 'WebSocket', 'REST',
-  ],
-};
 
 export async function POST(req: NextRequest) {
   // -------------------------------------------------------------------------
@@ -139,7 +122,9 @@ export async function POST(req: NextRequest) {
     transcript = "I'd like to skip this question and move on to the next one.";
   } else {
     try {
-      transcript = await transcribeAudio(audioBlob!, TECH_KEYWORDS);
+      const arrayBuffer = await audioBlob!.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      transcript = await transcribeAudioBuffer(buffer, audioBlob!.type);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Transcription failed';
       console.error('[turn] Transcription error:', message);

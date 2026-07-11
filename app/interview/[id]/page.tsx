@@ -10,9 +10,9 @@ const supabase = createClient(
 export default async function InterviewPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const { id } = await params;
 
   const { data: session } = await supabase
     .from('interview_sessions')
