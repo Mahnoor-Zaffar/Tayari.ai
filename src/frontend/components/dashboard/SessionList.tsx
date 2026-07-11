@@ -139,7 +139,7 @@ export function SessionList({ sessions: initialSessions }: SessionListProps) {
               </div>
               <div className="ml-4 flex items-center gap-3">
                 <span className="whitespace-nowrap text-xs text-zinc-600">
-                  {new Date(session.createdAt).toLocaleDateString(undefined, {
+                  {new Date(session.createdAt).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
                   })}
