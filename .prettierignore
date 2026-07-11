@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.turbo/
+dist/
+build/
+.venv/
+__pycache__/
+*.py
+*.md
+*.yml
+*.yaml
+.env*
+coverage/
+.git/

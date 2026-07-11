@@ -7,9 +7,16 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md}": ["prettier --write", "eslint --fix"],
+    "*.py": ["ruff check --fix", "ruff format"]
   },
   "devDependencies": {
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0",
     "prettier": "^3.3.0",
     "turbo": "^2.0.0",
     "typescript": "^5.5.0"

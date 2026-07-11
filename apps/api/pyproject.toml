@@ -2,7 +2,7 @@
 name = "tayari-api"
 version = "0.1.0"
 description = "Tayari AI Interview Platform — FastAPI Backend"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]>=0.115.0",
     "uvicorn[standard]>=0.30.0",
@@ -37,14 +37,14 @@ dev = [
 ]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py313"
 line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 strict = true
 ignore_missing_imports = true
 

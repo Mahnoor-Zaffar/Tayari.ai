@@ -1,0 +1,23 @@
+name: Docker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "apps/web/**"
+      - "infrastructure/**"
+      - "Dockerfile*"
+
+jobs:
+  build:
+    name: Build Images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -f apps/api/Dockerfile.dev -t tayari-api apps/api
+
+      - name: Build Web image
+        run: docker build -f apps/web/Dockerfile.dev -t tayari-web apps/web

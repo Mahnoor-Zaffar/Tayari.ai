@@ -1,0 +1,116 @@
+Table users {
+  id UUID [pk]
+  email varchar(255) [unique, not null]
+  password_hash varchar(255) [not null]
+  display_name varchar(100) [not null]
+  experience_level varchar(20)
+  avatar_url varchar(500)
+  email_verified boolean [default: false]
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+  created_by UUID
+  updated_by UUID
+}
+
+Table interviews {
+  id UUID [pk]
+  user_id UUID [ref: > users.id, not null]
+  type varchar(20) [not null]
+  company varchar(100) [not null]
+  experience_level varchar(20) [not null]
+  language varchar(20)
+  status varchar(20) [not null, default: 'pending']
+  timer_remaining int [default: 1800]
+  transcript jsonb [default: '[]']
+  ai_messages jsonb [default: '[]']
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+  started_at timestamptz
+  completed_at timestamptz
+  cancelled_at timestamptz
+
+  indexes {
+    (user_id, created_at) [type: btree]
+    (status, created_at) [type: btree]
+  }
+}
+
+Table evaluations {
+  id UUID [pk]
+  interview_id UUID [ref: > interviews.id, unique, not null]
+  overall_score decimal
+  dimension_scores jsonb
+  hire_verdict varchar(20)
+  strengths jsonb
+  improvements jsonb
+  delta_vs_last decimal
+  raw_evaluation text
+  model_used varchar(50)
+  status varchar(20) [default: 'pending']
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+}
+
+Table companies {
+  id UUID [pk]
+  name varchar(100) [not null]
+  slug varchar(100) [unique, not null]
+  question_count int [default: 0]
+  difficulty_breakdown jsonb
+}
+
+Table questions {
+  id UUID [pk]
+  title varchar(200) [not null]
+  description text
+  type varchar(20) [not null]
+  difficulty varchar(10) [not null]
+  created_at timestamptz
+
+  indexes {
+    (type, difficulty) [type: btree]
+  }
+}
+
+Table concepts {
+  id UUID [pk]
+  name varchar(100) [not null]
+  slug varchar(100) [unique, not null]
+  question_count int [default: 0]
+}
+
+Table subscriptions {
+  id UUID [pk]
+  user_id UUID [ref: > users.id, unique, not null]
+  stripe_subscription_id varchar(255) [unique]
+  status varchar(20) [default: 'incomplete']
+  plan varchar(20)
+  current_period_start timestamptz
+  current_period_end timestamptz
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+}
+
+Table billing_events {
+  id UUID [pk]
+  user_id UUID [ref: > users.id, not null]
+  event_type varchar(50) [not null]
+  stripe_event_id varchar(255) [unique, not null]
+  data jsonb
+  status varchar(20) [default: 'pending']
+  created_at timestamptz
+}
+
+Table questions_companies {
+  question_id UUID [ref: > questions.id]
+  company_id UUID [ref: > companies.id]
+}
+
+Table questions_concepts {
+  question_id UUID [ref: > questions.id]
+  concept_id UUID [ref: > concepts.id]
+}

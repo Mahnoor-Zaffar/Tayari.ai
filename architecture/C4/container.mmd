@@ -1,0 +1,31 @@
+C4Container
+  title Container Diagram - Tayari AI
+
+  Person(user, "Software Engineer")
+  
+  Container_Boundary(cdn, "Cloudflare CDN") {
+    Container(cdn_edge, "Edge Cache", "CDN")
+  }
+  
+  Container_Boundary(frontend, "Frontend") {
+    Container(nextjs, "Next.js", "React 19", "Server Components + Client Components")
+    Container(wasm, "Pyodide + QuickJS", "WASM", "Client-side code execution")
+  }
+  
+  Container_Boundary(backend, "Backend") {
+    Container(fastapi, "FastAPI", "Python 3.13", "REST + WebSocket API")
+    Container(celery, "Celery Workers", "Python", "Async evaluation generation")
+    Container(redis, "Redis", "7.x", "Cache + message broker")
+  }
+  
+  ContainerDb(postgres, "PostgreSQL", "17", "Primary database")
+  ContainerDb(r2, "Cloudflare R2", "Object Storage", "Evaluation artifacts")
+  
+  Rel(user, cdn_edge, "Requests", "HTTPS")
+  Rel(cdn_edge, nextjs, "Routes")
+  Rel(nextjs, fastapi, "API calls", "REST/WS")
+  Rel(nextjs, wasm, "Code execution", "WASM API")
+  Rel(fastapi, postgres, "Reads/Writes", "asyncpg")
+  Rel(fastapi, r2, "Stores", "S3 API")
+  Rel(celery, postgres, "Reads/Writes")
+  Rel(celery, redis, "Broker")

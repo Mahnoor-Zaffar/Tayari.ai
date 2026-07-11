@@ -1,0 +1,23 @@
+C4Context
+  title System Context - Tayari AI
+
+  Person(user, "Software Engineer", "Job seeker preparing for tech interviews")
+  
+  System_Boundary(tayari, "Tayari AI Platform") {
+    System(web, "Web App", "Next.js 15 frontend")
+    System(api, "API", "FastAPI backend")
+    System(ai, "AI Service", "GPT-4o-mini / 4o")
+  }
+  
+  System_Ext(stripe, "Stripe", "Payment processing")
+  System_Ext(neon, "Neon PostgreSQL", "Database")
+  System_Ext(r2, "Cloudflare R2", "Object storage")
+  System_Ext(resend, "Resend", "Email service")
+  
+  Rel(user, web, "Uses", "HTTPS")
+  Rel(web, api, "REST + WebSocket", "JSON")
+  Rel(api, ai, "HTTP", "OpenAI API")
+  Rel(api, stripe, "HTTP", "Stripe API")
+  Rel(api, neon, "SQL", "asyncpg")
+  Rel(api, r2, "S3", "boto3")
+  Rel(api, resend, "HTTP", "Resend API")

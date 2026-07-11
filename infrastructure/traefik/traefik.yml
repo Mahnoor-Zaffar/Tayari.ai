@@ -1,0 +1,22 @@
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@tayari.dev
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+
+api:
+  dashboard: true
+  debug: false
