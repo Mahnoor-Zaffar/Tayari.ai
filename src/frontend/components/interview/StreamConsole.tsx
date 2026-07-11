@@ -20,7 +20,7 @@ export function StreamConsole() {
         behavior: isStreaming ? 'auto' : 'smooth',
       });
     }
-  }, [streamedResponse, transcript, turns.length]);
+  }, [streamedResponse, transcript, turns.length, isStreaming]);
 
   const handleScroll = () => {
     const el = scrollRef.current;

@@ -86,7 +86,7 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
   //   WAITING:  silence timer fired, chunk being sent
   // ------------------------------------------------------------------
 
-  function startVAD() {
+  const startVAD = useCallback(() => {
     let noiseFloor = 20;
     let speechActive = false;
     let silenceTimerRunning = false;
@@ -156,7 +156,7 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
     }
 
     rafRef.current = requestAnimationFrame(poll);
-  }
+  }, []);
 
   // ------------------------------------------------------------------
   // Public API
@@ -218,7 +218,7 @@ export function useContinuousRecorder(): UseContinuousRecorderReturn {
         throw err;
       }
     },
-    [],
+    [startVAD],
   );
 
   const stop = useCallback(() => {

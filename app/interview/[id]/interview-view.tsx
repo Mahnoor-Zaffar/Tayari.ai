@@ -144,7 +144,7 @@ export function InterviewView() {
       }
 
     },
-    [sessionId, setPhase, setTranscript, appendChunk, pushTurn, clearCurrentTurn, incrementTurnCount, setError, recorder, router],
+    [sessionId, setPhase, setTranscript, appendChunk, pushTurn, clearCurrentTurn, incrementTurnCount, setCompleted, setError, recorder, router],
   );
 
   const sendEndRequest = useCallback(async () => {
@@ -194,7 +194,7 @@ export function InterviewView() {
         sendingRef.current = false;
       }
     },
-    [sessionId, processSSEStream, recorder],
+    [sessionId, processSSEStream, setError, recorder],
   );
 
   const onChunkReady = useCallback(
@@ -248,7 +248,7 @@ export function InterviewView() {
     } finally {
       sendingRef.current = false;
     }
-  }, [sessionId, processSSEStream, sendEndRequest, setPhase, setError, recorder]);
+  }, [sessionId, processSSEStream, setPhase, setError, recorder]);
 
   const handleEnd = useCallback(async () => {
     if (sendingRef.current) return;
