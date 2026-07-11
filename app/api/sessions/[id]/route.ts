@@ -24,14 +24,14 @@ async function getSessionOwner(id: string) {
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
   }
 
-  const { id } = params;
+  const { id } = await params;
   const session = await getSessionOwner(id);
 
   if (!session) {
@@ -54,14 +54,14 @@ export async function DELETE(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
   }
 
-  const { id } = params;
+  const { id } = await params;
   const session = await getSessionOwner(id);
 
   if (!session) {

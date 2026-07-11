@@ -57,23 +57,36 @@ export async function transcribeAudio(
   // Transcription request
   // -----------------------------------------------------------------------
 
-  const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
-    buffer,
-    {
-      model: 'nova-2-phonecall',
-      language: 'en-IN',
-      mimetype: audioBlob.type || 'audio/webm;codecs=opus',
-      smart_format: true,
-      punctuate: true,
-      filler_words: true,
-      keywords: options?.keywords?.length
-        ? options.keywords.map((k) => `${k}:3`)
-        : undefined,
-    },
-  );
+  let transcriptionResponse: Awaited<ReturnType<typeof deepgram.listen.prerecorded.transcribeFile>>;
+
+  try {
+    transcriptionResponse = await deepgram.listen.prerecorded.transcribeFile(
+      buffer,
+      {
+        model: 'nova-2-phonecall',
+        language: 'en-IN',
+        mimetype: audioBlob.type || 'audio/webm;codecs=opus',
+        smart_format: true,
+        punctuate: true,
+        filler_words: true,
+        keywords: options?.keywords?.length
+          ? options.keywords.map((k) => `${k}:3`)
+          : undefined,
+      },
+    );
+  } catch (raw) {
+    const name = raw instanceof Error ? raw.name : typeof raw;
+    const msg = raw instanceof Error ? raw.message : String(raw);
+    console.error('[deepgram] HTTP error:', { name, message: msg, bufferSize: buffer.length });
+    throw new Error(`Deepgram request failed: [${name}] ${msg}`);
+  }
+
+  const { result, error } = transcriptionResponse;
 
   if (error) {
-    throw new Error(`Deepgram transcription failed: ${error.message}`);
+    const status = 'status' in error ? (error as { status: number }).status : 'unknown';
+    console.error('[deepgram] API error:', { status, message: error.message });
+    throw new Error(`Deepgram API error (${status}): ${error.message}`);
   }
 
   const transcript = extractTranscript(result);
