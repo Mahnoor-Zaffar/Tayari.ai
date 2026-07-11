@@ -15,6 +15,8 @@ export type InterviewStage = 'INTRO' | 'TECHNICAL' | 'BEHAVIORAL' | 'WRAP_UP';
 
 export type Difficulty = 'Junior' | 'Mid' | 'Senior' | 'Staff';
 
+export type InterviewLanguage = 'en' | 'ur';
+
 export type TurnPhase = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'STREAMING_RESPONSE' | 'COMPLETE';
 
 // ---------------------------------------------------------------------------
@@ -43,6 +45,7 @@ export interface InterviewSession {
   currentStage: InterviewStage;
   resumeContext: string | null;
   isCompleted: boolean;
+  language: InterviewLanguage;
   createdAt: string;
 }
 
@@ -162,4 +165,5 @@ export interface CreateSessionInput {
   targetRole: string;
   difficulty: Difficulty;
   resumeContext?: string;
+  language?: InterviewLanguage;
 }

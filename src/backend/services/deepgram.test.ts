@@ -36,12 +36,12 @@ describe('extractTranscript', () => {
   });
 
   it('returns empty string when transcript is missing', () => {
-    const response = {
+    const response: Record<string, unknown> = {
       results: {
         channels: [{ alternatives: [{}] }],
       },
     };
-    expect(extractTranscript(response)).toBe('');
+    expect(extractTranscript(response as never)).toBe('');
   });
 
   it('returns empty string when channels is undefined', () => {
@@ -52,12 +52,12 @@ describe('extractTranscript', () => {
   });
 
   it('handles deeply nested null/undefined gracefully', () => {
-    const response = {
+    const response: Record<string, unknown> = {
       results: {
-        channels: [null as unknown as undefined],
+        channels: [null],
       },
     };
-    expect(extractTranscript(response)).toBe('');
+    expect(extractTranscript(response as never)).toBe('');
   });
 });
 

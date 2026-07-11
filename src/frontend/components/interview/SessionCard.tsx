@@ -1,6 +1,7 @@
 'use client';
 
 import { useInterviewStore } from '@/frontend/store/interview-store';
+import type { InterviewLanguage } from '@/types/interview';
 
 const PHASE_LABELS: Record<string, { color: string; text: string }> = {
   IDLE: { color: 'bg-zinc-500', text: 'Ready' },
@@ -16,8 +17,13 @@ const STAGE_LABELS: Record<string, string> = {
   WRAP_UP: 'Wrap Up',
 };
 
+const LANGUAGE_LABELS: Record<InterviewLanguage, string> = {
+  en: 'English',
+  ur: 'Urdu Hybrid',
+};
+
 export function SessionCard() {
-  const { sessionId, phase, turnCount, currentStage } = useInterviewStore();
+  const { sessionId, phase, turnCount, currentStage, language } = useInterviewStore();
   const status = PHASE_LABELS[phase] ?? PHASE_LABELS.IDLE;
 
   return (
@@ -52,6 +58,13 @@ export function SessionCard() {
           <div className="mt-1 font-semibold text-zinc-100">
             {turnCount + 1}
             <span className="text-xs text-zinc-500"> / 16</span>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+          <div className="text-xs text-zinc-500">Language</div>
+          <div className="mt-1 font-semibold text-zinc-100">
+            {LANGUAGE_LABELS[language]}
           </div>
         </div>
       </div>

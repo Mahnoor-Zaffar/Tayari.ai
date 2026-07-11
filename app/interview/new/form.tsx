@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Difficulty = 'Junior' | 'Mid' | 'Senior' | 'Staff';
+type Language = 'en' | 'ur';
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: 'Junior', label: 'Junior' },
@@ -12,9 +13,15 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: 'Staff', label: 'Staff' },
 ];
 
+const LANGUAGES: { value: Language; label: string; desc: string }[] = [
+  { value: 'en', label: 'English', desc: 'Full English interview' },
+  { value: 'ur', label: 'Urdu (Hybrid)', desc: 'Mix of Urdu & English' },
+];
+
 export function NewInterviewForm() {
   const [targetRole, setTargetRole] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>('Mid');
+  const [language, setLanguage] = useState<Language>('en');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -30,7 +37,7 @@ export function NewInterviewForm() {
       const res = await fetch('/api/sessions/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetRole: targetRole.trim(), difficulty }),
+        body: JSON.stringify({ targetRole: targetRole.trim(), difficulty, language }),
       });
 
       if (!res.ok) {
@@ -85,6 +92,33 @@ export function NewInterviewForm() {
               `}
             >
               {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-zinc-400">
+          Interview Language
+        </label>
+        <div className="mt-1.5 grid grid-cols-2 gap-2">
+          {LANGUAGES.map(({ value, label, desc }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setLanguage(value)}
+              disabled={loading}
+              className={`
+                rounded-lg border px-3 py-2.5 text-left text-sm transition
+                ${language === value
+                  ? 'border-emerald-600 bg-emerald-950/20 text-emerald-400'
+                  : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-500'
+                }
+                ${loading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
+              `}
+            >
+              <div className="font-medium">{label}</div>
+              <div className="mt-0.5 text-xs opacity-70">{desc}</div>
             </button>
           ))}
         </div>

@@ -16,7 +16,7 @@ export default async function InterviewPage({
 
   const { data: session } = await supabase
     .from('interview_sessions')
-    .select('id, is_completed')
+    .select('id, is_completed, language')
     .eq('id', id)
     .single();
 
@@ -28,5 +28,5 @@ export default async function InterviewPage({
     redirect(`/interview/${id}/report`);
   }
 
-  return <InterviewView />;
+  return <InterviewView language={session.language ?? 'en'} />;
 }

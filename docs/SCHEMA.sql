@@ -122,3 +122,9 @@ alter table public.turn_evaluations
 
 alter table public.interview_sessions
     add column if not exists overall_assessment text;
+
+-- ============================================================================
+-- 9. v1.2 migration — Multi-language support
+-- ============================================================================
+alter table public.interview_sessions
+    add column if not exists language text not null default 'en' check (language in ('en', 'ur'));

@@ -6,6 +6,7 @@ import { z } from 'zod';
 const createSessionSchema = z.object({
   targetRole: z.string().min(1, 'targetRole is required'),
   difficulty: z.enum(['Junior', 'Mid', 'Senior', 'Staff']),
+  language: z.enum(['en', 'ur']).optional().default('en'),
 });
 
 export async function POST(req: NextRequest) {
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { targetRole, difficulty } = parsed.data;
+  const { targetRole, difficulty, language } = parsed.data;
 
   const serviceClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
       target_role: targetRole,
       difficulty,
+      language,
     })
     .select('id')
     .single();

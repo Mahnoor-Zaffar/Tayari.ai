@@ -8,8 +8,13 @@ import { useContinuousRecorder } from '@/frontend/hooks/useContinuousRecorder';
 import { SessionCard } from '@/frontend/components/interview/SessionCard';
 import { StreamConsole } from '@/frontend/components/interview/StreamConsole';
 import { MicButton } from '@/frontend/components/interview/MicButton';
+import type { InterviewLanguage } from '@/types/interview';
 
-export function InterviewView() {
+interface InterviewViewProps {
+  language?: InterviewLanguage;
+}
+
+export function InterviewView({ language = 'en' }: InterviewViewProps) {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
@@ -33,6 +38,8 @@ export function InterviewView() {
   const responseTextRef = useRef('');
   const synthRef = useRef<SpeechSynthesis | null>(null);
   if (typeof window !== 'undefined') synthRef.current = window.speechSynthesis;
+  const languageRef = useRef(language);
+  languageRef.current = language;
 
   function speakResponse(text: string) {
     if (!synthRef.current) return;
@@ -41,6 +48,14 @@ export function InterviewView() {
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     utterance.volume = 0.7;
+
+    // Try to find a suitable voice for the language
+    const voices = synthRef.current.getVoices();
+    const lang = languageRef.current === 'ur' ? 'ur-PK' : 'en-US';
+    const voice = voices.find((v) => v.lang.startsWith(lang.slice(0, 2)));
+    if (voice) utterance.voice = voice;
+    utterance.lang = lang;
+
     synthRef.current.speak(utterance);
   }
 
@@ -51,11 +66,13 @@ export function InterviewView() {
   const [showInstructions, setShowInstructions] = useState(false);
 
   useEffect(() => {
-    useInterviewStore.getState().setSessionId(sessionId);
+    const store = useInterviewStore.getState();
+    store.setSessionId(sessionId);
+    store.setLanguage(language);
     const seen = localStorage.getItem('tayari_instructions_seen');
     if (!seen) setShowInstructions(true);
     return () => cancelSpeech();
-  }, [sessionId]);
+  }, [sessionId, language]);
 
   function dismissInstructions() {
     localStorage.setItem('tayari_instructions_seen', '1');

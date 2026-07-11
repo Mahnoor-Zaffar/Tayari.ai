@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import type { TurnPhase, InterviewStage } from '@/types/interview';
+import type { TurnPhase, InterviewStage, InterviewLanguage } from '@/types/interview';
 
 export interface ChatMessage {
   type: 'user' | 'assistant';
@@ -17,6 +17,7 @@ interface InterviewState {
   error: string | null;
   currentStage: InterviewStage | null;
   isCompleted: boolean;
+  language: InterviewLanguage;
   turns: ChatMessage[];
 
   setSessionId: (id: string) => void;
@@ -31,6 +32,7 @@ interface InterviewState {
   clearError: () => void;
   setStage: (stage: InterviewStage) => void;
   setCompleted: () => void;
+  setLanguage: (language: InterviewLanguage) => void;
 }
 
 export const useInterviewStore = create<InterviewState>((set) => ({
@@ -42,6 +44,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   error: null,
   currentStage: null,
   isCompleted: false,
+  language: 'en',
   turns: [],
 
   setSessionId: (id) => set({ sessionId: id }),
@@ -72,4 +75,5 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   clearError: () => set({ error: null }),
   setStage: (stage) => set({ currentStage: stage }),
   setCompleted: () => set({ phase: 'COMPLETE', isCompleted: true }),
+  setLanguage: (language) => set({ language }),
 }));

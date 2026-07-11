@@ -206,6 +206,7 @@ export async function POST(req: NextRequest) {
     targetRole: session.targetRole,
     difficulty: session.difficulty,
     currentStage: stage,
+    language: session.language,
   });
 
   // -------------------------------------------------------------------------
