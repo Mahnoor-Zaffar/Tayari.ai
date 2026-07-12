@@ -123,6 +123,7 @@ class AuthenticationService:
 
     async def logout(self, refresh_token: str) -> None:
         await self._tokens.verify(refresh_token, "refresh")
+        await self._tokens.revoke(refresh_token)
 
     async def verify_email(self, token: str) -> None:
         payload = await self._tokens.verify(token, "email_verify")

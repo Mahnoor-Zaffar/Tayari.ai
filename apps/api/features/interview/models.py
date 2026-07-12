@@ -16,9 +16,7 @@ class Interview(Base):
     __tablename__ = "interviews"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     type: Mapped[str] = mapped_column(String(20), nullable=False)
     company: Mapped[str] = mapped_column(String(100), nullable=False)
     experience_level: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -34,5 +32,5 @@ class Interview(Base):
     completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     cancelled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    user = relationship("User", back_populates="interviews")
+    user = relationship("User", backref="interviews")
     evaluation = relationship("Evaluation", back_populates="interview", uselist=False)

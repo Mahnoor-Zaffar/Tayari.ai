@@ -12,31 +12,32 @@
     "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
-    "@tayari/ui": "workspace:*",
-    "@tayari/types": "workspace:*",
+    "@hookform/resolvers": "^3.9.0",
+    "@t3-oss/env-nextjs": "^0.11.0",
+    "@tanstack/react-query": "^5.50.0",
     "@tayari/config": "workspace:*",
+    "@tayari/types": "workspace:*",
+    "@tayari/ui": "workspace:*",
+    "clsx": "^2.1.0",
+    "lucide-react": "^0.400.0",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@tanstack/react-query": "^5.50.0",
     "react-hook-form": "^7.52.0",
-    "@hookform/resolvers": "^3.9.0",
-    "@t3-oss/env-nextjs": "^0.11.0",
-    "zod": "^3.23.0",
-    "lucide-react": "^0.400.0",
-    "clsx": "^2.1.0",
-    "tailwind-merge": "^2.4.0"
+    "tailwind-merge": "^2.4.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "^15.0.0",
+    "@tailwindcss/postcss": "^4.3.2",
     "@types/node": "^20.14.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.5.0",
-    "tailwindcss": "^4.0.0",
-    "postcss": "^8.4.0",
     "autoprefixer": "^10.4.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
-    "@next/eslint-plugin-next": "^15.0.0"
+    "postcss": "^8.4.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.5.0"
   }
 }

@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +24,26 @@ class Settings(BaseSettings):
     JWT_REFRESH_EXPIRY_DAYS: int = 7
     JWT_EMAIL_VERIFY_EXPIRY_HOURS: int = 24
     JWT_PASSWORD_RESET_EXPIRY_HOURS: int = 1
+
+    @computed_field
+    @property
+    def jwt_access_token_ttl(self) -> timedelta:
+        return timedelta(hours=self.JWT_EXPIRY_HOURS)
+
+    @computed_field
+    @property
+    def jwt_refresh_token_ttl(self) -> timedelta:
+        return timedelta(days=self.JWT_REFRESH_EXPIRY_DAYS)
+
+    @computed_field
+    @property
+    def jwt_email_verify_ttl(self) -> timedelta:
+        return timedelta(hours=self.JWT_EMAIL_VERIFY_EXPIRY_HOURS)
+
+    @computed_field
+    @property
+    def jwt_password_reset_ttl(self) -> timedelta:
+        return timedelta(hours=self.JWT_PASSWORD_RESET_EXPIRY_HOURS)
 
     OPENAI_API_KEY: str = ""
     STRIPE_SECRET_KEY: str = ""

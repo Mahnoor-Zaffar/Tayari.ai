@@ -58,7 +58,7 @@ disable_error_code = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "features"]
 asyncio_mode = "auto"
 
 [tool.hatch.build.targets.wheel]
