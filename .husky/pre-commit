@@ -1,1 +1,12 @@
+# ── Format and lint staged files ────────────────────────────────────────────
 npx lint-staged
+
+# ── Run Python tests if any Python files (including test files) changed ────
+if git diff --cached --name-only --diff-filter=ACM | grep -q "\.py$"; then
+  echo "🧪 Running Python tests…"
+  cd apps/api && uv run pytest tests/ --quiet --tb=short -x 2>/dev/null || {
+    echo "⚠️  Python tests failed. Commit aborted."
+    exit 1
+  }
+  cd "$OLDPWD" || exit
+fi

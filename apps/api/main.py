@@ -13,6 +13,8 @@ from core.config import settings
 from core.database import Base, engine
 from core.errors import AppError, ErrorCode
 from core.logging import get_logger, request_id
+from core.secrets import validate_prod_settings
+from core.security_headers import security_headers_middleware
 
 log = get_logger("app")
 
@@ -25,6 +27,7 @@ async def lifespan(app: FastAPI):
     from core.logging import setup_logging
 
     setup_logging()
+    validate_prod_settings()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -45,9 +48,13 @@ app.add_middleware(
 )
 
 
-# ── Request‑ID middleware ───────────────────────────────────────────────────
+# ── Middleware order: outermost runs first (i.e. last to wrap) ──────────────
+
+#  1. Security headers (outermost — sets headers on every response)
+app.middleware("http")(security_headers_middleware)
 
 
+#  2. Request‑ID
 @app.middleware("http")
 async def add_request_id_middleware(request: Request, call_next):
     rid = str(uuid4())
@@ -56,9 +63,7 @@ async def add_request_id_middleware(request: Request, call_next):
     return response
 
 
-# ── Auth audit middleware ──────────────────────────────────────────────────
-
-
+#  3. Auth audit (innermost — runs after request_id is set)
 app.middleware("http")(auth_audit_middleware)
 
 
@@ -188,6 +193,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 from features.auth.routes import router as auth_router  # noqa: E402
 from features.billing.routes import router as billing_router  # noqa: E402
+from features.health.routes import router as health_router  # noqa: E402
 from features.interview.routes import router as interview_router  # noqa: E402
 from features.reports.routes import router as reports_router  # noqa: E402
 from features.users.routes import router as users_router  # noqa: E402
@@ -195,6 +201,7 @@ from features.voice.routes import router as voice_router  # noqa: E402
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(billing_router, prefix="/api/v1")
+app.include_router(health_router, prefix="")
 app.include_router(interview_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")

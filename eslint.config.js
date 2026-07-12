@@ -1,8 +1,25 @@
-import base from "@tayari/config/eslint/base.js";
+import js from "@eslint/js";
 
 export default [
-  ...base,
+  js.configs.recommended,
   {
-    ignores: [".env*"],
+    rules: {
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "no-console": ["warn", { allow: ["warn", "error"] }],
+      "prefer-const": "error",
+      "no-var": "error",
+    },
+  },
+  {
+    ignores: [
+      "node_modules/",
+      ".next/",
+      ".turbo/",
+      "dist/",
+      "build/",
+      ".venv/",
+      "**/*.py",
+      ".env*",
+    ],
   },
 ];
