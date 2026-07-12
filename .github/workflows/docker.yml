@@ -14,7 +14,13 @@ jobs:
     name: Build Images
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
+
+      - uses: pnpm/action-setup@v4.1.0
+
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
 
       - name: Build API image
         run: docker build -f apps/api/Dockerfile.dev -t tayari-api apps/api
