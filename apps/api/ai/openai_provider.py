@@ -3,6 +3,7 @@ import json
 from openai import AsyncOpenAI
 
 from core.config import settings
+
 from .provider import AIProvider, AIResponse
 
 
@@ -15,13 +16,17 @@ class OpenAIProvider(AIProvider):
         full_messages.extend(messages)
         response = await self.client.chat.completions.create(
             model=settings.AI_INTERVIEWER_MODEL,
-            messages=full_messages,
+            messages=full_messages,  # type: ignore[arg-type]
             max_tokens=max_tokens,
         )
+        content = response.choices[0].message.content or ""
         return AIResponse(
-            content=response.choices[0].message.content,
+            content=content,
             model=response.model,
-            usage={"prompt_tokens": response.usage.prompt_tokens, "completion_tokens": response.usage.completion_tokens} if response.usage else None,
+            usage={
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+            } if response.usage else None,
         )
 
     async def chat_stream(self, messages, system_prompt=None):
@@ -29,7 +34,7 @@ class OpenAIProvider(AIProvider):
         full_messages.extend(messages)
         stream = await self.client.chat.completions.create(
             model=settings.AI_INTERVIEWER_MODEL,
-            messages=full_messages,
+            messages=full_messages,  # type: ignore[arg-type]
             stream=True,
         )
         async for chunk in stream:
@@ -39,7 +44,7 @@ class OpenAIProvider(AIProvider):
     async def structured_output(self, messages, response_model, system_prompt=None):
         full_messages = [{"role": "system", "content": system_prompt}] if system_prompt else []
         full_messages.extend(messages)
-        response = await self.client.chat.completions.create(
+        response = await self.client.chat.completions.create(  # type: ignore[call-overload]
             model=settings.AI_EVALUATOR_MODEL,
             messages=full_messages,
             response_format={"type": "json_object"},

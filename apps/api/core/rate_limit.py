@@ -3,7 +3,7 @@ from collections import defaultdict
 
 
 class InMemoryRateLimiter:
-    def __init__(self):
+    def __init__(self) -> None:
         self._buckets: dict[str, list[float]] = defaultdict(list)
 
     def check(self, key: str, max_requests: int = 10, window_seconds: int = 60) -> bool:

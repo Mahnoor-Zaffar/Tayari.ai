@@ -1,11 +1,15 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
 
 
 class User(Base):
@@ -18,8 +22,8 @@ class User(Base):
     experience_level: Mapped[str] = mapped_column(String(20), nullable=True)
     avatar_url: Mapped[str] = mapped_column(String(500), nullable=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
     deleted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
     updated_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
-from core.database import engine, Base
+from core.database import Base, engine
 from core.logging import setup_logging
 
 
@@ -31,17 +31,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from features.auth.routes import router as auth_router
-from features.interview.routes import router as interview_router
-from features.reports.routes import router as reports_router
-from features.billing.routes import router as billing_router
-from features.users.routes import router as users_router
-from features.voice.routes import router as voice_router
+from features.auth.routes import router as auth_router  # noqa: E402
+from features.billing.routes import router as billing_router  # noqa: E402
+from features.interview.routes import router as interview_router  # noqa: E402
+from features.reports.routes import router as reports_router  # noqa: E402
+from features.users.routes import router as users_router  # noqa: E402
+from features.voice.routes import router as voice_router  # noqa: E402
 
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(billing_router, prefix="/api/v1")
 app.include_router(interview_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
-app.include_router(billing_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(voice_router, prefix="/api/v1")
 

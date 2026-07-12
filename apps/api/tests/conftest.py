@@ -3,7 +3,8 @@ import pytest
 
 @pytest.fixture
 def client():
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
+
     from main import app
 
     transport = ASGITransport(app=app)

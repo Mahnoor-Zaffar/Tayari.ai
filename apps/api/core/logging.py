@@ -4,7 +4,7 @@ from contextvars import ContextVar
 request_id: ContextVar[str] = ContextVar("request_id", default="")
 
 
-def setup_logging():
+def setup_logging() -> None:
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter(
         "%(asctime)s | %(levelname)s | request_id=%(request_id)s | %(message)s"
@@ -14,7 +14,6 @@ def setup_logging():
     root.setLevel(logging.INFO)
 
 
-def get_logger(name: str) -> logging.Logger:
-    logger = logging.getLogger(name)
-    logger = logging.LoggerAdapter(logger, {"request_id": request_id.get()})
-    return logger
+def get_logger(name: str) -> logging.LoggerAdapter:
+    base = logging.getLogger(name)
+    return logging.LoggerAdapter(base, {"request_id": request_id.get()})

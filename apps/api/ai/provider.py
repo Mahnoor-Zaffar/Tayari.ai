@@ -12,13 +12,27 @@ class AIResponse:
 
 class AIProvider(ABC):
     @abstractmethod
-    async def chat(self, messages: list[dict], system_prompt: str | None = None, max_tokens: int = 1000) -> AIResponse:
+    async def chat(
+        self,
+        messages: list[dict],
+        system_prompt: str | None = None,
+        max_tokens: int = 1000,
+    ) -> AIResponse:
         pass
 
     @abstractmethod
-    async def chat_stream(self, messages: list[dict], system_prompt: str | None = None):
+    async def chat_stream(
+        self,
+        messages: list[dict],
+        system_prompt: str | None = None,
+    ):
         pass
 
     @abstractmethod
-    async def structured_output(self, messages: list[dict], response_model: type, system_prompt: str | None = None) -> dict:
+    async def structured_output(
+        self,
+        messages: list[dict],
+        response_model: type,
+        system_prompt: str | None = None,
+    ) -> dict:
         pass
