@@ -23,7 +23,7 @@ jobs:
           node-version: 22
 
       - name: Build API image
-        run: docker build -f apps/api/Dockerfile.dev -t tayari-api apps/api
+        run: docker build -f apps/api/Dockerfile.dev -t tayari-api .
 
       - name: Build Web image
-        run: docker build -f apps/web/Dockerfile.dev -t tayari-web apps/web
+        run: docker build -f apps/web/Dockerfile.dev -t tayari-web .
