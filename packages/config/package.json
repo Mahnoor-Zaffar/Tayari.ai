@@ -2,10 +2,10 @@
   "name": "@tayari/config",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "exports": {
-    "./*": "./src/*.ts",
-    "./tsconfig/base.json": "./tsconfig/base.json",
-    "./eslint/base.json": "./eslint/base.json"
+    "./eslint/base.js": "./eslint/base.js",
+    "./tsconfig/base.json": "./tsconfig/base.json"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
