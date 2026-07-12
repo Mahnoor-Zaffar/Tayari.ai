@@ -7,6 +7,7 @@ class ErrorCode:
     UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
     NOT_FOUND = "NOT_FOUND"
+    CONFLICT = "CONFLICT"
     VALIDATION_ERROR = "VALIDATION_ERROR"
     RATE_LIMITED = "RATE_LIMITED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
@@ -17,14 +18,17 @@ class ErrorCode:
 
 class AppError(HTTPException):
     def __init__(self, code: str, message: str, status_code: int = 400, detail: dict | None = None):
-        super().__init__(status_code=status_code, detail={
-            "success": False,
-            "error": {
-                "code": code,
-                "message": message,
-                **(detail or {}),
-            }
-        })
+        super().__init__(
+            status_code=status_code,
+            detail={
+                "success": False,
+                "error": {
+                    "code": code,
+                    "message": message,
+                    **(detail or {}),
+                },
+            },
+        )
 
 
 def not_found(resource: str = "Resource") -> AppError:
@@ -33,3 +37,7 @@ def not_found(resource: str = "Resource") -> AppError:
 
 def unauthorized(msg: str = "Invalid credentials") -> AppError:
     return AppError(ErrorCode.UNAUTHORIZED, msg, 401)
+
+
+def success_response(data: dict) -> dict:
+    return {"success": True, "data": data}

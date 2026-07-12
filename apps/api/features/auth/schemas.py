@@ -1,14 +1,16 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+
+# ── Request ─────────────────────────────────────────────────────────────────
 
 
-class SignupRequest(BaseModel):
+class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str
-    display_name: str
-    experience_level: str | None = None
+    username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_]+$")
+    display_name: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=8)
 
 
 class LoginRequest(BaseModel):
@@ -16,17 +18,29 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class AuthResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: "UserResponse"
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+# ── Response ────────────────────────────────────────────────────────────────
 
 
 class UserResponse(BaseModel):
     id: UUID
     email: str
+    username: str
     display_name: str
-    experience_level: str | None = None
-    avatar_url: str | None = None
-    email_verified: bool = False
+    email_verified: bool
     created_at: datetime
+
+
+class AuthData(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
+class SuccessResponse(BaseModel):
+    success: bool = True
+    data: AuthData

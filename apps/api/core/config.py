@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "change-me-in-production"
     JWT_ALGORITHM: str = "RS256"  # Use RS256 in prod, HS256 for dev simplicity
     JWT_EXPIRY_HOURS: int = 24
+    JWT_REFRESH_EXPIRY_DAYS: int = 7
+    JWT_EMAIL_VERIFY_EXPIRY_HOURS: int = 24
+    JWT_PASSWORD_RESET_EXPIRY_HOURS: int = 1
 
     OPENAI_API_KEY: str = ""
     STRIPE_SECRET_KEY: str = ""

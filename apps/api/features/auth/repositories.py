@@ -1,84 +1,76 @@
-from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from features.auth.models import User
+from features.auth.domain.user import User, UserCreate, UserUpdate
+from features.auth.models import User as UserORM
+
+
+class NotFoundError(Exception):
+    pass
 
 
 class UserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create(self, user: User) -> User:
+    async def create_user(self, data: UserCreate) -> User:
+        user = UserORM(**data.model_dump())
         self._session.add(user)
         await self._session.flush()
         await self._session.refresh(user)
-        return user
+        return User.model_validate(user)
 
-    async def save(self, user: User) -> User:
+    async def find_by_id(self, user_id: UUID, *, include_deleted: bool = False) -> User | None:
+        stmt = self._active_query(include_deleted).where(UserORM.id == user_id)
+        result = await self._session.execute(stmt)
+        user_orm = result.unique().scalar_one_or_none()
+        return User.model_validate(user_orm) if user_orm else None
+
+    async def find_by_email(self, email: str, *, include_deleted: bool = False) -> User | None:
+        stmt = self._active_query(include_deleted).where(UserORM.email == email)
+        result = await self._session.execute(stmt)
+        user_orm = result.unique().scalar_one_or_none()
+        return User.model_validate(user_orm) if user_orm else None
+
+    async def update_user(self, user_id: UUID, data: UserUpdate) -> User:
+        result = await self._session.execute(select(UserORM).where(UserORM.id == user_id, UserORM.deleted_at.is_(None)))
+        user_orm = result.unique().scalar_one_or_none()
+        if user_orm is None:
+            raise NotFoundError(f"User {user_id} not found")
+
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(user_orm, field, value)
         await self._session.flush()
-        await self._session.refresh(user)
-        return user
+        await self._session.refresh(user_orm)
+        return User.model_validate(user_orm)
 
-    async def get_by_id(self, user_id: UUID, *, include_deleted: bool = False) -> User | None:
-        stmt = self._active_query(include_deleted).where(User.id == user_id)
-        result = await self._session.execute(stmt)
-        return result.unique().scalar_one_or_none()
+    async def delete_user(self, user_id: UUID) -> None:
+        result = await self._session.execute(select(UserORM).where(UserORM.id == user_id, UserORM.deleted_at.is_(None)))
+        user_orm = result.unique().scalar_one_or_none()
+        if user_orm is None:
+            return
+        user_orm.deleted_at = datetime.now(UTC)
+        user_orm.is_active = False
+        await self._session.flush()
 
-    async def get_by_email(self, email: str, *, include_deleted: bool = False) -> User | None:
-        stmt = self._active_query(include_deleted).where(User.email == email)
-        result = await self._session.execute(stmt)
-        return result.unique().scalar_one_or_none()
-
-    async def get_by_username(self, username: str, *, include_deleted: bool = False) -> User | None:
-        stmt = self._active_query(include_deleted).where(User.username == username)
-        result = await self._session.execute(stmt)
-        return result.unique().scalar_one_or_none()
-
-    async def list_active(self, *, offset: int = 0, limit: int = 100) -> Sequence[User]:
-        stmt = (
-            self._active_query(include_deleted=False)
-            .where(User.is_active.is_(True))
-            .order_by(User.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
-        result = await self._session.execute(stmt)
-        return result.unique().scalars().all()
-
-    async def soft_delete(self, user: User) -> User:
-        user.deleted_at = datetime.now(UTC)
-        user.is_active = False
-        return await self.save(user)
-
-    async def exists_by_email(self, email: str, *, include_deleted: bool = False) -> bool:
-        stmt = select(func.count()).select_from(User).where(User.email == email)
+    async def exists(
+        self, *, email: str | None = None, username: str | None = None, include_deleted: bool = False
+    ) -> bool:
+        stmt = select(func.count()).select_from(UserORM)
+        if email is not None:
+            stmt = stmt.where(UserORM.email == email)
+        if username is not None:
+            stmt = stmt.where(UserORM.username == username)
         if not include_deleted:
-            stmt = stmt.where(User.deleted_at.is_(None))
+            stmt = stmt.where(UserORM.deleted_at.is_(None))
         result = await self._session.execute(stmt)
         return result.scalar_one() > 0
-
-    async def exists_by_username(self, username: str, *, include_deleted: bool = False) -> bool:
-        stmt = select(func.count()).select_from(User).where(User.username == username)
-        if not include_deleted:
-            stmt = stmt.where(User.deleted_at.is_(None))
-        result = await self._session.execute(stmt)
-        return result.scalar_one() > 0
-
-    async def count_active(self) -> int:
-        stmt = (
-            select(func.count())
-            .select_from(User)
-            .where(User.deleted_at.is_(None), User.is_active.is_(True))
-        )
-        result = await self._session.execute(stmt)
-        return result.scalar_one()
 
     def _active_query(self, include_deleted: bool) -> Select:
-        stmt = select(User)
+        stmt = select(UserORM)
         if not include_deleted:
-            stmt = stmt.where(User.deleted_at.is_(None))
+            stmt = stmt.where(UserORM.deleted_at.is_(None))
         return stmt
