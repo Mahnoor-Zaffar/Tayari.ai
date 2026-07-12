@@ -71,5 +71,6 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "aiosqlite>=0.22.1",
+    "coverage>=7.15.0",
     "pytest-asyncio>=1.4.0",
 ]

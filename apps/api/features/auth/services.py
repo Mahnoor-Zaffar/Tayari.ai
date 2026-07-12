@@ -144,3 +144,19 @@ class AuthenticationService:
 
         reset_token = self._tokens.create_password_reset_token(user.id)
         _ = reset_token  # TODO: send via email using RESEND_API_KEY
+
+    async def reset_password(self, token: str, new_password: str) -> None:
+        """Verify a password‑reset token and update the user's password hash."""
+        payload = await self._tokens.verify(token, "password_reset")
+
+        user_id = UUID(payload.sub)
+        user = await self._repository.find_by_id(user_id, include_deleted=True)
+
+        if user is None:
+            raise UserNotFoundError("User not found")
+
+        if not user.is_active or user.deleted_at is not None:
+            raise UserNotActiveError("Account is disabled or deleted")
+
+        new_hash = self._password.hash_password(new_password)
+        await self._repository.update_user(user_id, UserUpdate(password_hash=new_hash))

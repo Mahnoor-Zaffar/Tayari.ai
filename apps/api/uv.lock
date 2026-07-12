@@ -1993,6 +1993,7 @@ dev = [
 [package.dev-dependencies]
 dev = [
     { name = "aiosqlite" },
+    { name = "coverage" },
     { name = "pytest-asyncio" },
 ]
 
@@ -2032,6 +2033,7 @@ provides-extras = ["dev"]
 [package.metadata.requires-dev]
 dev = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
+    { name = "coverage", specifier = ">=7.15.0" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },
 ]
 

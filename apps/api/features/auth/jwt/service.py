@@ -126,7 +126,7 @@ class TokenService:
             token,
             self._verifying_key,
             algorithms=[self._config.ALGORITHM],
-            options={"verify_exp": True},
+            options={"verify_exp": True, "verify_aud": False, "verify_iss": False},
         )
         jti = data.get("jti", "")
         exp_ts = data.get("exp")
@@ -141,10 +141,7 @@ class TokenService:
         ``token_family`` after a revocation event.
         """
         try:
-            return jwt.decode(
-                token,
-                options={"verify_signature": False, "verify_exp": False},
-            )
+            return jwt.get_unverified_claims(token)
         except JWTError:
             return {}
 

@@ -1,8 +1,16 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 
-from core.errors import AppError, ErrorCode, success_response
+from core.audit import AuditEvent, AuthEvent
+from core.errors import (
+    AuthenticationError,
+    AuthorizationError,
+    ConflictError,
+    NotFoundError,
+    TokenError,
+    success_response,
+)
 from core.logging import get_logger
 from features.auth.dependencies import get_auth_service, get_token_service
 from features.auth.exceptions import (
@@ -14,7 +22,14 @@ from features.auth.exceptions import (
     UserNotFoundError,
 )
 from features.auth.jwt.service import TokenService
-from features.auth.schemas import LoginRequest, RefreshRequest, RegisterRequest, UserResponse
+from features.auth.schemas import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RefreshRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    UserResponse,
+)
 from features.auth.services import AuthenticationService, AuthResult, RegistrationData
 
 router = APIRouter(tags=["auth"])
@@ -47,6 +62,7 @@ def _format_auth_result(result: AuthResult) -> dict:
 )
 async def signup(
     body: RegisterRequest,
+    request: Request,
     auth_service: AuthenticationService = Depends(get_auth_service),
 ) -> dict:
     try:
@@ -58,12 +74,20 @@ async def signup(
                 password=body.password,
             )
         )
-    except EmailAlreadyExistsError as exc:
-        raise AppError(ErrorCode.CONFLICT, str(exc), status.HTTP_409_CONFLICT)
-    except UsernameAlreadyExistsError as exc:
-        raise AppError(ErrorCode.CONFLICT, str(exc), status.HTTP_409_CONFLICT)
+    except EmailAlreadyExistsError:
+        log.info("registration blocked — duplicate email", extra={"email_hash": body.email[:3] + "…"})
+        raise ConflictError("Email is already registered")
+    except UsernameAlreadyExistsError:
+        log.info("registration blocked — duplicate username")
+        raise ConflictError("Username is already taken")
 
-    log.info("user registered", extra={"user_id": str(result.user.id), "email": result.user.email})
+    request.state.audit.log(
+        AuditEvent(
+            AuthEvent.REGISTER,
+            user_id=str(result.user.id),
+            email=result.user.email,
+        )
+    )
     return _format_auth_result(result)
 
 
@@ -74,28 +98,63 @@ async def signup(
 )
 async def login(
     body: LoginRequest,
+    request: Request,
     auth_service: AuthenticationService = Depends(get_auth_service),
 ) -> dict:
     try:
         result = await auth_service.login(body.email, body.password)
     except InvalidCredentialsError:
-        log.warning("failed login attempt", extra={"email": body.email})
-        raise AppError(
-            ErrorCode.UNAUTHORIZED,
-            "Invalid email or password",
-            status.HTTP_401_UNAUTHORIZED,
+        request.state.audit.log(
+            AuditEvent(
+                AuthEvent.LOGIN_FAILED,
+                email=body.email,
+                outcome="failure",
+                failure_reason="invalid_credentials",
+            )
         )
+        raise AuthenticationError("Invalid email or password")
     except UserNotActiveError as exc:
-        log.warning("login blocked — inactive account", extra={"email": body.email})
-        raise AppError(ErrorCode.FORBIDDEN, str(exc), status.HTTP_403_FORBIDDEN)
+        request.state.audit.log(
+            AuditEvent(
+                AuthEvent.LOGIN_FAILED,
+                email=body.email,
+                outcome="failure",
+                failure_reason="account_inactive",
+            )
+        )
+        raise AuthorizationError(str(exc))
 
-    log.info("user logged in", extra={"user_id": str(result.user.id), "email": result.user.email})
+    request.state.audit.log(
+        AuditEvent(
+            AuthEvent.LOGIN,
+            user_id=str(result.user.id),
+            email=result.user.email,
+        )
+    )
     return _format_auth_result(result)
 
 
-@router.post("/auth/logout")
-async def logout():
-    return {"message": "Not implemented"}
+@router.post(
+    "/auth/logout",
+    status_code=status.HTTP_200_OK,
+    summary="Revoke the current refresh token",
+)
+async def logout(
+    body: RefreshRequest,
+    request: Request,
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> dict:
+    try:
+        await auth_service.logout(body.refresh_token)
+    except InvalidTokenError as exc:
+        raise TokenError(str(exc))
+
+    request.state.audit.log(
+        AuditEvent(
+            AuthEvent.LOGOUT,
+        )
+    )
+    return success_response({"message": "Logged out successfully"})
 
 
 @router.post(
@@ -105,45 +164,103 @@ async def logout():
 )
 async def refresh(
     body: RefreshRequest,
+    request: Request,
     auth_service: AuthenticationService = Depends(get_auth_service),
     token_service: TokenService = Depends(get_token_service),
 ) -> dict:
     try:
         result = await auth_service.refresh(body.refresh_token)
     except InvalidTokenError:
-        # Check whether the token was rejected because it was revoked
-        # (rotation reuse) vs. expired / malformed.
         claims = token_service.peek(body.refresh_token)
         family = claims.get("token_family", "")
+        email_from_claims = claims.get("sub", "")
         if family:
             expires_at = datetime.fromtimestamp(claims.get("exp", 0), tz=UTC)
             await token_service.revoke_family(family, expires_at)
-            log.warning(
-                "refresh token reused — possible replay attack, family revoked",
-                extra={"token_family": family, "email": claims.get("sub", "")},
+            request.state.audit.log(
+                AuditEvent(
+                    AuthEvent.TOKEN_REFRESH_REJECTED,
+                    email=email_from_claims,
+                    outcome="failure",
+                    failure_reason="replay_detected",
+                    metadata={"token_family": family},
+                )
             )
-        raise AppError(
-            ErrorCode.INVALID_TOKEN,
-            "Invalid or expired refresh token",
-            status.HTTP_401_UNAUTHORIZED,
-        )
+        else:
+            request.state.audit.log(
+                AuditEvent(
+                    AuthEvent.TOKEN_REFRESH_REJECTED,
+                    email=email_from_claims,
+                    outcome="failure",
+                    failure_reason="invalid_token",
+                )
+            )
+        raise TokenError("Invalid or expired refresh token")
     except UserNotFoundError as exc:
-        raise AppError(ErrorCode.NOT_FOUND, str(exc), status.HTTP_404_NOT_FOUND)
+        raise NotFoundError(str(exc))
     except UserNotActiveError as exc:
-        raise AppError(ErrorCode.FORBIDDEN, str(exc), status.HTTP_403_FORBIDDEN)
+        raise AuthorizationError(str(exc))
 
-    log.info(
-        "token refresh succeeded",
-        extra={"user_id": str(result.user.id), "email": result.user.email},
+    request.state.audit.log(
+        AuditEvent(
+            AuthEvent.TOKEN_REFRESHED,
+            user_id=str(result.user.id),
+            email=result.user.email,
+        )
     )
     return _format_auth_result(result)
 
 
-@router.post("/auth/forgot-password")
-async def forgot_password():
-    return {"message": "Not implemented"}
+@router.post(
+    "/auth/forgot-password",
+    status_code=status.HTTP_200_OK,
+    summary="Send a password reset link",
+)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    request: Request,
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> dict:
+    await auth_service.forgot_password(body.email)
+
+    request.state.audit.log(
+        AuditEvent(
+            AuthEvent.PASSWORD_RESET_REQUESTED,
+            email=body.email,
+        )
+    )
+    return success_response({"message": "If an account with that email exists, a reset link has been sent"})
 
 
-@router.post("/auth/reset-password")
-async def reset_password():
-    return {"message": "Not implemented"}
+@router.post(
+    "/auth/reset-password",
+    status_code=status.HTTP_200_OK,
+    summary="Complete a password reset",
+)
+async def reset_password(
+    body: ResetPasswordRequest,
+    request: Request,
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> dict:
+    try:
+        await auth_service.reset_password(body.token, body.new_password)
+    except InvalidTokenError as exc:
+        request.state.audit.log(
+            AuditEvent(
+                AuthEvent.PASSWORD_RESET_COMPLETED,
+                outcome="failure",
+                failure_reason="invalid_or_expired_token",
+            )
+        )
+        raise TokenError(str(exc))
+    except UserNotFoundError as exc:
+        raise NotFoundError(str(exc))
+    except UserNotActiveError as exc:
+        raise AuthorizationError(str(exc))
+
+    request.state.audit.log(
+        AuditEvent(
+            AuthEvent.PASSWORD_RESET_COMPLETED,
+        )
+    )
+    return success_response({"message": "Password has been reset successfully"})

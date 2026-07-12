@@ -1,11 +1,11 @@
 from uuid import UUID
 
-from fastapi import Depends, Request, status
+from fastapi import Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from core.errors import AppError, ErrorCode
+from core.errors import AuthenticationError, AuthorizationError, TokenError
 from features.auth.dependencies import get_token_service
 from features.auth.exceptions import InvalidTokenError
 from features.auth.jwt.service import TokenService
@@ -49,38 +49,22 @@ async def get_current_user(
     """
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
-        raise AppError(
-            ErrorCode.UNAUTHORIZED,
-            "Missing or invalid Authorization header",
-            status.HTTP_401_UNAUTHORIZED,
-        )
+        raise AuthenticationError("Missing or invalid Authorization header")
 
     token = auth.removeprefix("Bearer ")
     try:
         payload = await token_service.verify(token, "access")
     except InvalidTokenError:
-        raise AppError(
-            ErrorCode.INVALID_TOKEN,
-            "Invalid or expired access token",
-            status.HTTP_401_UNAUTHORIZED,
-        )
+        raise TokenError("Invalid or expired access token")
 
     repo = UserRepository(db)
     user = await repo.find_by_id(UUID(payload.sub))
 
     if user is None:
-        raise AppError(
-            ErrorCode.UNAUTHORIZED,
-            "User not found",
-            status.HTTP_401_UNAUTHORIZED,
-        )
+        raise AuthenticationError("User not found")
 
     if not user.is_active:
-        raise AppError(
-            ErrorCode.FORBIDDEN,
-            "Account is disabled",
-            status.HTTP_403_FORBIDDEN,
-        )
+        raise AuthorizationError("Account is disabled")
 
     return CurrentUser(
         id=user.id,
@@ -158,11 +142,7 @@ class RoleChecker:
 
     async def __call__(self, current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
         if not set(self._allowed) & set(current_user.roles):
-            raise AppError(
-                ErrorCode.FORBIDDEN,
-                f"Requires one of: {', '.join(self._allowed)}",
-                status.HTTP_403_FORBIDDEN,
-            )
+            raise AuthorizationError(f"Requires one of: {', '.join(self._allowed)}")
         return current_user
 
 
@@ -185,9 +165,5 @@ class PermissionChecker:
 
     async def __call__(self, current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
         if not set(self._required) & set(current_user.permissions):
-            raise AppError(
-                ErrorCode.FORBIDDEN,
-                f"Requires one of: {', '.join(self._required)}",
-                status.HTTP_403_FORBIDDEN,
-            )
+            raise AuthorizationError(f"Requires one of: {', '.join(self._required)}")
         return current_user
