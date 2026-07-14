@@ -105,7 +105,14 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 @app.exception_handler(RequestValidationError)
 async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     rid = request_id.get()
-    log.warning("request validation failed", extra={"request_id": rid, "errors": exc.errors()})
+    raw_errors = exc.errors()
+    log.warning("request validation failed", extra={"request_id": rid, "errors": raw_errors})
+    details = []
+    for err in raw_errors:
+        clean = {k: v for k, v in err.items() if k != "ctx"}
+        if "ctx" in err and isinstance(err["ctx"], dict):
+            clean["ctx"] = {k: str(v) for k, v in err["ctx"].items()}
+        details.append(clean)
     return JSONResponse(
         status_code=422,
         content={
@@ -113,7 +120,7 @@ async def validation_handler(request: Request, exc: RequestValidationError) -> J
             "error": {
                 "code": ErrorCode.VALIDATION_ERROR,
                 "message": "Request validation failed",
-                "details": exc.errors(),
+                "details": details,
             },
             "request_id": rid,
         },

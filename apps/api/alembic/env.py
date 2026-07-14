@@ -8,7 +8,13 @@ from core.config import settings
 from core.database import Base
 from features.auth.models import User  # noqa: F401
 from features.billing.models import BillingEvent, Subscription  # noqa: F401
-from features.interview.models import Interview  # noqa: F401
+from features.interview.models import (  # noqa: F401
+    Interview,
+    InterviewConfiguration,
+    InterviewTemplate,
+    JobDescription,
+    Resume,
+)
 from features.reports.models import Evaluation  # noqa: F401
 
 config = context.config
