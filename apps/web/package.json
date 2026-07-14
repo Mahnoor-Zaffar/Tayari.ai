@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
@@ -19,6 +21,7 @@
     "@tayari/types": "workspace:*",
     "@tayari/ui": "workspace:*",
     "clsx": "^2.1.0",
+    "framer-motion": "^12.42.2",
     "lucide-react": "^0.400.0",
     "next": "^15.0.0",
     "react": "^19.0.0",

@@ -193,6 +193,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 from features.auth.routes import router as auth_router  # noqa: E402
 from features.billing.routes import router as billing_router  # noqa: E402
+from features.dashboard.router import router as dashboard_router  # noqa: E402
 from features.health.routes import router as health_router  # noqa: E402
 from features.interview.routes import router as interview_router  # noqa: E402
 from features.reports.routes import router as reports_router  # noqa: E402
@@ -201,6 +202,7 @@ from features.voice.routes import router as voice_router  # noqa: E402
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(billing_router, prefix="/api/v1")
+app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(health_router, prefix="")
 app.include_router(interview_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
