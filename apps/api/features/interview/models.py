@@ -169,3 +169,33 @@ class InterviewTemplate(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
     interviews = relationship("Interview", back_populates="template", foreign_keys=[Interview.template_id])
+
+
+class UserTemplate(Base):
+    """User-saved interview configuration templates.
+
+    Unlike admin InterviewTemplates (which provide defaults), UserTemplate
+    stores an exact configuration snapshot that the user can one-click load.
+    """
+
+    __tablename__ = "user_templates"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    interview_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    company: Mapped[str] = mapped_column(String(100), nullable=False)
+    role: Mapped[str] = mapped_column(String(100), nullable=False)
+    experience_level: Mapped[str] = mapped_column(String(20), nullable=False)
+    language: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    framework: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    difficulty: Mapped[str] = mapped_column(String(10), nullable=False, default="medium")
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    custom_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resume_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("resumes.id"), nullable=True)
+    job_description_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("job_descriptions.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)

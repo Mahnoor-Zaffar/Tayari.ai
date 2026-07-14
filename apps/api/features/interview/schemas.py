@@ -176,3 +176,131 @@ class InterviewOptionsResponse(BaseModel):
     experience_levels: list[dict[str, str]]
     difficulties: list[dict[str, str]]
     durations: list[dict[str, str]]
+
+
+# ── Template Schemas ─────────────────────────────────────────────────────────
+
+
+class CreateTemplateRequest(BaseModel):
+    """POST /interviews/templates body."""
+
+    name: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+    interview_type: InterviewType
+    company: str = Field(min_length=1, max_length=100)
+    role: str = Field(min_length=1, max_length=100)
+    experience_level: ExperienceLevel
+    language: ProgrammingLanguage | None = None
+    framework: Framework | None = None
+    difficulty: Difficulty = "medium"
+    duration_minutes: DurationMinutes = 30
+    custom_instructions: str | None = Field(None, max_length=2000)
+    resume_id: UUID | None = None
+    job_description_id: UUID | None = None
+
+
+class TemplateResponse(BaseModel):
+    """User template representation."""
+
+    id: UUID
+    name: str
+    description: str | None = None
+    interview_type: str
+    company: str
+    role: str
+    experience_level: str
+    language: str | None = None
+    framework: str | None = None
+    difficulty: str = "medium"
+    duration_minutes: int = 30
+    custom_instructions: str | None = None
+    resume_id: UUID | None = None
+    job_description_id: UUID | None = None
+    created_at: datetime
+
+
+# ── Resume Parsing ───────────────────────────────────────────────────────────
+
+
+class ParsedSkill(BaseModel):
+    """A single skill extracted from a resume or job description."""
+
+    name: str
+    category: str = "general"
+    confidence: float = 0.0
+
+
+class ParsedExperience(BaseModel):
+    """An experience entry extracted from a resume."""
+
+    title: str
+    company: str = ""
+    duration_years: int = 0
+    technologies: list[str] = []
+
+
+class ParseResumeResponse(BaseModel):
+    """Result of resume parsing."""
+
+    id: UUID
+    original_filename: str
+    skills: list[ParsedSkill]
+    experience: list[ParsedExperience]
+    technologies: list[str]
+    suggested_language: str | None = None
+    suggested_role: str | None = None
+    years_of_experience: int = 0
+
+
+# ── Job Description Analysis ─────────────────────────────────────────────────
+
+
+class JdRequirement(BaseModel):
+    """A requirement extracted from a job description."""
+
+    text: str
+    category: str = "general"
+    importance: str = "required"
+
+
+class AnalyzeJdResponse(BaseModel):
+    """Result of job description analysis."""
+
+    id: UUID
+    source: str
+    skills: list[ParsedSkill]
+    technologies: list[str]
+    requirements: list[JdRequirement]
+    suggested_language: str | None = None
+    suggested_focus_areas: list[str] = []
+
+
+# ── Difficulty Estimate ──────────────────────────────────────────────────────
+
+
+class DifficultyEstimateResponse(BaseModel):
+    """Estimated interview difficulty for a given configuration."""
+
+    overall: str
+    score: float
+    factors: list[dict[str, str]]
+    description: str
+
+
+# ── Configuration Validation ─────────────────────────────────────────────────
+
+
+class ConfigValidationWarning(BaseModel):
+    """A warning about the interview configuration."""
+
+    field: str
+    message: str
+    severity: str = "warning"
+
+
+class ValidateConfigResponse(BaseModel):
+    """Result of configuration validation."""
+
+    score: float
+    warnings: list[ConfigValidationWarning]
+    is_ready: bool

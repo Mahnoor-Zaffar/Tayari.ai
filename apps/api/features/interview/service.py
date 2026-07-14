@@ -16,15 +16,23 @@ from core.errors import ConflictError, NotFoundError, ValidationError
 from features.interview.models import Interview as InterviewORM
 from features.interview.repository import InterviewRepository
 from features.interview.schemas import (
+    AnalyzeJdResponse,
+    ConfigValidationWarning,
     CreateInterviewRequest,
+    CreateTemplateRequest,
     DeviceCheckRequest,
     DeviceCheckResponse,
+    DifficultyEstimateResponse,
     InterviewOptionsResponse,
     InterviewResponse,
     JobDescriptionResponse,
+    ParsedSkill,
+    ParseResumeResponse,
     ResumeResponse,
+    TemplateResponse,
     UploadJobDescriptionRequest,
     UploadResumeRequest,
+    ValidateConfigResponse,
 )
 
 FREE_TIER_INTERVIEW_LIMIT = 1
@@ -276,6 +284,269 @@ class InterviewService:
             all_passed=all_passed,
         )
 
+    # ── Templates ────────────────────────────────────────────────────────
+
+    async def create_user_template(self, user_id: UUID, request: CreateTemplateRequest) -> TemplateResponse:
+        """Save the current interview configuration as a reusable template."""
+        data = {
+            "user_id": user_id,
+            "name": request.name,
+            "description": request.description,
+            "interview_type": request.interview_type,
+            "company": request.company,
+            "role": request.role,
+            "experience_level": request.experience_level,
+            "language": request.language,
+            "framework": request.framework,
+            "difficulty": request.difficulty,
+            "duration_minutes": request.duration_minutes,
+            "custom_instructions": request.custom_instructions,
+            "resume_id": request.resume_id,
+            "job_description_id": request.job_description_id,
+        }
+        template = await self._repo.create_user_template(data)
+        return _template_to_response(template)
+
+    async def list_user_templates(self, user_id: UUID) -> list[TemplateResponse]:
+        """Return all templates saved by the user."""
+        templates = await self._repo.list_user_templates(user_id)
+        return [_template_to_response(t) for t in templates]
+
+    async def get_user_template(self, template_id: UUID, user_id: UUID) -> TemplateResponse:
+        """Fetch a specific user template."""
+        template = await self._repo.get_user_template(template_id, user_id)
+        if template is None:
+            raise NotFoundError("Template not found")
+        return _template_to_response(template)
+
+    async def delete_user_template(self, template_id: UUID, user_id: UUID) -> None:
+        """Delete a user template."""
+        deleted = await self._repo.delete_user_template(template_id, user_id)
+        if not deleted:
+            raise NotFoundError("Template not found")
+
+    # ── Resume Parsing ───────────────────────────────────────────────────
+
+    async def parse_resume(self, user_id: UUID, resume_id: UUID) -> ParseResumeResponse:
+        """Extract skills, experience, and technologies from a resume.
+
+        Uses keyword-based pattern matching on the resume filename and
+        metadata.  Full document parsing requires the file bytes (Sprint 5+).
+        """
+        resume = await self._repo.get_resume_with_content(resume_id, user_id)
+        if resume is None:
+            raise NotFoundError("Resume not found")
+
+        filename = resume.original_filename.lower()
+        extracted_skills, extracted_techs = _extract_technologies(filename)
+        content = resume.parsed_content or ""
+
+        suggested_lang = _suggest_language(filename + " " + content)
+
+        return ParseResumeResponse(
+            id=resume.id,
+            original_filename=resume.original_filename,
+            skills=[ParsedSkill(name=s, category="technical", confidence=0.7) for s in extracted_skills],
+            experience=[],
+            technologies=extracted_techs,
+            suggested_language=suggested_lang,
+            suggested_role=None,
+            years_of_experience=0,
+        )
+
+    # ── Job Description Analysis ──────────────────────────────────────────
+
+    async def analyze_job_description(self, user_id: UUID, jd_id: UUID) -> AnalyzeJdResponse:
+        """Analyze a job description to extract skills, technologies, and requirements.
+
+        Performs keyword-based extraction on ``raw_content``.  Full semantic
+        analysis requires the AI engine (Sprint 5+).
+        """
+        jd = await self._repo.get_job_description_with_content(jd_id, user_id)
+        if jd is None:
+            raise NotFoundError("Job description not found")
+
+        content = (jd.raw_content or "") + " " + (jd.parsed_content or "")
+        extracted_skills, extracted_techs = _extract_technologies(content)
+        suggested_lang = _suggest_language(content)
+        focus_areas = _suggest_focus_areas(content)
+
+        return AnalyzeJdResponse(
+            id=jd.id,
+            source=jd.source,
+            skills=[ParsedSkill(name=s, category="technical", confidence=0.6) for s in extracted_skills],
+            technologies=extracted_techs,
+            requirements=[],
+            suggested_language=suggested_lang,
+            suggested_focus_areas=focus_areas,
+        )
+
+    # ── Difficulty Estimate ──────────────────────────────────────────────
+
+    async def estimate_difficulty(
+        self,
+        company: str,
+        role: str,
+        experience_level: str,
+        language: str | None = None,
+    ) -> DifficultyEstimateResponse:
+        """Return a rule-based difficulty estimate for a configuration.
+
+        Companies known for harder interviews (Google, Meta, Netflix, etc.)
+        add to the difficulty score.  Senior roles and higher experience
+        levels also increase the estimate.
+        """
+        score = 3.0  # baseline "medium"
+        factors: list[dict[str, str]] = []
+
+        company_lower = company.lower().strip()
+        if company_lower in _HARD_COMPANIES:
+            score += 1.5
+            factors.append({"factor": "company", "detail": f"{company} is known for difficult interviews"})
+        elif company_lower in _MEDIUM_COMPANIES:
+            score += 0.5
+            factors.append({"factor": "company", "detail": f"{company} has moderately difficult interviews"})
+
+        senior_roles = {
+            "senior",
+            "staff",
+            "principal",
+            "lead",
+            "manager",
+            "architect",
+        }
+        if any(w in role.lower() for w in senior_roles):
+            score += 1.0
+            factors.append({"factor": "role", "detail": f"Senior-level roles ({role}) are more demanding"})
+
+        if experience_level == "staff-lead":
+            score += 0.5
+            factors.append({"factor": "seniority", "detail": "Staff/Lead positions require broader knowledge"})
+        elif experience_level == "junior":
+            score -= 0.5
+            factors.append({"factor": "seniority", "detail": "Junior positions focus on fundamentals"})
+
+        if language:
+            if language in {"cpp", "java"}:
+                score += 0.3
+                factors.append(
+                    {"factor": "language", "detail": f"{language} interviews often involve deeper systems knowledge"}
+                )
+
+        score = max(1.0, min(5.0, score))
+
+        if score >= 4.5:
+            overall = "very_hard"
+            desc = (
+                "This combination is considered very challenging. "
+                "Expect advanced system design and deep algorithmic questions."
+            )
+        elif score >= 3.5:
+            overall = "hard"
+            desc = (
+                "This configuration is on the harder side. "
+                "Prepare for complex problem-solving and in-depth discussions."
+            )
+        elif score >= 2.5:
+            overall = "medium"
+            desc = "Standard interview difficulty. A balanced mix of fundamentals and applied knowledge."
+        else:
+            overall = "easy"
+            desc = "Entry-level difficulty. Focus on core concepts and common patterns."
+
+        return DifficultyEstimateResponse(
+            overall=overall,
+            score=round(score, 1),
+            factors=factors,
+            description=desc,
+        )
+
+    # ── Config Validation ────────────────────────────────────────────────
+
+    async def validate_config(
+        self,
+        interview_type: str,
+        company: str,
+        role: str,
+        experience_level: str,
+        language: str | None = None,
+        duration_minutes: int = 30,
+    ) -> ValidateConfigResponse:
+        """Check an interview configuration for completeness and consistency.
+
+        Returns a score (0–100) and a list of warnings.
+        """
+        warnings: list[ConfigValidationWarning] = []
+        deductions = 0
+
+        if interview_type == "coding" and not language:
+            warnings.append(
+                ConfigValidationWarning(
+                    field="language",
+                    message="Programming language is required for coding interviews",
+                    severity="error",
+                )
+            )
+            deductions += 25
+
+        if not company:
+            warnings.append(
+                ConfigValidationWarning(
+                    field="company",
+                    message="Company is required",
+                    severity="error",
+                )
+            )
+            deductions += 25
+
+        if not role:
+            warnings.append(
+                ConfigValidationWarning(
+                    field="role",
+                    message="Role is required",
+                    severity="error",
+                )
+            )
+            deductions += 20
+
+        if not experience_level:
+            warnings.append(
+                ConfigValidationWarning(
+                    field="experience_level",
+                    message="Experience level is required",
+                    severity="error",
+                )
+            )
+            deductions += 20
+
+        if duration_minutes < 15:
+            warnings.append(
+                ConfigValidationWarning(
+                    field="duration_minutes",
+                    message="Duration should be at least 15 minutes",
+                    severity="warning",
+                )
+            )
+            deductions += 5
+
+        if experience_level == "junior" and company.lower().strip() in _HARD_COMPANIES:
+            warnings.append(
+                ConfigValidationWarning(
+                    field="experience_level",
+                    message=f"Junior level at {company} is uncommon — consider mid-senior or expect a harder interview",
+                    severity="info",
+                )
+            )
+            deductions += 5
+
+        score = max(0, 100 - deductions)
+
+        return ValidateConfigResponse(
+            score=score,
+            warnings=warnings,
+            is_ready=score >= 50,
+        )
+
     # ── List & Get ───────────────────────────────────────────────────────
 
     async def list_interviews(self, user_id: UUID, limit: int = 20, offset: int = 0) -> list[InterviewResponse]:
@@ -354,6 +625,142 @@ _COMPANIES = [
     "Pinterest",
     "Reddit",
 ]
+
+# ── Template helper ──────────────────────────────────────────────────────────
+
+
+def _template_to_response(template) -> TemplateResponse:
+    return TemplateResponse(
+        id=template.id,
+        name=template.name,
+        description=template.description,
+        interview_type=template.interview_type,
+        company=template.company,
+        role=template.role,
+        experience_level=template.experience_level,
+        language=template.language,
+        framework=template.framework,
+        difficulty=template.difficulty,
+        duration_minutes=template.duration_minutes,
+        custom_instructions=template.custom_instructions,
+        resume_id=template.resume_id,
+        job_description_id=template.job_description_id,
+        created_at=template.created_at,
+    )
+
+
+# ── Parsing / Analysis helpers ───────────────────────────────────────────────
+
+
+TECH_KEYWORDS: dict[str, list[str]] = {
+    "python": ["python", "django", "flask", "fastapi", "pytorch", "tensorflow", "numpy", "pandas"],
+    "javascript": ["javascript", "js", "node", "express", "react", "vue", "angular", "typescript", "ts"],
+    "java": ["java", "spring", "hibernate", "maven", "gradle", "kotlin"],
+    "cpp": ["c++", "cpp", "cplusplus", "rust", "systems programming"],
+    "csharp": ["c#", "csharp", "dotnet", ".net", "asp.net", "azure"],
+}
+
+ALL_TECH_KEYWORDS: set[str] = set()
+for keywords in TECH_KEYWORDS.values():
+    ALL_TECH_KEYWORDS.update(keywords)
+
+FOCUS_AREA_KEYWORDS: dict[str, list[str]] = {
+    "system_design": ["system design", "architecture", "distributed", "scalability", "microservices"],
+    "algorithms": ["algorithm", "data structure", "leetcode", "complexity", "sorting", "searching"],
+    "machine_learning": ["machine learning", "ml", "deep learning", "nlp", "computer vision", "ai"],
+    "database": ["sql", "nosql", "database", "postgres", "mysql", "mongodb", "redis"],
+    "cloud": ["aws", "gcp", "azure", "cloud", "kubernetes", "docker", "devops", "ci/cd"],
+    "frontend": ["react", "vue", "angular", "css", "html", "frontend", "ui", "ux"],
+    "backend": ["backend", "api", "rest", "graphql", "server", "middleware"],
+}
+
+
+def _extract_technologies(text: str) -> tuple[list[str], list[str]]:
+    """Extract skill and technology names from text using keyword matching."""
+    text_lower = text.lower()
+    found_skills: list[str] = []
+    found_techs: list[str] = []
+
+    for lang, keywords in TECH_KEYWORDS.items():
+        for kw in keywords:
+            if kw in text_lower:
+                found_skills.append(lang)
+                found_techs.append(kw)
+
+    # Deduplicate while preserving order
+    seen_skills: set[str] = set()
+    unique_skills: list[str] = []
+    for s in found_skills:
+        if s not in seen_skills:
+            seen_skills.add(s)
+            unique_skills.append(s)
+
+    seen_techs: set[str] = set()
+    unique_techs: list[str] = []
+    for t in found_techs:
+        if t not in seen_techs:
+            seen_techs.add(t)
+            unique_techs.append(t)
+
+    return unique_skills, unique_techs
+
+
+def _suggest_language(text: str) -> str | None:
+    """Suggest a programming language based on keyword frequency in text."""
+    text_lower = text.lower()
+    scores: dict[str, int] = {}
+    for lang, keywords in TECH_KEYWORDS.items():
+        scores[lang] = sum(1 for kw in keywords if kw in text_lower)
+    best = max(scores, key=scores.get) if scores else None
+    return best if best and scores[best] > 0 else None
+
+
+def _suggest_focus_areas(text: str) -> list[str]:
+    """Suggest interview focus areas based on keyword matching."""
+    text_lower = text.lower()
+    areas: list[str] = []
+    for area, keywords in FOCUS_AREA_KEYWORDS.items():
+        if any(kw in text_lower for kw in keywords):
+            areas.append(area)
+    return areas
+
+
+# ── Company difficulty tiers ─────────────────────────────────────────────────
+
+
+_HARD_COMPANIES: set[str] = {
+    "google",
+    "meta",
+    "netflix",
+    "palantir",
+    "databricks",
+    "stripe",
+    "riot games",
+    "snowflake",
+    "two sigma",
+    "jane street",
+    "citadel",
+}
+
+_MEDIUM_COMPANIES: set[str] = {
+    "amazon",
+    "apple",
+    "microsoft",
+    "uber",
+    "airbnb",
+    "linkedin",
+    "twitter",
+    "slack",
+    "square",
+    "pinterest",
+    "reddit",
+    "nvidia",
+    "adobe",
+    "salesforce",
+    "oracle",
+    "ibm",
+    "intel",
+}
 
 _ROLES = [
     "Software Engineer",

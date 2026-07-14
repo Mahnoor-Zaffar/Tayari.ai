@@ -21,6 +21,7 @@ from features.interview.models import (
     InterviewTemplate,
     JobDescription,
     Resume,
+    UserTemplate,
 )
 
 
@@ -168,3 +169,61 @@ class InterviewRepository:
             select(InterviewTemplate).where(InterviewTemplate.is_active.is_(True)).order_by(InterviewTemplate.name)
         )
         return list(result.scalars().all())
+
+    # ── User Templates ────────────────────────────────────────────────────
+
+    async def create_user_template(self, data: dict[str, Any]) -> UserTemplate:
+        """Save a user's interview configuration as a reusable template."""
+        template = UserTemplate(**data)
+        self._session.add(template)
+        await self._session.flush()
+        await self._session.refresh(template)
+        return template
+
+    async def list_user_templates(self, user_id: UUID) -> list[UserTemplate]:
+        """Return all templates for a user, newest first."""
+        result = await self._session.execute(
+            select(UserTemplate).where(UserTemplate.user_id == user_id).order_by(UserTemplate.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_user_template(self, template_id: UUID, user_id: UUID) -> UserTemplate | None:
+        """Fetch a user template by ID, scoped to the user."""
+        result = await self._session.execute(
+            select(UserTemplate).where(
+                UserTemplate.id == template_id,
+                UserTemplate.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def delete_user_template(self, template_id: UUID, user_id: UUID) -> bool:
+        """Delete a user template."""
+        template = await self._session.get(UserTemplate, template_id)
+        if template is None or template.user_id != user_id:
+            return False
+        await self._session.delete(template)
+        await self._session.flush()
+        return True
+
+    # ── Resume / JD parsing helpers ───────────────────────────────────────
+
+    async def get_resume_with_content(self, resume_id: UUID, user_id: UUID) -> Resume | None:
+        """Fetch a resume including its parsed_content field."""
+        result = await self._session.execute(
+            select(Resume).where(
+                Resume.id == resume_id,
+                Resume.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_job_description_with_content(self, jd_id: UUID, user_id: UUID) -> JobDescription | None:
+        """Fetch a JD including its raw_content and parsed_content."""
+        result = await self._session.execute(
+            select(JobDescription).where(
+                JobDescription.id == jd_id,
+                JobDescription.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()

@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, type Mock } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReviewStep } from "@/features/interview/components/steps/ReviewStep";
 import type { InterviewOptions } from "@/features/interview/types";
 import type { InterviewSetupFormValues } from "@/features/interview/lib/wizard-schema";
@@ -34,9 +35,16 @@ const mockValues: InterviewSetupFormValues = {
   device_checks: { microphone: true },
 };
 
+function renderWithQuery(ui: React.ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
+
 describe("ReviewStep", () => {
   it("renders all review sections", () => {
-    render(
+    renderWithQuery(
       <ReviewStep
         values={mockValues}
         options={mockOptions}
@@ -52,7 +60,7 @@ describe("ReviewStep", () => {
   });
 
   it("displays company and role values", () => {
-    render(
+    renderWithQuery(
       <ReviewStep
         values={mockValues}
         options={mockOptions}
@@ -66,7 +74,7 @@ describe("ReviewStep", () => {
   });
 
   it("labels resolved from options map", () => {
-    render(
+    renderWithQuery(
       <ReviewStep
         values={mockValues}
         options={mockOptions}
@@ -81,7 +89,7 @@ describe("ReviewStep", () => {
   });
 
   it("shows Start Interview button", () => {
-    render(
+    renderWithQuery(
       <ReviewStep
         values={mockValues}
         options={mockOptions}
@@ -97,7 +105,7 @@ describe("ReviewStep", () => {
 
   it("calls onSubmit when Start Interview is clicked", () => {
     const onSubmit = vi.fn();
-    render(
+    renderWithQuery(
       <ReviewStep
         values={mockValues}
         options={mockOptions}
@@ -112,7 +120,7 @@ describe("ReviewStep", () => {
 
   it("calls onEditStep with correct step index when Edit clicked", () => {
     const onEditStep = vi.fn();
-    render(
+    renderWithQuery(
       <ReviewStep
         values={mockValues}
         options={mockOptions}
