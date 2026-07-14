@@ -29,7 +29,7 @@ export function LoginForm() {
 
   const mutation = useMutation({
     mutationFn: (data: LoginInput) => login(data),
-    onSuccess: () => router.push("/"),
+    onSuccess: () => router.push("/dashboard"),
     onError: () => form.setError("root", { message: "Invalid email or password" }),
   })
 

@@ -35,7 +35,7 @@ export function RegisterForm() {
 
   const mutation = useMutation({
     mutationFn: (data: RegisterInput) => register(data),
-    onSuccess: () => router.push("/"),
+    onSuccess: () => router.push("/dashboard"),
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : "Registration failed"
       form.setError("root", { message })
