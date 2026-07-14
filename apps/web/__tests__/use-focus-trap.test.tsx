@@ -41,12 +41,12 @@ describe("useFocusTrap", () => {
   it("traps tab focus within container", () => {
     render(<TestComponent open={true} />);
     const first = screen.getByTestId("first");
-    const last = screen.getByTestId("last");
+    const last = screen.getByTestId("link");
 
     first.focus();
     expect(document.activeElement).toBe(first);
 
-    // Tab backwards from first should wrap to last
+    // Tab backwards from first should wrap to last focusable element
     fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
     expect(document.activeElement).toBe(last);
   });

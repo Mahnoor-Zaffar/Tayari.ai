@@ -6,7 +6,7 @@ import { WelcomeCard } from "@/features/dashboard/components/WelcomeCard";
 describe("WelcomeCard", () => {
   it("renders loading state", () => {
     const { container } = render(<WelcomeCard isLoading displayName={undefined} streak={0} />);
-    const skeletons = container.querySelectorAll('[class*="animate-pulse"]');
+    const skeletons = container.querySelectorAll('[class*="animate-skeleton"]');
     expect(skeletons.length).toBeGreaterThan(0);
   });
 

@@ -7,7 +7,7 @@ import type { SubscriptionInfo } from "@/features/dashboard/types";
 describe("SubscriptionStatus", () => {
   it("renders loading skeleton", () => {
     const { container } = render(<SubscriptionStatus isLoading subscription={null} />);
-    const skeletons = container.querySelectorAll('[class*="animate-pulse"]');
+    const skeletons = container.querySelectorAll('[class*="animate-skeleton"]');
     expect(skeletons.length).toBeGreaterThan(0);
   });
 

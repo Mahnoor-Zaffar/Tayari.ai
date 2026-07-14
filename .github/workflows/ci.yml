@@ -3,11 +3,20 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "architecture/**"
+      - "*.md"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "architecture/**"
+      - "*.md"
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
+  TURBO_CACHE_DIR: .turbo
 
 jobs:
   lint-and-typecheck:
@@ -21,30 +30,59 @@ jobs:
       - uses: actions/setup-node@v4.4.0
         with:
           node-version: 22
-          cache: "pnpm"
+          cache: pnpm
 
-      - uses: actions/setup-python@v5.5.0
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: apps/api/pyproject.toml
+
+      - name: Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: |
+            .turbo
+            apps/*/.turbo
+            packages/*/.turbo
+            node_modules/.cache/turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
 
       - run: pnpm install --frozen-lockfile
 
       - name: Install Python deps
-        run: |
-          pip install "ruff>=0.5.0" "mypy>=1.10.0"
-          pip install "fastapi[standard]>=0.115.0" "uvicorn[standard]>=0.30.0" \
-            "sqlalchemy[asyncio]>=2.0.30" "asyncpg>=0.29.0" \
-            "pydantic>=2.7.0" "pydantic-settings>=2.3.0" \
-            "python-jose[cryptography]>=3.3.0" "passlib[bcrypt]>=1.7.4" \
-            "python-multipart>=0.0.9" "httpx>=0.27.0" "openai>=1.30.0" \
-            "stripe>=9.0.0" "apscheduler>=3.10.0" "sentry-sdk>=2.5.0" \
-            "boto3>=1.34.0" "resend>=0.8.0"
+        run: uv sync --directory apps/api
 
       - run: pnpm lint
       - run: pnpm typecheck
 
-  test:
-    name: Tests
+  js-tests:
+    name: JS Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: pnpm/action-setup@v4.1.0
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .turbo
+            apps/*/.turbo
+            packages/*/.turbo
+            node_modules/.cache/turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Run JS/TS tests
+        run: pnpm --filter @tayari/web test
+
+  python-tests:
+    name: Python Tests
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -69,37 +107,16 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
-
     steps:
       - uses: actions/checkout@v4.2.2
-
-      - uses: pnpm/action-setup@v4.1.0
-
-      - uses: actions/setup-node@v4.4.0
+      - uses: astral-sh/setup-uv@v5
         with:
-          node-version: 22
-          cache: "pnpm"
-
-      - uses: actions/setup-python@v5.5.0
-        with:
-          python-version: "3.13"
-
-      - run: pnpm install --frozen-lockfile
-
+          enable-cache: true
+          cache-dependency-glob: apps/api/pyproject.toml
       - name: Install Python deps
-        run: |
-          cd apps/api
-          pip install "fastapi[standard]>=0.115.0" "uvicorn[standard]>=0.30.0" \
-            "sqlalchemy[asyncio]>=2.0.30" "asyncpg>=0.29.0" \
-            "pydantic>=2.7.0" "pydantic-settings>=2.3.0" \
-            "python-jose[cryptography]>=3.3.0" "passlib[bcrypt]>=1.7.4" \
-            "python-multipart>=0.0.9" "httpx>=0.27.0" "openai>=1.30.0" \
-            "stripe>=9.0.0" "apscheduler>=3.10.0" "sentry-sdk>=2.5.0" \
-            "boto3>=1.34.0" "resend>=0.8.0"
-          pip install "pytest>=8.0.0" "pytest-asyncio>=0.24.0"
-
+        run: uv sync --directory apps/api
       - name: Run API tests
-        run: cd apps/api && python -m pytest
+        run: uv run --directory apps/api python -m pytest
         env:
           DATABASE_URL: postgresql+asyncpg://tayari:tayari_dev@localhost:5432/tayari
           REDIS_URL: redis://localhost:6379/0
@@ -109,16 +126,40 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
     steps:
       - uses: actions/checkout@v4.2.2
-
       - uses: pnpm/action-setup@v4.1.0
-
       - uses: actions/setup-node@v4.4.0
         with:
           node-version: 22
-          cache: "pnpm"
-
+          cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .turbo
+            apps/*/.turbo
+            packages/*/.turbo
+            node_modules/.cache/turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
-
       - run: pnpm build
+      - name: Check performance budget
+        run: node apps/web/scripts/performance-budget.mjs
+
+  deploy:
+    name: Deploy
+    needs: [lint-and-typecheck, js-tests, python-tests, build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: Deploy placeholder
+        run: |
+          echo "Configure your deployment target here:"
+          echo "  - Render:         https://render.com/docs/deploy-fastapi"
+          echo "  - Railway:        https://railway.app/"
+          echo "  - Fly.io:         https://fly.io/docs/"
+          echo "  - Docker Compose: docker compose -f infrastructure/docker-compose.yml up -d"

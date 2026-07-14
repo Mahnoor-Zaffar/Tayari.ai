@@ -9,6 +9,9 @@ on:
       - "infrastructure/**"
       - "Dockerfile*"
 
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
 jobs:
   build:
     name: Build Images
@@ -22,8 +25,30 @@ jobs:
         with:
           node-version: 22
 
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: buildx-${{ runner.os }}-${{ hashFiles('apps/api/**', 'apps/web/**', 'Dockerfile*') }}
+          restore-keys: |
+            buildx-${{ runner.os }}-
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build API image
-        run: docker build -f apps/api/Dockerfile.dev -t tayari-api .
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          file: apps/api/Dockerfile.dev
+          tags: tayari-api:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Build Web image
-        run: docker build -f apps/web/Dockerfile.dev -t tayari-web .
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/web
+          file: apps/web/Dockerfile.dev
+          tags: tayari-web:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache

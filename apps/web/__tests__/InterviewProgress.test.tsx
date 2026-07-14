@@ -7,7 +7,7 @@ import type { LatestReport } from "@/features/dashboard/types";
 describe("InterviewProgress", () => {
   it("renders loading skeleton", () => {
     const { container } = render(<InterviewProgress isLoading completed={0} total={0} />);
-    const skeletons = container.querySelectorAll('[class*="animate-pulse"]');
+    const skeletons = container.querySelectorAll('[class*="animate-skeleton"]');
     expect(skeletons.length).toBeGreaterThan(0);
   });
 

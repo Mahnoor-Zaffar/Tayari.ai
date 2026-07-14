@@ -28,7 +28,7 @@ const mockInterviews: RecentInterview[] = [
 describe("RecentActivityList", () => {
   it("renders skeleton while loading", () => {
     const { container } = render(<RecentActivityList isLoading interviews={undefined} />);
-    const skeletons = container.querySelectorAll('[class*="animate-pulse"]');
+    const skeletons = container.querySelectorAll('[class*="animate-skeleton"]');
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
