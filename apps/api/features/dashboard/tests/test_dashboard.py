@@ -26,7 +26,6 @@ from features.auth.guard import CurrentUser, get_current_user
 from features.dashboard.dependencies import get_dashboard_service
 from features.dashboard.repository import DashboardRepository
 from features.dashboard.schemas import (
-    AnalyticsResponse,
     DashboardResponse,
     DashboardStats,
     LatestReport,
@@ -36,6 +35,8 @@ from features.dashboard.schemas import (
 )
 from features.dashboard.service import DashboardService
 from main import app
+
+# Note: time-series analytics tests moved to ``features/analytics/tests/test_analytics.py``
 
 # ── SQLite JSONB compatibility ──────────────────────────────────────────────
 
@@ -407,13 +408,6 @@ class TestDashboardService:
                 }
             ]
         )
-        repo.get_analytics_data = AsyncMock(
-            return_value=[
-                {"completed_at": _ts(0), "overall_score": 85.0},
-                {"completed_at": _ts(1), "overall_score": 72.0},
-                {"completed_at": _ts(2), "overall_score": 90.0},
-            ]
-        )
         return repo
 
     @pytest.fixture
@@ -450,13 +444,6 @@ class TestDashboardService:
         assert len(result) == 1
         assert isinstance(result[0], RecentInterview)
         assert result[0].company == "Acme"
-
-    async def test_get_analytics_groups_correctly(self, service: DashboardService) -> None:
-        result = await service.get_analytics(uuid.uuid4())
-        assert isinstance(result, AnalyticsResponse)
-        assert len(result.daily) >= 1
-        assert len(result.weekly) >= 1
-        assert len(result.monthly) >= 1
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -503,13 +490,6 @@ def mock_dashboard_service() -> MagicMock:
                 created_at=_ts(1),
             )
         ]
-    )
-    svc.get_analytics = AsyncMock(
-        return_value=AnalyticsResponse(
-            daily=[],
-            weekly=[],
-            monthly=[],
-        )
     )
     return svc
 
@@ -560,9 +540,3 @@ class TestDashboardAPI:
         body = response.json()
         assert body["success"] is True
         assert "interviews" in body["data"]
-
-    async def test_get_analytics_returns_200(self, client: AsyncClient) -> None:
-        response = await client.get("/dashboard/analytics")
-        assert response.status_code == 200
-        body = response.json()
-        assert body["success"] is True

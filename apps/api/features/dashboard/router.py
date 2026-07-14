@@ -1,9 +1,10 @@
 """Dashboard API routes.
 
-Three read-only endpoints:
+Two read-only endpoints:
 - ``GET /dashboard``         → full dashboard aggregate
 - ``GET /dashboard/recent``   → recent interview activity
-- ``GET /dashboard/analytics`` → daily / weekly / monthly time-series
+
+Time-series analytics moved to ``features/analytics/`` at ``GET /analytics``.
 """
 
 from __future__ import annotations
@@ -44,17 +45,3 @@ async def get_recent_interviews(
     """Return recent interview activity for the authenticated user."""
     data = await dashboard_service.get_recent_interviews(current_user.id)
     return success_response({"interviews": [r.model_dump() for r in data]})
-
-
-@router.get(
-    "/dashboard/analytics",
-    summary="Interview activity time-series",
-    description="Returns daily, weekly, and monthly interview counts and average scores.",
-)
-async def get_analytics(
-    current_user: CurrentUser = Depends(get_current_user),
-    dashboard_service: DashboardService = Depends(get_dashboard_service),
-) -> dict:
-    """Return time-series activity data for the authenticated user."""
-    data = await dashboard_service.get_analytics(current_user.id)
-    return success_response(data.model_dump())

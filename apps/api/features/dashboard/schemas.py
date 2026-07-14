@@ -68,19 +68,3 @@ class RecentInterview(BaseModel):
     overall_score: float | None = None
     completed_at: datetime | None = None
     created_at: datetime
-
-
-class AnalyticsDatapoint(BaseModel):
-    """Single time-series data point."""
-
-    period: str
-    interviews: int
-    average_score: float | None = None
-
-
-class AnalyticsResponse(BaseModel):
-    """Time-series activity broken down by daily, weekly, and monthly windows."""
-
-    daily: list[AnalyticsDatapoint]
-    weekly: list[AnalyticsDatapoint]
-    monthly: list[AnalyticsDatapoint]

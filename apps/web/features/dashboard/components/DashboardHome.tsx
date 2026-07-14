@@ -11,6 +11,7 @@ import { WelcomeCard } from "@/features/dashboard/components/WelcomeCard";
 import { SubscriptionStatus } from "@/features/dashboard/components/SubscriptionStatus";
 import { InterviewProgress } from "@/features/dashboard/components/InterviewProgress";
 import { Button } from "@/components/ui/button";
+import { WidgetErrorBoundary } from "@/components/error/WidgetErrorBoundary";
 import { getErrorMessage } from "@/lib/errors";
 
 export function DashboardHome() {
@@ -54,29 +55,42 @@ export function DashboardHome() {
 
   return (
     <div className="space-y-6">
-      <WelcomeCard
-        displayName={user?.display_name}
-        isLoading={summaryLoading}
-        streak={dashboard?.stats.current_streak}
-      />
+      <WidgetErrorBoundary title="Welcome">
+        <WelcomeCard
+          displayName={user?.display_name}
+          isLoading={summaryLoading}
+          streak={dashboard?.stats.current_streak}
+        />
+      </WidgetErrorBoundary>
 
-      <StatsGrid stats={dashboard?.stats} isLoading={summaryLoading} />
-      <QuickActions />
+      <WidgetErrorBoundary title="Stats">
+        <StatsGrid stats={dashboard?.stats} isLoading={summaryLoading} />
+      </WidgetErrorBoundary>
+
+      <WidgetErrorBoundary title="Quick Actions">
+        <QuickActions />
+      </WidgetErrorBoundary>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <RecentActivityList
-          interviews={recentData?.interviews}
-          isLoading={recentLoading}
-          className="lg:col-span-2"
-        />
-        <div className="space-y-6">
-          <SubscriptionStatus subscription={dashboard?.subscription} isLoading={summaryLoading} />
-          <InterviewProgress
-            latestReport={dashboard?.latest_report}
-            completed={dashboard?.stats.completed_interviews}
-            total={dashboard?.stats.total_interviews}
-            isLoading={summaryLoading}
+        <WidgetErrorBoundary title="Recent Activity">
+          <RecentActivityList
+            interviews={recentData?.interviews}
+            isLoading={recentLoading}
+            className="lg:col-span-2"
           />
+        </WidgetErrorBoundary>
+        <div className="space-y-6">
+          <WidgetErrorBoundary title="Subscription">
+            <SubscriptionStatus subscription={dashboard?.subscription} isLoading={summaryLoading} />
+          </WidgetErrorBoundary>
+          <WidgetErrorBoundary title="Interview Progress">
+            <InterviewProgress
+              latestReport={dashboard?.latest_report}
+              completed={dashboard?.stats.completed_interviews}
+              total={dashboard?.stats.total_interviews}
+              isLoading={summaryLoading}
+            />
+          </WidgetErrorBoundary>
         </div>
       </div>
     </div>

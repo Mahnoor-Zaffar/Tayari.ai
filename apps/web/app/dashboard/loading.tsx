@@ -1,4 +1,9 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Skeleton,
+  SkeletonStatCard,
+  SkeletonActivityItem,
+  SkeletonWidgetCard,
+} from "@/components/ui/skeleton";
 
 export default function DashboardLoading() {
   return (
@@ -9,11 +14,7 @@ export default function DashboardLoading() {
       {/* Stats grid skeleton */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border bg-card p-5 shadow-sm">
-            <Skeleton className="mb-3 h-4 w-20" />
-            <Skeleton className="mb-1 h-8 w-12" />
-            <Skeleton className="h-3 w-28" />
-          </div>
+          <SkeletonStatCard key={i} />
         ))}
       </div>
 
@@ -28,12 +29,12 @@ export default function DashboardLoading() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-2 lg:col-span-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-lg" />
+            <SkeletonActivityItem key={i} />
           ))}
         </div>
         <div className="space-y-6">
-          <Skeleton className="h-44 rounded-xl" />
-          <Skeleton className="h-44 rounded-xl" />
+          <SkeletonWidgetCard key="sub" />
+          <SkeletonWidgetCard key="progress" />
         </div>
       </div>
     </div>

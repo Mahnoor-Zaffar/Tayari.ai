@@ -17,11 +17,3 @@ export function useRecentInterviews() {
     staleTime: 15_000,
   });
 }
-
-export function useAnalytics() {
-  return useQuery({
-    queryKey: ["dashboard", "analytics"],
-    queryFn: () => dashboardApi.getAnalytics(),
-    staleTime: 60_000,
-  });
-}

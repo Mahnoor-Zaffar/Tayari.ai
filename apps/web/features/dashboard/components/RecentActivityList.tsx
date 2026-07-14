@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Clock, Mic, type LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonActivityItem } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import type { RecentInterview } from "@/features/dashboard/types";
@@ -48,8 +48,8 @@ function formatDate(iso: string): string {
 
 function getScoreColor(score: number | null): string {
   if (score == null) return "text-muted-foreground";
-  if (score >= 80) return "text-emerald-600 dark:text-emerald-400";
-  if (score >= 60) return "text-amber-600 dark:text-amber-400";
+  if (score >= 80) return "text-success";
+  if (score >= 60) return "text-warning";
   return "text-red-500";
 }
 
@@ -96,14 +96,7 @@ export const RecentActivityList = memo(function RecentActivityList({
       {isLoading ? (
         <div className="space-y-2">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-4 rounded-lg border p-4">
-              <Skeleton className="h-10 w-10 rounded-lg" />
-              <div className="flex-1 space-y-1.5">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-24" />
-              </div>
-              <Skeleton className="h-6 w-16 rounded-full" />
-            </div>
+            <SkeletonActivityItem key={i} />
           ))}
         </div>
       ) : !interviews || interviews.length === 0 ? (

@@ -8,16 +8,16 @@ import { Sheet } from "@/components/ui/sheet";
 import { TopNav } from "@/components/layout/TopNav";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { ErrorBoundary } from "@/components/error/ErrorBoundary";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 
 function LoadingShell() {
   return (
     <div className="flex min-h-screen">
       <div className="hidden w-64 border-r bg-card p-4 lg:flex lg:flex-col lg:gap-4">
         <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
+        <SkeletonLine className="h-10 rounded-md" />
+        <SkeletonLine className="h-10 rounded-md" />
+        <SkeletonLine className="h-10 rounded-md" />
       </div>
       <div className="flex-1 p-4">
         <Skeleton className="mb-4 h-10 w-full" />

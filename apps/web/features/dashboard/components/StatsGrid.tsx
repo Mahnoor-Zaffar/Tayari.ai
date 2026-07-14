@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { Brain, Calendar, Flame, Star } from "lucide-react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonStatCard } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/shared/StatCard";
 import type { DashboardStats } from "@/features/dashboard/types";
 import { cn } from "@/lib/utils";
@@ -21,11 +21,7 @@ export const StatsGrid = memo(function StatsGrid({ stats, isLoading, className }
     return (
       <div className={cn("grid gap-4 sm:grid-cols-2 lg:grid-cols-4", className)}>
         {skeletonIds.map((id) => (
-          <div key={id} className="rounded-xl border bg-card p-5 shadow-sm">
-            <Skeleton className="mb-3 h-4 w-20" />
-            <Skeleton className="mb-1 h-8 w-12" />
-            <Skeleton className="h-3 w-28" />
-          </div>
+          <SkeletonStatCard key={id} />
         ))}
       </div>
     );

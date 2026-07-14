@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { BarChart3 } from "lucide-react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonWidgetCard } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ProgressCard } from "@/components/shared/ProgressCard";
 import type { LatestReport } from "@/features/dashboard/types";
@@ -43,10 +43,7 @@ export const InterviewProgress = memo(function InterviewProgress({
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-4 w-24" />
-        </div>
+        <SkeletonWidgetCard lines={2} className="border-0 p-0 shadow-none" />
       ) : total > 0 ? (
         <div className="space-y-4">
           <ProgressCard label="Completed" value={completed} max={total} color="success" />

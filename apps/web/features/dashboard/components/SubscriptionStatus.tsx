@@ -4,7 +4,7 @@ import { memo } from "react";
 import { CreditCard } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonWidgetCard } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import type { SubscriptionInfo } from "@/features/dashboard/types";
 import { cn } from "@/lib/utils";
@@ -54,10 +54,7 @@ export const SubscriptionStatus = memo(function SubscriptionStatus({
       </div>
 
       {isLoading ? (
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-16" />
-          <Skeleton className="h-3 w-32" />
-        </div>
+        <SkeletonWidgetCard lines={2} className="border-0 p-0 shadow-none" />
       ) : subscription ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2">

@@ -4,7 +4,7 @@ import { memo } from "react";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 interface WelcomeCardProps {
@@ -49,11 +49,11 @@ export const WelcomeCard = memo(function WelcomeCard({
 
       <div className="relative space-y-1.5">
         {isLoading ? (
-          <>
-            <Skeleton className="h-6 w-48 bg-primary-foreground/20" />
-            <Skeleton className="h-4 w-36 bg-primary-foreground/20" />
-            <Skeleton className="h-4 w-64 bg-primary-foreground/20" />
-          </>
+          <div className="space-y-2">
+            <SkeletonLine width="w-48" className="bg-primary-foreground/20 h-6" />
+            <SkeletonLine width="w-36" className="bg-primary-foreground/20" />
+            <SkeletonLine width="w-64" className="bg-primary-foreground/20" />
+          </div>
         ) : (
           <>
             <div className="flex items-center gap-2">

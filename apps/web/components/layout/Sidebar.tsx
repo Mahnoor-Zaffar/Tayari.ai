@@ -16,6 +16,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/features/auth/hooks/use-auth";
+import { useFeatureFlag } from "@/hooks/use-feature-flag";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -23,14 +24,15 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string;
+  flag?: "interviews" | "reports" | "billing" | "settings";
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/interviews", label: "Interviews", icon: Mic },
-  { href: "/dashboard/reports", label: "Reports", icon: BarChart3 },
-  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard/interviews", label: "Interviews", icon: Mic, flag: "interviews" },
+  { href: "/dashboard/reports", label: "Reports", icon: BarChart3, flag: "reports" },
+  { href: "/dashboard/billing", label: "Billing", icon: CreditCard, flag: "billing" },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, flag: "settings" },
 ];
 
 interface SidebarProps {
@@ -41,6 +43,10 @@ interface SidebarProps {
 export const Sidebar = memo(function Sidebar({ className, onNavClick }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const showInterviews = useFeatureFlag("interviews");
+  const showReports = useFeatureFlag("reports");
+  const showBilling = useFeatureFlag("billing");
+  const showSettings = useFeatureFlag("settings");
 
   return (
     <aside
@@ -57,7 +63,16 @@ export const Sidebar = memo(function Sidebar({ className, onNavClick }: SidebarP
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => {
+          if (!item.flag) return true;
+          const flagMap = {
+            interviews: showInterviews,
+            reports: showReports,
+            billing: showBilling,
+            settings: showSettings,
+          };
+          return flagMap[item.flag];
+        }).map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link

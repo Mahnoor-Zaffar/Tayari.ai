@@ -46,14 +46,4 @@ export interface RecentInterview {
   created_at: string;
 }
 
-export interface AnalyticsDatapoint {
-  period: string;
-  interviews: number;
-  average_score: number | null;
-}
-
-export interface AnalyticsData {
-  daily: AnalyticsDatapoint[];
-  weekly: AnalyticsDatapoint[];
-  monthly: AnalyticsDatapoint[];
-}
+// Time-series analytics types moved to ``features/analytics/types``

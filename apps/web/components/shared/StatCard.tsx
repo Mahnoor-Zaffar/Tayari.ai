@@ -19,15 +19,15 @@ interface StatCardProps {
 const variantStyles = {
   default: "bg-card",
   primary: "bg-primary text-primary-foreground",
-  success: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950 dark:border-emerald-800",
-  warning: "bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800",
+  success: "bg-success-bg border-success-border",
+  warning: "bg-warning-bg border-warning-border",
 };
 
 const iconStyles = {
   default: "text-muted-foreground",
   primary: "text-primary-foreground",
-  success: "text-emerald-600 dark:text-emerald-400",
-  warning: "text-amber-600 dark:text-amber-400",
+  success: "text-success",
+  warning: "text-warning",
 };
 
 export const StatCard = memo(function StatCard({

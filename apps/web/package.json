@@ -11,6 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "analyze": "ANALYZE=true next build",
+    "perf:budget": "node scripts/performance-budget.mjs",
+    "perf:check": "npm run analyze && npm run perf:budget",
     "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
