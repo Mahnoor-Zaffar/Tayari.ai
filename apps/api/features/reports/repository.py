@@ -23,12 +23,6 @@ class EvaluationRepository:
         This is the **only** path for writing evaluation data.
         The LLM never writes directly to the database.
         """
-        dims_data = [
-            {"key": d.key, "label": d.label, "score": d.score, "weight": d.weight,
-             "evidence": d.evidence, "confidence": d.confidence}
-            for d in result.dimensions
-        ]
-
         evaluation = Evaluation(
             interview_id=UUID(result.interview_id),
             overall_score=result.overall_score,

@@ -63,7 +63,8 @@ class CodeAnalysisService:
             return "No tests run."
         return f"{passed}/{total} tests passed."
 
-    def _format_test_results(self, results: list[dict]) -> str:
+    def format_test_results(self, results: list[dict]) -> str:
+        """Format test results as readable text for the evaluation prompt."""
         if not results:
             return ""
         lines = []

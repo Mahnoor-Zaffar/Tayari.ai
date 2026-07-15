@@ -44,15 +44,6 @@ class EvaluationService:
             raise ValueError("Interview not found")
 
         transcript = interview.transcript or []
-        config = None
-        if interview.configuration_id:
-            async with self._eval_repo._session.bind.connect() as conn:
-                pass
-
-        code_submission = None
-        if self._code_repo:
-            submissions = await self._code_repo.get_submission(interview_id, user_id)
-            pass  # We'll handle submissions more thoroughly later
 
         result = await self._pipeline.evaluate(
             interview_id=str(interview_id),

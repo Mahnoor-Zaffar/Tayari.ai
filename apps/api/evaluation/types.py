@@ -39,6 +39,7 @@ class EvaluationResult:
     improvements: list[str]
     recommendations: list[str]
     confidence: float  # 0.0 – 1.0
+    status: str = "completed"
     raw_evaluation: str = ""
     model_used: str = ""
     prompt_version: str = ""

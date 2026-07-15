@@ -14,8 +14,6 @@ from evaluation.types import DimensionScore, EvaluationResult, compute_hire_verd
 
 logger = logging.getLogger(__name__)
 
-MAX_RETRIES = 2
-
 
 class ValidationError(Exception):
     pass
@@ -50,7 +48,7 @@ class ResultValidator:
         self._validate_structure(parsed, interview_type)
 
         dims_config = get_dimensions_for_type(interview_type)
-        dim_config_map = {d["key"]: d for d in dims_config}
+        # dim_config_map left for future dimension lookup
 
         dimensions: list[DimensionScore] = []
         ai_dims = parsed.get("dimensions", {})
