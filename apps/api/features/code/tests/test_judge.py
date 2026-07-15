@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from execution.judge import is_numeric_output, judge_output, judge_test_cases, normalize_output
+from judge.judge import is_numeric_output, judge_output, judge_test_cases, normalize_output
 
 
 class TestNormalizeOutput:

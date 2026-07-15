@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from execution.runners.base import CodeRunner
+from judge.runners.base import CodeRunner
 
 
 class JavaRunner(CodeRunner):

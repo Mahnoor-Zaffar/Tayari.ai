@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from execution.judge import judge_output
-from execution.sandbox import Sandbox
+from judge.judge import judge_output
+from judge.sandbox import Sandbox
 
 
 @pytest.mark.asyncio

@@ -6,12 +6,12 @@ import time
 import uuid
 from uuid import UUID
 
-from execution.judge import judge_test_cases
-from execution.logger import log_execution
-from execution.registry import get_language, get_supported_languages
-from execution.sandbox import Sandbox, SandboxResult
 from features.code.repository import CodeRepository
 from features.code.schemas import RunCodeResponse
+from judge.judge import judge_test_cases
+from judge.logger import log_execution
+from judge.registry import get_language, get_supported_languages
+from judge.sandbox import Sandbox, SandboxResult
 
 
 class CodeExecutionService:

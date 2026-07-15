@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from execution.runners.base import CodeRunner
+    from judge.runners.base import CodeRunner
 
 
 @dataclass
@@ -34,13 +34,13 @@ class LanguageConfig:
     default_template: str = ""
 
 
-from execution.runners.cpp_runner import CppRunner
-from execution.runners.go_runner import GoRunner
-from execution.runners.java_runner import JavaRunner
-from execution.runners.javascript_runner import JavaScriptRunner
-from execution.runners.python_runner import PythonRunner
-from execution.runners.rust_runner import RustRunner
-from execution.runners.typescript_runner import TypeScriptRunner
+from judge.runners.cpp_runner import CppRunner
+from judge.runners.go_runner import GoRunner
+from judge.runners.java_runner import JavaRunner
+from judge.runners.javascript_runner import JavaScriptRunner
+from judge.runners.python_runner import PythonRunner
+from judge.runners.rust_runner import RustRunner
+from judge.runners.typescript_runner import TypeScriptRunner
 
 LANGUAGE_REGISTRY: dict[str, LanguageConfig] = {
     "python": LanguageConfig(

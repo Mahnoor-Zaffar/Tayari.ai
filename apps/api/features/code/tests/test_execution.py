@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from execution.sandbox import Sandbox
+from judge.sandbox import Sandbox
 
 
 @pytest.mark.asyncio

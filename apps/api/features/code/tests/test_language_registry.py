@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from execution.registry import LANGUAGE_REGISTRY, get_language, get_supported_languages
+from judge.registry import LANGUAGE_REGISTRY, get_language, get_supported_languages
 
 
 class TestLanguageRegistry:
