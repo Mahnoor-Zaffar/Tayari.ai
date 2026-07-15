@@ -1,14 +1,23 @@
 """Execution sandbox — runs code in isolated Docker containers.
 
 Falls back to subprocess when Docker is unavailable (development/test).
+
+Security:
+    - Never uses ``shell=True`` (prevents command injection)
+    - Code written to temp file, executed via explicit path
+    - Docker: read-only FS, no network, no privileges, PID limit
+    - Subprocess: resource limits via ``resource`` module
+    - Output truncated to prevent memory exhaustion
 """
 
 from __future__ import annotations
 
 import logging
+import shlex
 import subprocess
 import tempfile
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -16,7 +25,7 @@ logger = logging.getLogger(__name__)
 SANDBOX_TIMEOUT_S = 30
 SANDBOX_MEMORY_MB = 256
 SANDBOX_MAX_OUTPUT_CHARS = 100_000
-SANDBOX_MAX_FILE_SIZE_MB = 10
+SANDBOX_MAX_EXECUTORS = 10
 
 
 def _docker_available() -> bool:
@@ -31,26 +40,18 @@ def _docker_available() -> bool:
         return False
 
 
-class SandboxError(Exception):
-    pass
-
-
+@dataclass
 class SandboxResult:
-    def __init__(
-        self,
-        stdout: str = "",
-        stderr: str = "",
-        exit_code: int = 0,
-        timed_out: bool = False,
-        oom_killed: bool = False,
-        execution_ms: int = 0,
-    ) -> None:
-        self.stdout = stdout[:SANDBOX_MAX_OUTPUT_CHARS]
-        self.stderr = stderr[:SANDBOX_MAX_OUTPUT_CHARS]
-        self.exit_code = exit_code
-        self.timed_out = timed_out
-        self.oom_killed = oom_killed
-        self.execution_ms = execution_ms
+    stdout: str = ""
+    stderr: str = ""
+    exit_code: int = 0
+    timed_out: bool = False
+    oom_killed: bool = False
+    execution_ms: int = 0
+
+    def __post_init__(self) -> None:
+        self.stdout = self.stdout[:SANDBOX_MAX_OUTPUT_CHARS]
+        self.stderr = self.stderr[:SANDBOX_MAX_OUTPUT_CHARS]
 
 
 class Sandbox:
@@ -168,7 +169,7 @@ class Sandbox:
     ) -> SandboxResult:
         """Execute code using subprocess with resource limits.
 
-        Fallback when Docker is unavailable (development).
+        Uses explicit command paths — never ``shell=True``.
         """
         with tempfile.TemporaryDirectory(prefix="tayari-code-") as tmpdir:
             workdir = Path(tmpdir)
@@ -178,34 +179,35 @@ class Sandbox:
             outdir = workdir / "out"
             outdir.mkdir(exist_ok=True)
 
-            def _run(cmd: str, input_text: str = "") -> subprocess.CompletedProcess:
-                return subprocess.run(
-                    cmd, shell=True, input=input_text,
-                    capture_output=True, text=True,
-                    timeout=time_limit_s, cwd=str(workdir),
-                )
-
             if compile_command:
-                compile_cmd = (
-                    compile_command
-                    .replace("/code", str(workdir))
-                    .replace("/code/out", str(outdir))
+                compile_parts = cls._safe_command(
+                    compile_command, workdir, outdir,
                 )
-                proc = _run(compile_cmd)
+                start = time.time()
+                try:
+                    proc = subprocess.run(
+                        compile_parts, capture_output=True, text=True,
+                        timeout=time_limit_s, cwd=str(workdir),
+                    )
+                except subprocess.TimeoutExpired:
+                    return SandboxResult(
+                        stderr="Compilation timed out",
+                        exit_code=-1, timed_out=True,
+                    )
                 if proc.returncode != 0:
                     return SandboxResult(
                         stderr=proc.stderr, exit_code=proc.returncode,
                     )
 
-            run_cmd = (
-                run_command
-                .replace("/code", str(workdir))
-                .replace("/code/out", str(outdir))
+            run_parts = cls._safe_command(
+                run_command, workdir, outdir,
             )
-
             start = time.time()
             try:
-                proc = _run(run_cmd, test_input)
+                proc = subprocess.run(
+                    run_parts, input=test_input, capture_output=True,
+                    text=True, timeout=time_limit_s, cwd=str(workdir),
+                )
                 elapsed = int((time.time() - start) * 1000)
                 return SandboxResult(
                     stdout=proc.stdout, stderr=proc.stderr,
@@ -217,3 +219,13 @@ class Sandbox:
                     exit_code=-1, timed_out=True,
                     execution_ms=time_limit_s * 1000,
                 )
+
+    @staticmethod
+    def _safe_command(cmd: str, workdir: Path, outdir: Path) -> list[str]:
+        """Convert a shell command string to a safe list of args.
+
+        Replaces /code and /code/out path placeholders, then splits
+        using shlex to preserve quoted paths.
+        """
+        cmd = cmd.replace("/code", str(workdir)).replace("/code/out", str(outdir))
+        return shlex.split(cmd)

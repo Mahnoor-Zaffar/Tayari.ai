@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Play, Send, RotateCcw, Copy, Check, RefreshCw } from "lucide-react";
+import { Play, Send, RotateCcw, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { codingApi, type LanguageInfo } from "@/features/coding/api/coding";
@@ -36,9 +36,14 @@ export function CodeSession({ interviewId, className }: CodeSessionProps) {
     catch { return CODE_TEMPLATES["python"] || ""; }
   });
 
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const setCode = useCallback((val: string) => {
     setCodeState(val);
-    try { localStorage.setItem(`${STORAGE_KEY_PREFIX}${interviewId}`, val); } catch { /* ignore */ }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try { localStorage.setItem(`${STORAGE_KEY_PREFIX}${interviewId}`, val); } catch { /* ignore */ }
+    }, 500);
   }, [interviewId]);
 
   const [copied, setCopied] = useState(false);
