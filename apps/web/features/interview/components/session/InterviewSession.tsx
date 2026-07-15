@@ -32,6 +32,7 @@ interface InterviewSessionProps {
   token: string;
   durationMinutes?: number;
   className?: string;
+  onComplete?: (sessionId: string) => void;
 }
 
 export function InterviewSession({
@@ -40,6 +41,7 @@ export function InterviewSession({
   token,
   durationMinutes = 30,
   className,
+  onComplete,
 }: InterviewSessionProps) {
   const {
     state,
@@ -55,6 +57,7 @@ export function InterviewSession({
     interviewId,
     token,
     durationMinutes,
+    onComplete,
   });
 
   const { isFullscreen, toggle: toggleFullscreen } = useFullscreen();

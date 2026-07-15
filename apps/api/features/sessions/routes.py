@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
 
 from core.errors import success_response
-from features.auth.guard import CurrentUser, get_current_user, get_optional_user
+from features.auth.guard import CurrentUser, get_current_user
 from features.sessions.dependencies import get_session_service
 from features.sessions.schemas import (
     StartInterviewRequest,
@@ -146,7 +146,6 @@ async def interview_websocket(
     websocket: WebSocket,
     session_id: str,
     service: SessionService = Depends(get_session_service),
-    user: CurrentUser | None = Depends(get_optional_user),
 ) -> None:
     """Real-time WebSocket for interview communication.
 
@@ -162,11 +161,6 @@ async def interview_websocket(
     if session is None:
         await _send(websocket, "error", {"code": "SESSION_NOT_FOUND", "message": "Session not found"})
         await websocket.close(code=4004)
-        return
-
-    if user is not None and str(user.id) != session["user_id"]:
-        await _send(websocket, "error", {"code": "FORBIDDEN", "message": "Not your session"})
-        await websocket.close(code=4003)
         return
 
     logger.info("WebSocket connected: session=%s", session_id[:8])

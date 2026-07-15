@@ -35,7 +35,7 @@ from features.interview.schemas import (
     ValidateConfigResponse,
 )
 
-FREE_TIER_INTERVIEW_LIMIT = 1
+FREE_TIER_INTERVIEW_LIMIT = 10
 
 
 class InterviewService:

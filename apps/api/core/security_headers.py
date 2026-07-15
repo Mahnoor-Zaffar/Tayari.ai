@@ -43,13 +43,16 @@ def _build_csp(origin: str) -> str:
     """
     dev_src = origin if "localhost" in origin or "127.0.0.1" in origin else ""
 
+    api_origin = "http://localhost:8000"  # Backend API origin
+    ws_origin = api_origin.replace("http://", "ws://")  # ws://localhost:8000
+
     directives = {
         "default-src": ["'self'"],
         "script-src": ["'self'", "'unsafe-inline'"],
         "style-src": ["'self'", "'unsafe-inline'"],
         "img-src": ["'self'", "data:", "https:"],
         "font-src": ["'self'", "data:"],
-        "connect-src": ["'self'", *([dev_src] if dev_src else [])],
+        "connect-src": ["'self'", api_origin, ws_origin, *([dev_src] if dev_src and dev_src != api_origin else [])],
         "frame-ancestors": ["'none'"],
         "form-action": ["'self'"],
         "base-uri": ["'self'"],

@@ -156,4 +156,14 @@ export const interviewSetupApi = {
   // ── Recent Configs ─────────────────────────────────────────────────────
 
   getRecent: () => api.get<{ recent: InterviewResponse[] }>("/interviews/recent"),
+
+  // ── Session ─────────────────────────────────────────────────────────────
+
+  startSession: (interviewId: string) =>
+    api.post<{ session_id: string; interview_id: string; status: string; initial_question: string }>(
+      "/sessions", { interview_id: interviewId },
+    ),
+
+  getSessionStatus: (sessionId: string) =>
+    api.get<{ state: string; remaining_seconds: number }>(`/sessions/${sessionId}`),
 };

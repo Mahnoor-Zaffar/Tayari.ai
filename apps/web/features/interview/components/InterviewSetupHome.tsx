@@ -21,14 +21,14 @@ export const InterviewSetupHome = memo(function InterviewSetupHome() {
 
   const handleSuccess = useCallback(
     (interview: InterviewResponse) => {
-      router.push(`/dashboard?interview=${interview.id}`);
+      router.push(`/dashboard/interview/${interview.id}`);
     },
     [router],
   );
 
   const handleLoadConfig = useCallback(
     (interview: InterviewResponse) => {
-      router.push(`/dashboard/interview/new?from=${interview.id}`);
+      router.push(`/dashboard/interview/${interview.id}`);
     },
     [router],
   );

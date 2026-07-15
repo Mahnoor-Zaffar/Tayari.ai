@@ -26,13 +26,14 @@ WRAP_UP_MESSAGE = (
 class AIOrchestrator:
     """Manages the AI-driven turn loop for a single interview session."""
 
+    MAX_QUESTIONS = 5
+
     def __init__(
         self,
         provider: AIProvider,
         prompt_builder: PromptBuilder,
         memory: ConversationMemory,
         transcript: TranscriptManager,
-        model: str = "gpt-4o-mini",
         max_tokens: int = 300,
     ) -> None:
         self._provider = provider
@@ -42,10 +43,12 @@ class AIOrchestrator:
         self._max_tokens = max_tokens
         self._current_question_id = 0
         self._last_question = ""
+        self._question_count = 0
 
     async def generate_initial_question(self) -> str:
         """Generate the opening question from the AI interviewer."""
         self._current_question_id += 1
+        self._question_count += 1
         question = await self._generate_question(is_initial=True)
         self._last_question = question
         self._memory.append("assistant", question)
@@ -56,12 +59,16 @@ class AIOrchestrator:
         """Process a user answer and generate the next AI response.
 
         Returns the next question text, or None if the interview
-        should proceed to wrap-up.
+        should proceed to wrap-up (question limit reached).
         """
         self._memory.append("user", answer)
         self._transcript.commit_partial("user")
 
+        if self._question_count >= self.MAX_QUESTIONS:
+            return None
+
         self._current_question_id += 1
+        self._question_count += 1
         next_question = await self._generate_question(is_initial=False)
 
         if next_question is None:
