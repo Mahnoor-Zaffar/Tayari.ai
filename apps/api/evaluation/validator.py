@@ -119,6 +119,19 @@ class ResultValidator:
         if missing:
             logger.warning("Missing dimensions in AI output: %s", missing)
 
+    def validate_result(self, result: EvaluationResult) -> EvaluationResult:
+        """Validate an already-constructed EvaluationResult.
+
+        Clamps score ranges and ensures all required fields are present.
+        """
+        result.overall_score = max(0.0, min(5.0, result.overall_score))
+        result.overall_score_100 = round(result.overall_score / 5.0 * 100, 1)
+        result.confidence = max(0.0, min(1.0, result.confidence))
+        for dim in result.dimensions:
+            dim.score = max(0.0, min(5.0, dim.score))
+            dim.confidence = max(0.0, min(1.0, dim.confidence))
+        return result
+
     def _compute_weighted(self, dimensions: list[DimensionScore]) -> float:
         total_weight = sum(d.weight for d in dimensions)
         if total_weight == 0:

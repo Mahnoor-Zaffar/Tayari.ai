@@ -6,7 +6,7 @@ strengths, and weaknesses.
 
 from __future__ import annotations
 
-from evaluation.types import EvaluationResult
+from evaluation.types import DimensionScore, EvaluationResult
 
 
 class RecommendationService:
@@ -79,6 +79,21 @@ class RecommendationService:
             "Get feedback on presentation clarity",
         ],
     }
+
+    def generate_from_dimensions(self, dimensions: list[DimensionScore]) -> list[str]:
+        """Generate recommendations from dimension scores directly."""
+        recommendations: list[str] = []
+        seen: set[str] = set()
+        for dim in dimensions:
+            if dim.score < 3.0 and dim.key in self.DIMENSION_RESOURCES:
+                for rec in self.DIMENSION_RESOURCES[dim.key]:
+                    if rec not in seen:
+                        recommendations.append(rec)
+                        seen.add(rec)
+        if len(recommendations) < 2:
+            recommendations.append("Continue practicing with mock interviews")
+            recommendations.append("Review fundamentals in your weaker areas")
+        return recommendations[:5]
 
     def generate(self, result: EvaluationResult) -> list[str]:
         """Generate recommendations based on evaluation results."""
