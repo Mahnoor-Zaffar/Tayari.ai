@@ -29,7 +29,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/interviews", label: "Interviews", icon: Mic, flag: "interviews" },
+  { href: "/dashboard/interview/new", label: "New Interview", icon: Mic },
   { href: "/dashboard/reports", label: "Reports", icon: BarChart3, flag: "reports" },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard, flag: "billing" },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, flag: "settings" },
