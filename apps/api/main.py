@@ -208,6 +208,7 @@ from features.reports.routes import router as reports_router  # noqa: E402
 from features.users.routes import router as users_router  # noqa: E402
 from features.voice.routes import router as voice_router  # noqa: E402
 from features.sessions.routes import router as sessions_router  # noqa: E402
+from features.code.routes import router as code_router  # noqa: E402
 
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
@@ -219,6 +220,7 @@ app.include_router(reports_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(voice_router, prefix="/api/v1")
 app.include_router(sessions_router, prefix="/api/v1")
+app.include_router(code_router, prefix="/api/v1")
 
 
 @app.get("/health")
