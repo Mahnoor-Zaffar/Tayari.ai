@@ -222,6 +222,8 @@ export function InterviewSession({
           isAiThinking={state.isAiThinking}
           connectionStatus={state.connectionStatus}
           isPaused={isPaused}
+          liveTranscript={speech.interimTranscript}
+          isListening={speech.isListening}
           onAnswer={sendAnswer}
           onRequestHint={requestHint}
           className="flex-1"

@@ -16,6 +16,8 @@ interface ConversationAreaProps {
   isAiThinking: boolean;
   connectionStatus: WSConnectionStatus;
   isPaused: boolean;
+  liveTranscript?: string;
+  isListening?: boolean;
   onAnswer: (text: string) => void;
   onRequestHint: () => void;
   className?: string;
@@ -27,6 +29,8 @@ export const ConversationArea = memo(function ConversationArea({
   isAiThinking,
   connectionStatus,
   isPaused,
+  liveTranscript = "",
+  isListening = false,
   onAnswer,
   onRequestHint,
   className,
@@ -59,6 +63,8 @@ export const ConversationArea = memo(function ConversationArea({
           isAiThinking={isAiThinking}
           connectionStatus={connectionStatus}
           isPaused={isPaused}
+          liveTranscript={liveTranscript}
+          isListening={isListening}
           onAnswer={onAnswer}
           onRequestHint={onRequestHint}
         />
