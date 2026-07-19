@@ -616,7 +616,6 @@ _COMPANIES = [
     "Snowflake",
     "Datadog",
     "HashiCorp",
-    "Stripe",
     "Databricks",
     "Riot Games",
     "ByteDance",
