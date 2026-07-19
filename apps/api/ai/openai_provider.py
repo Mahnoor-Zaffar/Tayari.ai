@@ -9,7 +9,10 @@ from .provider import AIProvider, AIResponse
 
 class OpenAIProvider(AIProvider):
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        self.client = AsyncOpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            base_url=settings.OPENAI_BASE_URL,
+        )
 
     async def chat(self, messages, system_prompt=None, max_tokens=1000):
         full_messages = [{"role": "system", "content": system_prompt}] if system_prompt else []

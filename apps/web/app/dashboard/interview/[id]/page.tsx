@@ -3,6 +3,7 @@
 import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { InterviewSession } from "@/features/interview/components/session/InterviewSession";
+import { CodingInterviewLayout } from "@/features/coding/components/CodingInterviewLayout";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { interviewSetupApi } from "@/features/interview/api/interview-setup";
 
@@ -12,6 +13,7 @@ interface SessionData {
   status: string;
   initial_question: string;
   duration_minutes: number;
+  interview_type: string;
 }
 
 const SESSION_KEY = "tayari_active_session";
@@ -39,7 +41,6 @@ export default function InterviewRoomPage({
 
     const startInterview = async () => {
       try {
-        // Check for existing session
         const stored = typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null;
         if (stored) {
           try {
@@ -63,6 +64,7 @@ export default function InterviewRoomPage({
           status: result.status,
           initial_question: result.initial_question,
           duration_minutes: interview.duration_minutes ?? 30,
+          interview_type: interview.type,
         };
         try { localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData)); } catch { /* ignore */ }
         setSession(sessionData);
@@ -92,15 +94,27 @@ export default function InterviewRoomPage({
 
   if (!session) return null;
 
+  const isCoding = session.interview_type === "coding";
+
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col p-2 sm:p-4">
-      <InterviewSession
-        sessionId={session.session_id}
-        interviewId={session.interview_id}
-        token=""
-        durationMinutes={session.duration_minutes}
-        onComplete={handleComplete}
-      />
+      {isCoding ? (
+        <CodingInterviewLayout
+          sessionId={session.session_id}
+          interviewId={session.interview_id}
+          token=""
+          durationMinutes={session.duration_minutes}
+          onComplete={handleComplete}
+        />
+      ) : (
+        <InterviewSession
+          sessionId={session.session_id}
+          interviewId={session.interview_id}
+          token=""
+          durationMinutes={session.duration_minutes}
+          onComplete={handleComplete}
+        />
+      )}
     </div>
   );
 }
