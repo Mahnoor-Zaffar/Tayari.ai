@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from evaluation.types import EvaluationResult
+from evaluation.types import EvaluationResult, DimensionScore
 from features.reports.models import Evaluation
 
 
@@ -16,6 +16,29 @@ class EvaluationRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def list_user_evaluations(self, user_id: UUID, limit: int = 50) -> list[dict]:
+        from features.interview.models import Interview
+        result = await self._session.execute(
+            select(Evaluation).join(Interview, Evaluation.interview_id == Interview.id)
+            .where(Interview.user_id == user_id, Evaluation.deleted_at.is_(None))
+            .order_by(Evaluation.created_at.desc()).limit(limit)
+        )
+        evals = list(result.scalars().all())
+        return [
+            {
+                "id": str(e.id),
+                "interview_id": str(e.interview_id),
+                "overall_score": e.overall_score,
+                "hire_verdict": e.hire_verdict,
+                "dimensions": e.dimension_scores,
+                "strengths": e.strengths,
+                "improvements": e.improvements,
+                "status": e.status,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            }
+            for e in evals
+        ]
 
     async def create_evaluation(self, result: EvaluationResult) -> Evaluation:
         """Persist a validated EvaluationResult to the database.
