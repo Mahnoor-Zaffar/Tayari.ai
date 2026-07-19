@@ -33,9 +33,9 @@ export class SessionClient {
   }
 
   connect(): void {
-    if (this.ws?.readyState === WebSocket.OPEN) return;
+    if (this.ws?.readyState === WebSocket.OPEN || this.ws?.readyState === WebSocket.CONNECTING)
+      return;
     this.closed = false;
-    this._emit({ type: "error", error: "" });
     this._open();
   }
 
@@ -62,7 +62,8 @@ export class SessionClient {
       this.ws.onclose = (event: CloseEvent) => {
         this._stopHeartbeat();
         this._emit({ type: "close", code: event.code, reason: event.reason });
-        if (!this.closed) {
+        // Don't reconnect if explicitly closed by client, session not found (4004), or max attempts
+        if (!this.closed && event.code !== 4004) {
           this._scheduleReconnect();
         }
       };
@@ -95,8 +96,17 @@ export class SessionClient {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    this.ws?.close(1000, "Client closed");
-    this.ws = null;
+    if (this.ws) {
+      if (this.ws.readyState === WebSocket.OPEN) {
+        this.ws.close(1000, "Client closed");
+      } else if (this.ws.readyState === WebSocket.CONNECTING) {
+        // Still connecting — abort without firing onclose reconnection
+        this.ws.onclose = null;
+        this.ws.onerror = null;
+        this.ws.close();
+      }
+      this.ws = null;
+    }
   }
 
   subscribe(listener: SessionClientListener): () => void {

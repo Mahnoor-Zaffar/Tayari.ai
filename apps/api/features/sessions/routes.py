@@ -13,7 +13,8 @@ import time
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
 
-from core.errors import success_response
+from ai.realtime.session_manager import SessionNotFoundError
+from core.errors import NotFoundError, success_response
 from features.auth.guard import CurrentUser, get_current_user
 from features.sessions.dependencies import get_session_service
 from features.sessions.schemas import (
@@ -42,6 +43,7 @@ _INPUT_CLEAN_RE = re.compile(r"[\0-\x08\x0b\x0c\x0e-\x1f]")
 def _sanitize_text(text: str, max_length: int = MAX_ANSWER_LENGTH) -> str:
     """Strip control characters and truncate to max_length."""
     return _INPUT_CLEAN_RE.sub("", text)[:max_length]
+
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -74,7 +76,10 @@ async def get_session_status(
     current_user: CurrentUser = Depends(get_current_user),
     service: SessionService = Depends(get_session_service),
 ) -> dict:
-    result = await service.get_status(session_id)
+    try:
+        result = await service.get_status(session_id)
+    except SessionNotFoundError:
+        raise NotFoundError("Session not found")
     return success_response(result)
 
 
@@ -88,7 +93,10 @@ async def pause_session(
     current_user: CurrentUser = Depends(get_current_user),
     service: SessionService = Depends(get_session_service),
 ) -> dict:
-    result = await service.pause_session(session_id)
+    try:
+        result = await service.pause_session(session_id)
+    except SessionNotFoundError:
+        raise NotFoundError("Session not found")
     return success_response(result)
 
 
@@ -102,7 +110,10 @@ async def resume_session(
     current_user: CurrentUser = Depends(get_current_user),
     service: SessionService = Depends(get_session_service),
 ) -> dict:
-    result = await service.resume_session(session_id)
+    try:
+        result = await service.resume_session(session_id)
+    except SessionNotFoundError:
+        raise NotFoundError("Session not found")
     return success_response(result)
 
 
@@ -116,7 +127,10 @@ async def end_session(
     current_user: CurrentUser = Depends(get_current_user),
     service: SessionService = Depends(get_session_service),
 ) -> dict:
-    result = await service.end_session(session_id)
+    try:
+        result = await service.end_session(session_id)
+    except SessionNotFoundError:
+        raise NotFoundError("Session not found")
     return success_response(result)
 
 
@@ -130,12 +144,17 @@ async def can_reconnect(
     current_user: CurrentUser = Depends(get_current_user),
     service: SessionService = Depends(get_session_service),
 ) -> dict:
-    can_reconnect = await service.can_reconnect(session_id)
-    state = await service.get_session_state(session_id)
-    return success_response({
-        "can_reconnect": can_reconnect,
-        "current_state": state,
-    })
+    try:
+        can_reconnect = await service.can_reconnect(session_id)
+        state = await service.get_session_state(session_id)
+    except SessionNotFoundError:
+        raise NotFoundError("Session not found")
+    return success_response(
+        {
+            "can_reconnect": can_reconnect,
+            "current_state": state,
+        }
+    )
 
 
 # ── WebSocket Handler ───────────────────────────────────────────────────────
@@ -159,25 +178,28 @@ async def interview_websocket(
 
     session = service.get_session(session_id)
     if session is None:
+        await websocket.accept()
         await _send(websocket, "error", {"code": "SESSION_NOT_FOUND", "message": "Session not found"})
         await websocket.close(code=4004)
         return
 
     logger.info("WebSocket connected: session=%s", session_id[:8])
 
-    await _send(websocket, "session.connected", {
-        "session_id": session_id,
-        "state": session.get("state", "unknown"),
-        "remaining_seconds": session.get("remaining_seconds", 0),
-    })
+    await _send(
+        websocket,
+        "session.connected",
+        {
+            "session_id": session_id,
+            "state": session.get("state", "unknown"),
+            "remaining_seconds": session.get("remaining_seconds", 0),
+        },
+    )
 
     first_question = session.get("current_question")
     if first_question:
         await _send(websocket, "ai.question", {"id": 1, "text": first_question, "type": "initial"})
 
-    heartbeat_task = asyncio.create_task(
-        _heartbeat_sender(websocket, session_id, service)
-    )
+    heartbeat_task = asyncio.create_task(_heartbeat_sender(websocket, session_id, service))
 
     rate_limiter = _RateLimiter()
 
@@ -186,9 +208,14 @@ async def interview_websocket(
             raw = await websocket.receive_text()
 
             if not rate_limiter.check():
-                await _send(websocket, "error", {
-                    "code": "RATE_LIMITED", "message": "Too many messages. Please slow down.",
-                })
+                await _send(
+                    websocket,
+                    "error",
+                    {
+                        "code": "RATE_LIMITED",
+                        "message": "Too many messages. Please slow down.",
+                    },
+                )
                 continue
 
             try:
@@ -243,36 +270,52 @@ async def _handle_message(
     All user text is sanitized before processing.
     """
     if msg.type == "session.join":
-        await _send(websocket, "session.connected", {
-            "session_id": session_id,
-            "state": "connected",
-        })
+        await _send(
+            websocket,
+            "session.connected",
+            {
+                "session_id": session_id,
+                "state": "connected",
+            },
+        )
 
     elif msg.type == "user.answer":
         text = _sanitize_text(msg.payload.get("text", ""))
         if text:
             next_question = await service.process_answer(session_id, text)
             if next_question:
-                await _send(websocket, "ai.question", {
-                    "id": 0,
-                    "text": next_question,
-                    "type": "follow_up",
-                })
+                await _send(
+                    websocket,
+                    "ai.question",
+                    {
+                        "id": 0,
+                        "text": next_question,
+                        "type": "follow_up",
+                    },
+                )
             else:
                 await _send(websocket, "session.completing", {})
                 await service.end_session(session_id)
-                await _send(websocket, "session.completed", {
-                    "interview_id": session_id,
-                    "redirect_url": f"/dashboard/interview/{session_id}",
-                })
+                await _send(
+                    websocket,
+                    "session.completed",
+                    {
+                        "interview_id": session_id,
+                        "redirect_url": f"/dashboard/interview/{session_id}",
+                    },
+                )
 
     elif msg.type == "user.code":
         language = _sanitize_text(msg.payload.get("language", ""), max_length=50)
-        await _send(websocket, "ai.question", {
-            "id": 0,
-            "text": f"I see you've written some {language} code. Can you walk me through your approach?",
-            "type": "follow_up",
-        })
+        await _send(
+            websocket,
+            "ai.question",
+            {
+                "id": 0,
+                "text": f"I see you've written some {language} code. Can you walk me through your approach?",
+                "type": "follow_up",
+            },
+        )
 
     elif msg.type == "session.pause":
         result = await service.pause_session(session_id)
@@ -290,9 +333,13 @@ async def _handle_message(
             await _send(websocket, "error", {"code": "HINT_UNAVAILABLE", "message": "Unable to generate hint"})
 
     elif msg.type == "media.stream_ready":
-        await _send(websocket, "media.stream_accepted", {
-            "message": "WebRTC stream acknowledged. Use STT provider directly.",
-        })
+        await _send(
+            websocket,
+            "media.stream_accepted",
+            {
+                "message": "WebRTC stream acknowledged. Use STT provider directly.",
+            },
+        )
 
     elif msg.type == "heartbeat":
         service.record_heartbeat(session_id)
@@ -323,16 +370,24 @@ async def _heartbeat_sender(
             session = service.get_session(session_id)
             if session is None:
                 break
-            await _send(websocket, "timer.tick", {
-                "remaining_seconds": session.get("remaining_seconds", 0),
-                "elapsed_seconds": session.get("elapsed_seconds", 0),
-                "state": session.get("state", "unknown"),
-            })
+            await _send(
+                websocket,
+                "timer.tick",
+                {
+                    "remaining_seconds": session.get("remaining_seconds", 0),
+                    "elapsed_seconds": session.get("elapsed_seconds", 0),
+                    "state": session.get("state", "unknown"),
+                },
+            )
             remaining = session.get("remaining_seconds", 0)
             if remaining <= WARNING_THRESHOLD_S and remaining > 0 and remaining % WARNING_MODULO_S == 0:
-                await _send(websocket, "timer.warning", {
-                    "remaining_seconds": remaining,
-                })
+                await _send(
+                    websocket,
+                    "timer.warning",
+                    {
+                        "remaining_seconds": remaining,
+                    },
+                )
     except asyncio.CancelledError:
         pass
     except Exception as exc:

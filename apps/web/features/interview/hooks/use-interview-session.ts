@@ -32,8 +32,6 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
     remainingSeconds: durationMinutes * 60,
   });
   const clientRef = useRef<SessionClient | null>(null);
-  const stateRef = useRef(state);
-  stateRef.current = state;
 
   const timer = useInterviewTimer(durationMinutes * 60);
 
@@ -41,50 +39,9 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
     setState((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  // ── Connect WebSocket ──────────────────────────────────────────────
-  useEffect(() => {
-    const wsUrl = `${WS_BASE}/sessions/${sessionId}/ws`;
-    const client = new SessionClient(wsUrl, token);
-    clientRef.current = client;
-
-    client.subscribe((event) => {
-      switch (event.type) {
-        case "open":
-          updateState({ connectionStatus: "connected" });
-          break;
-
-        case "close":
-          if (event.code !== 1000) {
-            updateState({ connectionStatus: "disconnected" });
-          }
-          break;
-
-        case "message": {
-          const serverEvent = event.data as ServerEvent;
-          handleServerEvent(serverEvent);
-          break;
-        }
-
-        case "error":
-          if (event.error === "reconnecting") {
-            updateState({ connectionStatus: "reconnecting" });
-          } else if (event.error) {
-            updateState({ error: event.error, connectionStatus: "disconnected" });
-          }
-          break;
-      }
-    });
-
-    client.connect();
-
-    return () => {
-      client.close();
-      clientRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, token]);
-
   // ── Handle server events ─────────────────────────────────────────
+  // Defined as a ref so the WS subscribe callback always calls the latest version
+  // without needing to re-subscribe when deps change.
   const handleServerEvent = useCallback(
     (event: ServerEvent) => {
       switch (event.type) {
@@ -159,7 +116,6 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
           break;
 
         case "timer.warning":
-          // Flash/timer warning handled by UI component
           break;
 
         case "error":
@@ -169,6 +125,51 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
     },
     [timer, updateState, sessionId, onComplete],
   );
+
+  // Keep a ref to the latest handler so the WS subscribe callback is never stale
+  const handleServerEventRef = useRef(handleServerEvent);
+  handleServerEventRef.current = handleServerEvent;
+
+  // ── Connect WebSocket ──────────────────────────────────────────────
+  useEffect(() => {
+    const wsUrl = `${WS_BASE}/sessions/${sessionId}/ws`;
+    const client = new SessionClient(wsUrl, token);
+    clientRef.current = client;
+
+    client.subscribe((event) => {
+      switch (event.type) {
+        case "open":
+          updateState({ connectionStatus: "connected" });
+          break;
+
+        case "close":
+          if (event.code !== 1000) {
+            updateState({ connectionStatus: "disconnected" });
+          }
+          break;
+
+        case "message":
+          handleServerEventRef.current(event.data as ServerEvent);
+          break;
+
+        case "error":
+          if (event.error === "reconnecting") {
+            updateState({ connectionStatus: "reconnecting" });
+          } else if (event.error) {
+            updateState({ error: event.error, connectionStatus: "disconnected" });
+          }
+          break;
+      }
+    });
+
+    client.connect();
+
+    return () => {
+      client.close();
+      clientRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, token]);
 
   // ── Actions ────────────────────────────────────────────────────────
   const sendAnswer = useCallback((text: string) => {
@@ -203,7 +204,10 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
   }, [timer, updateState]);
 
   const reconnect = useCallback(() => {
-    clientRef.current?.connect();
+    const client = clientRef.current;
+    if (client) {
+      client.connect();
+    }
   }, []);
 
   return {

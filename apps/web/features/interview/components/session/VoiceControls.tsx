@@ -1,7 +1,7 @@
 "use client";
 
-import { memo, useEffect, useRef } from "react";
-import { Mic, MicOff, Loader2, Volume2 } from "lucide-react";
+import { memo } from "react";
+import { Mic, MicOff, Zap, Globe, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,8 @@ interface VoiceControlsProps {
   isSupported: boolean;
   isDisabled: boolean;
   interimVolume: number;
+  source: "whisper" | "browser" | "funasr";
+  latencyMs?: number;
   onToggle: () => void;
 }
 
@@ -18,11 +20,16 @@ export const VoiceControls = memo(function VoiceControls({
   isSupported,
   isDisabled,
   interimVolume,
+  source,
+  latencyMs,
   onToggle,
 }: VoiceControlsProps) {
   if (!isSupported) {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground" title="Speech recognition not supported in this browser">
+      <div
+        className="flex items-center gap-2 text-xs text-muted-foreground"
+        title="Speech recognition not supported in this browser"
+      >
         <MicOff className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">Mic unavailable</span>
       </div>
@@ -40,7 +47,8 @@ export const VoiceControls = memo(function VoiceControls({
         aria-label={isListening ? "Stop recording" : "Start recording"}
         className={cn(
           "relative h-10 w-10 transition-all",
-          isListening && "bg-destructive text-destructive-foreground hover:bg-destructive/90 ring-4 ring-destructive/20",
+          isListening &&
+            "bg-destructive text-destructive-foreground hover:bg-destructive/90 ring-4 ring-destructive/20",
         )}
       >
         {isListening ? (
@@ -65,9 +73,38 @@ export const VoiceControls = memo(function VoiceControls({
           <Mic className="h-4 w-4" />
         )}
       </Button>
-      <span className="text-xs text-muted-foreground hidden sm:inline">
-        {isListening ? "Recording..." : "Mic"}
-      </span>
+
+      <div className="hidden sm:flex flex-col">
+        <span className="text-xs text-muted-foreground">
+          {isListening ? "Recording..." : "Mic"}
+        </span>
+        {isListening && (
+          <span className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
+            {source === "funasr" ? (
+              <>
+                <Radio className="h-2.5 w-2.5 text-green-400" />
+                FunASR
+                {latencyMs != null && latencyMs > 0 && (
+                  <span className="text-muted-foreground/50">{latencyMs}ms</span>
+                )}
+              </>
+            ) : source === "whisper" ? (
+              <>
+                <Zap className="h-2.5 w-2.5 text-yellow-500" />
+                Whisper
+                {latencyMs != null && latencyMs > 0 && (
+                  <span className="text-muted-foreground/50">{latencyMs}ms</span>
+                )}
+              </>
+            ) : (
+              <>
+                <Globe className="h-2.5 w-2.5 text-blue-400" />
+                Browser
+              </>
+            )}
+          </span>
+        )}
+      </div>
     </div>
   );
 });

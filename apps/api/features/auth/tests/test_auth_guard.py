@@ -115,12 +115,12 @@ class TestGetCurrentUser:
             mock_find.return_value = user
 
             @app.get("/test/me")
-            async def _test_me(current_user=Depends(get_current_user)):
+            async def _test_me(authed_user=Depends(get_current_user)):
                 return {
-                    "id": str(current_user.id),
-                    "email": current_user.email,
-                    "roles": current_user.roles,
-                    "permissions": current_user.permissions,
+                    "id": str(authed_user.id),
+                    "email": authed_user.email,
+                    "roles": authed_user.roles,
+                    "permissions": authed_user.permissions,
                 }
 
             transport = ASGITransport(app=app)
@@ -135,7 +135,7 @@ class TestGetCurrentUser:
 
     async def test_raises_401_on_missing_header(self, override_deps: None, mock_token_service: MagicMock) -> None:
         @app.get("/test/no-auth")
-        async def _test_no_auth(current_user=Depends(get_current_user)):
+        async def _test_no_auth(authed_user=Depends(get_current_user)):
             return {"ok": True}
 
         transport = ASGITransport(app=app)
@@ -148,7 +148,7 @@ class TestGetCurrentUser:
 
     async def test_raises_401_on_non_bearer_header(self, override_deps: None, mock_token_service: MagicMock) -> None:
         @app.get("/test/bad-scheme")
-        async def _test_bad(current_user=Depends(get_current_user)):
+        async def _test_bad(authed_user=Depends(get_current_user)):
             return {"ok": True}
 
         transport = ASGITransport(app=app)
@@ -163,7 +163,7 @@ class TestGetCurrentUser:
         mock_token_service.verify.side_effect = InvalidTokenError("bad token")
 
         @app.get("/test/bad-token")
-        async def _test_bad_token(current_user=Depends(get_current_user)):
+        async def _test_bad_token(authed_user=Depends(get_current_user)):
             return {"ok": True}
 
         transport = ASGITransport(app=app)
@@ -183,7 +183,7 @@ class TestGetCurrentUser:
             mock_find.return_value = None
 
             @app.get("/test/gone")
-            async def _test_gone(current_user=Depends(get_current_user)):
+            async def _test_gone(authed_user=Depends(get_current_user)):
                 return {"ok": True}
 
             transport = ASGITransport(app=app)
@@ -204,7 +204,7 @@ class TestGetCurrentUser:
             mock_find.return_value = user
 
             @app.get("/test/disabled")
-            async def _test_disabled(current_user=Depends(get_current_user)):
+            async def _test_disabled(authed_user=Depends(get_current_user)):
                 return {"ok": True}
 
             transport = ASGITransport(app=app)
@@ -229,8 +229,8 @@ class TestGetOptionalUser:
             mock_find.return_value = user
 
             @app.get("/test/optional-auth")
-            async def _test_opt(current_user=Depends(get_optional_user)):
-                return {"ok": current_user is not None, "email": current_user.email if current_user else None}
+            async def _test_opt(authed_user=Depends(get_optional_user)):
+                return {"ok": authed_user is not None, "email": authed_user.email if authed_user else None}
 
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -242,8 +242,8 @@ class TestGetOptionalUser:
 
     async def test_returns_none_without_header(self, override_deps: None, mock_token_service: MagicMock) -> None:
         @app.get("/test/no-header")
-        async def _test_no_header(current_user=Depends(get_optional_user)):
-            return {"ok": current_user is None}
+        async def _test_no_header(authed_user=Depends(get_optional_user)):
+            return {"ok": authed_user is None}
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -258,8 +258,8 @@ class TestGetOptionalUser:
         mock_token_service.verify.side_effect = InvalidTokenError("bad")
 
         @app.get("/test/opt-bad-token")
-        async def _test_opt_bad(current_user=Depends(get_optional_user)):
-            return {"ok": current_user is None}
+        async def _test_opt_bad(authed_user=Depends(get_optional_user)):
+            return {"ok": authed_user is None}
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -282,8 +282,8 @@ class TestRoleChecker:
             mock_find.return_value = user
 
             @app.get("/test/admin-only")
-            async def _test_admin(current_user=Depends(RoleChecker("admin"))):
-                return {"role": current_user.roles[0]}
+            async def _test_admin(authed_user=Depends(RoleChecker("admin"))):
+                return {"role": authed_user.roles[0]}
 
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -301,7 +301,7 @@ class TestRoleChecker:
             mock_find.return_value = user
 
             @app.get("/test/admin-only-403")
-            async def _test_no_admin(current_user=Depends(RoleChecker("admin"))):
+            async def _test_no_admin(authed_user=Depends(RoleChecker("admin"))):
                 return {"ok": True}
 
             transport = ASGITransport(app=app)
@@ -321,8 +321,8 @@ class TestRoleChecker:
             mock_find.return_value = user
 
             @app.get("/test/multi-role")
-            async def _test_multi(current_user=Depends(RoleChecker("admin", "moderator"))):
-                return {"role": current_user.roles[0]}
+            async def _test_multi(authed_user=Depends(RoleChecker("admin", "moderator"))):
+                return {"role": authed_user.roles[0]}
 
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -345,8 +345,8 @@ class TestPermissionChecker:
             mock_find.return_value = user
 
             @app.get("/test/perm-ok")
-            async def _test_perm(current_user=Depends(PermissionChecker("users:delete"))):
-                return {"perm": current_user.permissions[0]}
+            async def _test_perm(authed_user=Depends(PermissionChecker("users:delete"))):
+                return {"perm": authed_user.permissions[0]}
 
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -366,7 +366,7 @@ class TestPermissionChecker:
             mock_find.return_value = user
 
             @app.get("/test/perm-403")
-            async def _test_no_perm(current_user=Depends(PermissionChecker("users:delete"))):
+            async def _test_no_perm(authed_user=Depends(PermissionChecker("users:delete"))):
                 return {"ok": True}
 
             transport = ASGITransport(app=app)

@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import {
-  PauseIcon,
-  Play,
-  Square,
-  FileText,
-  Menu,
-  ChevronRight,
-} from "lucide-react";
+import { PauseIcon, Play, Square, FileText, Menu, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useInterviewSession } from "@/features/interview/hooks/use-interview-session";
@@ -20,7 +13,7 @@ import { SessionConnectionStatus } from "./ConnectionStatus";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { FullscreenToggle } from "./FullscreenToggle";
 import { VoiceControls } from "./VoiceControls";
-import { useSpeechRecognition } from "@/features/interview/hooks/use-speech-recognition";
+import { useStreamingRecognition } from "@/features/interview/hooks/use-streaming-recognition";
 import { PauseOverlay } from "./PauseOverlay";
 import { ReconnectOverlay } from "./ReconnectOverlay";
 import { EndInterviewDialog } from "./EndInterviewDialog";
@@ -67,7 +60,7 @@ export function InterviewSession({
   const [showNotes, setShowNotes] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  const speech = useSpeechRecognition();
+  const speech = useStreamingRecognition(token);
   const prevTranscriptRef = useRef("");
   const [interimVolume] = useState(0.5);
 
@@ -80,12 +73,24 @@ export function InterviewSession({
     }
   }, [speech.isListening, speech.transcript, sendAnswer]);
 
-  useEffect(() => { prevTranscriptRef.current = ""; }, [sessionId]);
+  useEffect(() => {
+    prevTranscriptRef.current = "";
+  }, [sessionId]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts([
-    { key: "p", ctrl: true, handler: state.state === "paused" ? resumeSession : pauseSession, enabled: state.state === "active" || state.state === "paused" },
-    { key: "e", ctrl: true, handler: () => setShowEndDialog(true), enabled: state.state === "active" || state.state === "paused" },
+    {
+      key: "p",
+      ctrl: true,
+      handler: state.state === "paused" ? resumeSession : pauseSession,
+      enabled: state.state === "active" || state.state === "paused",
+    },
+    {
+      key: "e",
+      ctrl: true,
+      handler: () => setShowEndDialog(true),
+      enabled: state.state === "active" || state.state === "paused",
+    },
     { key: "n", ctrl: true, handler: () => setShowNotes((v) => !v) },
     { key: "f", ctrl: true, handler: toggleFullscreen },
     { key: "h", ctrl: true, handler: () => requestHint() },
@@ -101,13 +106,22 @@ export function InterviewSession({
   const isPaused = state.state === "paused";
 
   return (
-    <div className={cn("relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-background", className)}>
+    <div
+      className={cn(
+        "relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-background",
+        className,
+      )}
+    >
       {/* ── Top Bar ───────────────────────────────────────────────────── */}
       <header className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-3">
           <SessionConnectionStatus status={state.connectionStatus} />
           <span className="hidden text-xs text-muted-foreground sm:inline">
-            {state.state === "completed" ? "Completed" : state.state === "completing" ? "Wrapping up..." : ""}
+            {state.state === "completed"
+              ? "Completed"
+              : state.state === "completing"
+                ? "Wrapping up..."
+                : ""}
           </span>
         </div>
 
@@ -157,15 +171,14 @@ export function InterviewSession({
             isSupported={speech.isSupported}
             isDisabled={state.connectionStatus !== "connected"}
             interimVolume={interimVolume}
+            source={speech.source}
+            latencyMs={speech.latencyMs}
             onToggle={speech.toggle}
           />
         </div>
 
         <div className="flex items-center gap-1">
-          <ProgressIndicator
-            current={state.questions.length}
-            total={state.questions.length}
-          />
+          <ProgressIndicator current={state.questions.length} total={state.questions.length} />
         </div>
 
         <div className="flex items-center gap-1">
@@ -246,6 +259,7 @@ export function InterviewSession({
       <PauseOverlay isPaused={isPaused} onResume={resumeSession} />
       <ReconnectOverlay
         status={state.connectionStatus}
+        error={state.error}
         onReconnect={reconnect}
       />
       <EndInterviewDialog

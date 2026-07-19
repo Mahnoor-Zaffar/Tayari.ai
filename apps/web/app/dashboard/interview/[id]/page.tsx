@@ -19,26 +19,29 @@ interface SessionData {
 
 const SESSION_KEY = "tayari_active_session";
 
-export default function InterviewRoomPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function InterviewRoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, accessToken, isLoading: authLoading } = useAuth();
   const [session, setSession] = useState<SessionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const handleComplete = useCallback(() => {
-    try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
     setTimeout(() => router.push(`/dashboard/interview/${id}/evaluation`), 2000);
   }, [id, router]);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push("/auth/login"); return; }
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
 
     const startInterview = async () => {
       try {
@@ -54,7 +57,9 @@ export default function InterviewRoomPage({
                 return;
               }
             }
-          } catch { /* stored session is invalid */ }
+          } catch {
+            /* stored session is invalid */
+          }
         }
 
         const interview = await interviewSetupApi.get(id);
@@ -67,7 +72,11 @@ export default function InterviewRoomPage({
           duration_minutes: interview.duration_minutes ?? 30,
           interview_type: interview.type,
         };
-        try { localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData)); } catch { /* ignore */ }
+        try {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+        } catch {
+          /* ignore */
+        }
         setSession(sessionData);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to start interview";
@@ -87,7 +96,13 @@ export default function InterviewRoomPage({
         <div className="text-center">
           <h2 className="text-lg font-semibold text-destructive">Failed to start interview</h2>
           <p className="mt-1 text-sm text-muted-foreground">{error}</p>
-          <button type="button" onClick={() => window.location.reload()} className="mt-4 text-sm text-primary underline underline-offset-2">Try again</button>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-4 text-sm text-primary underline underline-offset-2"
+          >
+            Try again
+          </button>
         </div>
       </div>
     );
@@ -104,7 +119,7 @@ export default function InterviewRoomPage({
         <CodingInterviewLayout
           sessionId={session.session_id}
           interviewId={session.interview_id}
-          token=""
+          token={accessToken ?? ""}
           durationMinutes={session.duration_minutes}
           onComplete={handleComplete}
         />
@@ -112,7 +127,7 @@ export default function InterviewRoomPage({
         <SystemDesignLayout
           sessionId={session.session_id}
           interviewId={session.interview_id}
-          token=""
+          token={accessToken ?? ""}
           durationMinutes={session.duration_minutes}
           onComplete={handleComplete}
         />
@@ -120,7 +135,7 @@ export default function InterviewRoomPage({
         <InterviewSession
           sessionId={session.session_id}
           interviewId={session.interview_id}
-          token=""
+          token={accessToken ?? ""}
           durationMinutes={session.duration_minutes}
           onComplete={handleComplete}
         />

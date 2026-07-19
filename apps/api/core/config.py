@@ -66,5 +66,13 @@ class Settings(BaseSettings):
     STORAGE_ACCESS_KEY: str = ""
     STORAGE_SECRET_KEY: str = ""
 
+    WHISPER_MODEL: str = "whisper-1"
+    WHISPER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    WHISPER_PROMPT: str = (
+        "This is a job interview conversation. The candidate is answering "
+        "technical and behavioral questions about software engineering."
+    )
+    WHISPER_LANGUAGE: str = "en"
+
 
 settings = Settings()
