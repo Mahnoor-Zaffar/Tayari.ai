@@ -4,6 +4,7 @@ import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { InterviewSession } from "@/features/interview/components/session/InterviewSession";
 import { CodingInterviewLayout } from "@/features/coding/components/CodingInterviewLayout";
+import { SystemDesignLayout } from "@/features/interview/components/whiteboard/SystemDesignLayout";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { interviewSetupApi } from "@/features/interview/api/interview-setup";
 
@@ -95,11 +96,20 @@ export default function InterviewRoomPage({
   if (!session) return null;
 
   const isCoding = session.interview_type === "coding";
+  const isSystemDesign = session.interview_type === "system-design";
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col p-2 sm:p-4">
       {isCoding ? (
         <CodingInterviewLayout
+          sessionId={session.session_id}
+          interviewId={session.interview_id}
+          token=""
+          durationMinutes={session.duration_minutes}
+          onComplete={handleComplete}
+        />
+      ) : isSystemDesign ? (
+        <SystemDesignLayout
           sessionId={session.session_id}
           interviewId={session.interview_id}
           token=""
