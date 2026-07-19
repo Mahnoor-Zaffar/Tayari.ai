@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   PauseIcon,
   Play,
@@ -20,6 +20,7 @@ import { SessionConnectionStatus } from "./ConnectionStatus";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { FullscreenToggle } from "./FullscreenToggle";
 import { VoiceControls } from "./VoiceControls";
+import { useSpeechRecognition } from "@/features/interview/hooks/use-speech-recognition";
 import { PauseOverlay } from "./PauseOverlay";
 import { ReconnectOverlay } from "./ReconnectOverlay";
 import { EndInterviewDialog } from "./EndInterviewDialog";
@@ -65,7 +66,26 @@ export function InterviewSession({
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+
+  const speech = useSpeechRecognition();
+  const [interimVolume] = useState(0.5);
+  const lastTranscriptRef = useRef("");
+
+  // When speech recognition produces final transcript, send it as answer
+  useEffect(() => {
+    if (speech.transcript && speech.transcript !== lastTranscriptRef.current) {
+      const newText = speech.transcript.slice(lastTranscriptRef.current.length).trim();
+      if (newText && !speech.isListening) {
+        sendAnswer(newText);
+        lastTranscriptRef.current = speech.transcript;
+      }
+    }
+  }, [speech.transcript, speech.isListening, sendAnswer]);
+
+  // Reset transcript tracking on new session
+  useEffect(() => {
+    lastTranscriptRef.current = "";
+  }, [sessionId]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts([
@@ -74,7 +94,7 @@ export function InterviewSession({
     { key: "n", ctrl: true, handler: () => setShowNotes((v) => !v) },
     { key: "f", ctrl: true, handler: toggleFullscreen },
     { key: "h", ctrl: true, handler: () => requestHint() },
-    { key: "m", ctrl: true, handler: () => setIsMuted((v) => !v) },
+    { key: "m", ctrl: true, handler: () => speech.toggle() },
   ]);
 
   const handleEndConfirm = useCallback(() => {
@@ -138,14 +158,12 @@ export function InterviewSession({
       <div className="hidden items-center justify-between border-b border-border px-4 py-1.5 sm:flex">
         <div className="flex items-center gap-1">
           <VoiceControls
-            isActive={isActive}
-            isMuted={isMuted}
+            isListening={speech.isListening}
+            isSupported={speech.isSupported}
             isDisabled={state.connectionStatus !== "connected"}
-            onToggleMute={() => setIsMuted((v) => !v)}
+            interimVolume={interimVolume}
+            onToggle={speech.toggle}
           />
-          <span className="ml-2 text-xs text-muted-foreground">
-            {isMuted ? "Muted" : "Mic on"}
-          </span>
         </div>
 
         <div className="flex items-center gap-1">
