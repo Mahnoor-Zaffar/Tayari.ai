@@ -11,6 +11,7 @@ interface SpeechRecognitionHook {
   start: () => void;
   stop: () => void;
   toggle: () => void;
+  onSilence?: (text: string) => void;
 }
 
 declare global {
@@ -57,7 +58,7 @@ interface SpeechRecognitionErrorEvent extends Event {
   message: string;
 }
 
-const SILENCE_TIMEOUT_MS = 1500;
+const SILENCE_MS = 1500;
 
 export function useSpeechRecognition(): SpeechRecognitionHook {
   const [isListening, setIsListening] = useState(false);
@@ -65,7 +66,9 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
   const [interimTranscript, setInterimTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finalBufferRef = useRef<string[]>([]);
+  const lastTranscriptRef = useRef("");
   const isSupported = typeof window !== "undefined" &&
     (!!window.SpeechRecognition || !!window.webkitSpeechRecognition);
 
@@ -73,44 +76,29 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
     ? (window.SpeechRecognition || window.webkitSpeechRecognition)
     : null;
 
-  const clearSilenceTimer = useCallback(() => {
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
+  const clearSilence = useCallback(() => {
+    if (silenceRef.current) {
+      clearTimeout(silenceRef.current);
+      silenceRef.current = null;
     }
   }, []);
 
-  const stop = useCallback(() => {
-    clearSilenceTimer();
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch { /* ignore */ }
-      recognitionRef.current = null;
-    }
-    setIsListening(false);
-  }, [clearSilenceTimer]);
-
   const createRecognition = useCallback(() => {
     if (!RecognitionClass) return null;
-    const recognition = new RecognitionClass();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-    return recognition;
+    const r = new RecognitionClass();
+    r.continuous = false;
+    r.interimResults = true;
+    r.lang = "en-US";
+    return r;
   }, [RecognitionClass]);
 
-  const start = useCallback(() => {
-    setError(null);
-    const recognition = createRecognition();
-    if (!recognition) {
-      setError("Speech recognition not supported");
-      return;
-    }
+  const startRecognition = useCallback(() => {
+    const r = createRecognition();
+    if (!r) return;
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      clearSilenceTimer();
-
-      let newFinal = "";
-      let interim = "";
+    r.onresult = (event: SpeechRecognitionEvent) => {
+      let finalText = "";
+      let interimText = "";
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
@@ -118,59 +106,79 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
         const alt = result[0];
         if (!alt) continue;
         if (result.isFinal) {
-          newFinal += (newFinal ? " " : "") + alt.transcript;
+          finalText += (finalText ? " " : "") + alt.transcript;
         } else {
-          interim += (interim ? " " : "") + alt.transcript;
+          interimText += (interimText ? " " : "") + alt.transcript;
         }
       }
 
-      if (newFinal) {
-        setTranscript((prev) => {
-          const combined = prev ? prev + " " + newFinal : newFinal;
-          return combined;
-        });
+      if (finalText) {
+        finalBufferRef.current.push(finalText);
+        const all = finalBufferRef.current.join(" ");
+        setTranscript(all);
+        lastTranscriptRef.current = all;
       }
-      setInterimTranscript(interim);
+      setInterimTranscript(interimText);
 
-      // Reset silence timer — auto-stop after SILENCE_TIMEOUT_MS of no speech
-      silenceTimerRef.current = setTimeout(() => {
-        if (recognitionRef.current) {
-          stop();
-        }
-      }, SILENCE_TIMEOUT_MS);
+      clearSilence();
+      silenceRef.current = setTimeout(() => {
+        r.stop();
+      }, SILENCE_MS);
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      setError(event.error);
-      setIsListening(false);
+    r.onerror = () => {};
+    r.onend = () => {
+      clearSilence();
+      const buf = finalBufferRef.current;
+      if (buf.length > 0) {
+        const text = buf.join(" ");
+        setTranscript(text);
+        lastTranscriptRef.current = text;
+      }
+      // If we were manually stopped (isListening false), don't restart
+      setIsListening((prev) => {
+        if (!prev) return false;
+        // Auto-restart for continuous listening
+        startRecognition();
+        return true;
+      });
     };
 
-    recognition.onend = () => {
-      clearSilenceTimer();
-      setIsListening(false);
-    };
+    r.start();
+    recognitionRef.current = r;
+  }, [createRecognition, clearSilence]);
 
-    recognitionRef.current = recognition;
-    recognition.start();
+  const start = useCallback(() => {
+    setError(null);
+    finalBufferRef.current = [];
+    setTranscript("");
+    setInterimTranscript("");
     setIsListening(true);
-  }, [createRecognition, clearSilenceTimer, stop]);
+    startRecognition();
+  }, [startRecognition]);
+
+  const stop = useCallback(() => {
+    clearSilence();
+    setIsListening(false);
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch { /* ignore */ }
+      recognitionRef.current = null;
+    }
+  }, [clearSilence]);
 
   const toggle = useCallback(() => {
-    if (isListening) {
-      stop();
-    } else {
-      start();
-    }
+    if (isListening) stop();
+    else start();
   }, [isListening, start, stop]);
 
   useEffect(() => {
     return () => {
-      clearSilenceTimer();
+      clearSilence();
       if (recognitionRef.current) {
-        recognitionRef.current.abort();
+        try { recognitionRef.current.abort(); } catch { /* ignore */ }
       }
     };
-  }, [clearSilenceTimer]);
+  }, [clearSilence]);
 
   return {
     isListening,
