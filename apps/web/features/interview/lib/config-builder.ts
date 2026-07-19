@@ -62,10 +62,10 @@ export function buildInterviewConfiguration(
     template_reference: values.template_id ?? null,
     custom_prompt: values.custom_instructions ?? null,
     device_status: {
-      microphone: values.device_checks?.microphone ?? false,
-      camera: values.device_checks?.camera ?? false,
-      speaker: values.device_checks?.speaker ?? false,
-      browser: values.device_checks?.browser ?? false,
+      microphone: false,
+      camera: false,
+      speaker: false,
+      browser: false,
       network: "unknown",
     },
   };

@@ -68,24 +68,19 @@ export function InterviewSession({
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const speech = useSpeechRecognition();
+  const prevTranscriptRef = useRef("");
   const [interimVolume] = useState(0.5);
-  const lastTranscriptRef = useRef("");
 
-  // When speech recognition produces final transcript, send it as answer
   useEffect(() => {
-    if (speech.transcript && speech.transcript !== lastTranscriptRef.current) {
-      const newText = speech.transcript.slice(lastTranscriptRef.current.length).trim();
-      if (newText && !speech.isListening) {
-        sendAnswer(newText);
-        lastTranscriptRef.current = speech.transcript;
-      }
+    if (speech.isListening) return;
+    const newText = speech.transcript.slice(prevTranscriptRef.current.length).trim();
+    if (newText) {
+      sendAnswer(newText);
+      prevTranscriptRef.current = speech.transcript;
     }
-  }, [speech.transcript, speech.isListening, sendAnswer]);
+  }, [speech.isListening, speech.transcript, sendAnswer]);
 
-  // Reset transcript tracking on new session
-  useEffect(() => {
-    lastTranscriptRef.current = "";
-  }, [sessionId]);
+  useEffect(() => { prevTranscriptRef.current = ""; }, [sessionId]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts([

@@ -42,10 +42,6 @@ const UploadsStep = dynamic(
   () => import("./steps/UploadsStep").then((m) => ({ default: m.UploadsStep })),
   { ssr: false, loading: () => <div className="h-96 animate-pulse rounded-lg bg-muted/30" /> },
 );
-const DeviceCheckStep = dynamic(
-  () => import("./steps/DeviceCheckStep").then((m) => ({ default: m.DeviceCheckStep })),
-  { ssr: false, loading: () => <div className="h-96 animate-pulse rounded-lg bg-muted/30" /> },
-);
 
 const DEFAULT_VALUES: InterviewSetupFormValues = {
   type: "coding",
@@ -60,7 +56,6 @@ const DEFAULT_VALUES: InterviewSetupFormValues = {
   resume_id: null,
   job_description_id: null,
   template_id: null,
-  device_checks: {},
 };
 
 interface InterviewSetupWizardProps {
@@ -75,7 +70,6 @@ export function InterviewSetupWizard({ onSuccess, className }: InterviewSetupWiz
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hasDraft, setHasDraft] = useState(false);
   const [showDraftPrompt, setShowDraftPrompt] = useState(false);
-  const [deviceChecksPassed, setDeviceChecksPassed] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
   const optionsQuery = useInterviewOptions();
@@ -206,7 +200,6 @@ export function InterviewSetupWizard({ onSuccess, className }: InterviewSetupWiz
         resume_id: formValues.resume_id ?? null,
         job_description_id: formValues.job_description_id ?? null,
         template_id: formValues.template_id ?? null,
-        device_checks: formValues.device_checks,
       };
       const result = await createInterviewMutation.mutateAsync(payload);
       clearDraft();
@@ -328,8 +321,7 @@ export function InterviewSetupWizard({ onSuccess, className }: InterviewSetupWiz
               <PreferencesStep options={optionsQuery.data} isLoading={optionsQuery.isLoading} />
             )}
             {currentStep === 2 && <UploadsStep />}
-            {currentStep === 3 && <DeviceCheckStep onChecksComplete={setDeviceChecksPassed} />}
-            {currentStep === 4 && (
+            {currentStep === 3 && (
               <ReviewStep
                 values={methods.getValues()}
                 options={optionsQuery.data}
@@ -356,7 +348,7 @@ export function InterviewSetupWizard({ onSuccess, className }: InterviewSetupWiz
           )}
         </CardContent>
 
-        {currentStep < 4 && (
+        {currentStep < 3 && (
           <CardFooter className="flex items-center justify-between border-t border-border pt-4">
             <Button
               type="button"
@@ -368,17 +360,6 @@ export function InterviewSetupWizard({ onSuccess, className }: InterviewSetupWiz
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
             <div className="flex items-center gap-2">
-              {currentStep === 3 && (
-                <Badge variant={deviceChecksPassed ? "success" : "outline"} className="gap-1">
-                  {deviceChecksPassed ? (
-                    <>
-                      <CheckCircle2 className="h-3 w-3" /> Ready
-                    </>
-                  ) : (
-                    "Checks pending"
-                  )}
-                </Badge>
-              )}
               <Button
                 type="button"
                 onClick={goNext}

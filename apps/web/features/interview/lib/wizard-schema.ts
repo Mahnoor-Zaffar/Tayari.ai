@@ -4,7 +4,6 @@ export const WIZARD_STEPS = [
   "Interview Type",
   "Preferences",
   "Uploads",
-  "Device Check",
   "Review",
 ] as const;
 
@@ -12,8 +11,7 @@ export const STEP_FIELDS: Record<number, string[]> = {
   0: ["type", "company", "role", "experience_level"],
   1: ["language", "framework", "difficulty", "duration_minutes"],
   2: ["custom_instructions"],
-  3: ["device_checks"],
-  4: [],
+  3: [],
 };
 
 export const interviewSetupSchema = z.object({
@@ -33,7 +31,6 @@ export const interviewSetupSchema = z.object({
   resume_id: z.string().uuid().nullable().optional(),
   job_description_id: z.string().uuid().nullable().optional(),
   template_id: z.string().uuid().nullable().optional(),
-  device_checks: z.record(z.boolean()).default({}),
 });
 
 export type InterviewSetupFormValues = z.infer<typeof interviewSetupSchema>;

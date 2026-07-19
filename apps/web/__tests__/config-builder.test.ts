@@ -21,7 +21,7 @@ const FULL_VALUES: InterviewSetupFormValues = {
   resume_id: "resume-uuid-123",
   job_description_id: "jd-uuid-456",
   template_id: null,
-  device_checks: { microphone: true, camera: false, speaker: true, browser: true },
+
 };
 
 describe("buildInterviewConfiguration", () => {
@@ -41,12 +41,12 @@ describe("buildInterviewConfiguration", () => {
     expect(config.custom_prompt).toBe("Focus on algorithms");
   });
 
-  it("maps device checks to device_status", () => {
+  it("has default device_status", () => {
     const config = buildInterviewConfiguration(FULL_VALUES);
-    expect(config.device_status.microphone).toBe(true);
+    expect(config.device_status.microphone).toBe(false);
     expect(config.device_status.camera).toBe(false);
-    expect(config.device_status.speaker).toBe(true);
-    expect(config.device_status.browser).toBe(true);
+    expect(config.device_status.speaker).toBe(false);
+    expect(config.device_status.browser).toBe(false);
     expect(config.device_status.network).toBe("unknown");
   });
 
@@ -64,7 +64,7 @@ describe("buildInterviewConfiguration", () => {
       resume_id: null,
       job_description_id: null,
       template_id: null,
-      device_checks: {},
+
     };
     const config = buildInterviewConfiguration(minimal);
     expect(config.interview_type).toBe("behavioral");
