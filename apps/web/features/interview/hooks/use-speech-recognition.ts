@@ -69,6 +69,7 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
   const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalBufferRef = useRef<string[]>([]);
   const lastTranscriptRef = useRef("");
+  const isListeningRef = useRef(false);
   const isSupported = typeof window !== "undefined" &&
     (!!window.SpeechRecognition || !!window.webkitSpeechRecognition);
 
@@ -135,13 +136,10 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
         setTranscript(text);
         lastTranscriptRef.current = text;
       }
-      // If we were manually stopped (isListening false), don't restart
-      setIsListening((prev) => {
-        if (!prev) return false;
-        // Auto-restart for continuous listening
+      // Auto-restart for continuous listening (unless manually stopped)
+      if (isListeningRef.current) {
         startRecognition();
-        return true;
-      });
+      }
     };
 
     r.start();
@@ -154,12 +152,14 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
     setTranscript("");
     setInterimTranscript("");
     setIsListening(true);
+    isListeningRef.current = true;
     startRecognition();
   }, [startRecognition]);
 
   const stop = useCallback(() => {
     clearSilence();
     setIsListening(false);
+    isListeningRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch { /* ignore */ }
       recognitionRef.current = null;
