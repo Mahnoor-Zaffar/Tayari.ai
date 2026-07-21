@@ -66,13 +66,9 @@ class Settings(BaseSettings):
     STORAGE_ACCESS_KEY: str = ""
     STORAGE_SECRET_KEY: str = ""
 
-    WHISPER_MODEL: str = "whisper-1"
-    WHISPER_BASE_URL: str = "https://openrouter.ai/api/v1"
-    WHISPER_PROMPT: str = (
-        "This is a job interview conversation. The candidate is answering "
-        "technical and behavioral questions about software engineering."
-    )
-    WHISPER_LANGUAGE: str = "en"
+    DEEPGRAM_API_KEY: str = ""
+    DEEPGRAM_MODEL: str = "nova-3"
+    DEEPGRAM_ENDPOINTING: int = 300  # ms of silence before finalizing speech
 
 
 settings = Settings()

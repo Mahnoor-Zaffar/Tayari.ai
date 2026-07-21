@@ -13,7 +13,7 @@ import { SessionConnectionStatus } from "./ConnectionStatus";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { FullscreenToggle } from "./FullscreenToggle";
 import { VoiceControls } from "./VoiceControls";
-import { useStreamingRecognition } from "@/features/interview/hooks/use-streaming-recognition";
+import { useDeepgramRecognition } from "@/features/interview/hooks/use-deepgram-recognition";
 import { PauseOverlay } from "./PauseOverlay";
 import { ReconnectOverlay } from "./ReconnectOverlay";
 import { EndInterviewDialog } from "./EndInterviewDialog";
@@ -60,18 +60,18 @@ export function InterviewSession({
   const [showNotes, setShowNotes] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  const speech = useStreamingRecognition(token);
+  const speech = useDeepgramRecognition(token);
   const prevTranscriptRef = useRef("");
-  const [interimVolume] = useState(0.5);
 
+  // Auto-submit answer when Deepgram signals end-of-utterance
   useEffect(() => {
-    if (speech.isListening) return;
+    if (speech.autoSubmitTrigger === 0) return;
     const newText = speech.transcript.slice(prevTranscriptRef.current.length).trim();
     if (newText) {
       sendAnswer(newText);
       prevTranscriptRef.current = speech.transcript;
     }
-  }, [speech.isListening, speech.transcript, sendAnswer]);
+  }, [speech.autoSubmitTrigger, speech.transcript, sendAnswer]);
 
   useEffect(() => {
     prevTranscriptRef.current = "";
@@ -168,11 +168,8 @@ export function InterviewSession({
         <div className="flex items-center gap-1">
           <VoiceControls
             isListening={speech.isListening}
+            isSpeaking={speech.isSpeaking}
             isSupported={speech.isSupported}
-            isDisabled={state.connectionStatus !== "connected"}
-            interimVolume={interimVolume}
-            source={speech.source}
-            latencyMs={speech.latencyMs}
             onToggle={speech.toggle}
           />
         </div>

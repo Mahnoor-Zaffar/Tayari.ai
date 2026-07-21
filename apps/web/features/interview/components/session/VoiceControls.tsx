@@ -1,27 +1,21 @@
 "use client";
 
 import { memo } from "react";
-import { Mic, MicOff, Zap, Globe, Radio } from "lucide-react";
+import { Mic, MicOff, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface VoiceControlsProps {
   isListening: boolean;
+  isSpeaking: boolean;
   isSupported: boolean;
-  isDisabled: boolean;
-  interimVolume: number;
-  source: "whisper" | "browser" | "funasr";
-  latencyMs?: number;
   onToggle: () => void;
 }
 
 export const VoiceControls = memo(function VoiceControls({
   isListening,
+  isSpeaking,
   isSupported,
-  isDisabled,
-  interimVolume,
-  source,
-  latencyMs,
   onToggle,
 }: VoiceControlsProps) {
   if (!isSupported) {
@@ -42,7 +36,6 @@ export const VoiceControls = memo(function VoiceControls({
         type="button"
         variant={isListening ? "default" : "outline"}
         size="icon"
-        disabled={isDisabled}
         onClick={onToggle}
         aria-label={isListening ? "Stop recording" : "Start recording"}
         className={cn(
@@ -58,10 +51,10 @@ export const VoiceControls = memo(function VoiceControls({
                 {[1, 2, 3].map((i) => (
                   <span
                     key={i}
-                    className="w-0.5 bg-current rounded-full animate-pulse"
+                    className="w-0.5 bg-current rounded-full"
                     style={{
-                      height: `${Math.max(20, Math.min(100, interimVolume * (i * 30)))}%`,
-                      animationDelay: `${i * 0.15}s`,
+                      height: isSpeaking ? `${Math.max(30, i * 25)}%` : "20%",
+                      animation: isSpeaking ? `pulse 0.${3 + i}s ease-in-out infinite` : "none",
                     }}
                   />
                 ))}
@@ -76,32 +69,12 @@ export const VoiceControls = memo(function VoiceControls({
 
       <div className="hidden sm:flex flex-col">
         <span className="text-xs text-muted-foreground">
-          {isListening ? "Recording..." : "Mic"}
+          {isListening ? (isSpeaking ? "Listening..." : "Mic on") : "Mic"}
         </span>
         {isListening && (
           <span className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
-            {source === "funasr" ? (
-              <>
-                <Radio className="h-2.5 w-2.5 text-green-400" />
-                FunASR
-                {latencyMs != null && latencyMs > 0 && (
-                  <span className="text-muted-foreground/50">{latencyMs}ms</span>
-                )}
-              </>
-            ) : source === "whisper" ? (
-              <>
-                <Zap className="h-2.5 w-2.5 text-yellow-500" />
-                Whisper
-                {latencyMs != null && latencyMs > 0 && (
-                  <span className="text-muted-foreground/50">{latencyMs}ms</span>
-                )}
-              </>
-            ) : (
-              <>
-                <Globe className="h-2.5 w-2.5 text-blue-400" />
-                Browser
-              </>
-            )}
+            <Radio className="h-2.5 w-2.5 text-green-400" />
+            Deepgram
           </span>
         )}
       </div>
