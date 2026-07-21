@@ -1,22 +1,28 @@
 "use client";
 
 import { memo } from "react";
-import { Mic, MicOff, Radio } from "lucide-react";
+import { Mic, MicOff, Radio, Loader2, AlertCircle, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface VoiceControlsProps {
   isListening: boolean;
   isSpeaking: boolean;
+  isReconnecting: boolean;
   isSupported: boolean;
+  error: string | null;
   onToggle: () => void;
+  onCancel: () => void;
 }
 
 export const VoiceControls = memo(function VoiceControls({
   isListening,
   isSpeaking,
+  isReconnecting,
   isSupported,
+  error,
   onToggle,
+  onCancel,
 }: VoiceControlsProps) {
   if (!isSupported) {
     return (
@@ -37,6 +43,7 @@ export const VoiceControls = memo(function VoiceControls({
         variant={isListening ? "default" : "outline"}
         size="icon"
         onClick={onToggle}
+        disabled={isReconnecting}
         aria-label={isListening ? "Stop recording" : "Start recording"}
         className={cn(
           "relative h-10 w-10 transition-all",
@@ -44,7 +51,9 @@ export const VoiceControls = memo(function VoiceControls({
             "bg-destructive text-destructive-foreground hover:bg-destructive/90 ring-4 ring-destructive/20",
         )}
       >
-        {isListening ? (
+        {isReconnecting ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isListening ? (
           <>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex items-end gap-0.5 h-4">
@@ -67,14 +76,42 @@ export const VoiceControls = memo(function VoiceControls({
         )}
       </Button>
 
+      {/* Cancel button — visible while speaking */}
+      {isListening && isSpeaking && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={onCancel}
+          aria-label="Cancel recording"
+          className="h-8 w-8"
+        >
+          <StopCircle className="h-3.5 w-3.5" />
+        </Button>
+      )}
+
       <div className="hidden sm:flex flex-col">
         <span className="text-xs text-muted-foreground">
-          {isListening ? (isSpeaking ? "Listening..." : "Mic on") : "Mic"}
+          {isReconnecting
+            ? "Reconnecting..."
+            : error
+              ? "Voice error"
+              : isListening
+                ? isSpeaking
+                  ? "Listening..."
+                  : "Mic on"
+                : "Mic"}
         </span>
-        {isListening && (
+        {isListening && !isReconnecting && (
           <span className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
             <Radio className="h-2.5 w-2.5 text-green-400" />
             Deepgram
+          </span>
+        )}
+        {error && !isReconnecting && (
+          <span className="text-[10px] text-destructive flex items-center gap-1">
+            <AlertCircle className="h-2.5 w-2.5" />
+            <span className="max-w-[120px] truncate">{error}</span>
           </span>
         )}
       </div>

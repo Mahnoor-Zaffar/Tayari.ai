@@ -2,7 +2,7 @@
 
 import { memo, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Mic, Square, Loader2 } from "lucide-react";
+import { Mic, Square, Loader2, AlertTriangle, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ConnectionStatus as WSConnectionStatus } from "@/features/interview/lib/session-types";
@@ -13,6 +13,8 @@ interface AnswerInputProps {
   isPaused: boolean;
   liveTranscript?: string;
   isListening?: boolean;
+  voiceError?: string | null;
+  isVoiceReconnecting?: boolean;
   onAnswer: (text: string) => void;
   onRequestHint: () => void;
 }
@@ -23,6 +25,8 @@ export const AnswerInput = memo(function AnswerInput({
   isPaused,
   liveTranscript = "",
   isListening = false,
+  voiceError = null,
+  isVoiceReconnecting = false,
   onAnswer,
   onRequestHint,
 }: AnswerInputProps) {
@@ -46,8 +50,34 @@ export const AnswerInput = memo(function AnswerInput({
     }
   };
 
+  const showVoiceError = voiceError && !isVoiceReconnecting;
+
   return (
     <div className="space-y-2">
+      {/* Voice error banner */}
+      {showVoiceError && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+        >
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+          <span>Voice unavailable — type your answer below</span>
+        </motion.div>
+      )}
+
+      {/* Voice reconnecting banner */}
+      {isVoiceReconnecting && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 rounded-md border border-muted bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
+        >
+          <WifiOff className="h-3.5 w-3.5 flex-shrink-0 animate-pulse" />
+          <span>Reconnecting voice...</span>
+        </motion.div>
+      )}
+
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <textarea
@@ -61,7 +91,9 @@ export const AnswerInput = memo(function AnswerInput({
                   ? "AI is thinking..."
                   : isListening
                     ? "Speak now — live transcription..."
-                    : "Type your answer here... (or click the mic)"
+                    : voiceError
+                      ? "Type your answer here (voice unavailable)"
+                      : "Type your answer here... (or click the mic)"
             }
             value={isListening && liveTranscript ? liveTranscript : undefined}
             rows={2}

@@ -19,6 +19,8 @@ interface ConversationAreaProps {
   liveTranscript?: string;
   isListening?: boolean;
   isSpeaking?: boolean;
+  voiceError?: string | null;
+  isVoiceReconnecting?: boolean;
   onAnswer: (text: string) => void;
   onRequestHint: () => void;
   className?: string;
@@ -33,6 +35,8 @@ export const ConversationArea = memo(function ConversationArea({
   liveTranscript = "",
   isListening = false,
   isSpeaking = false,
+  voiceError = null,
+  isVoiceReconnecting = false,
   onAnswer,
   onRequestHint,
   className,
@@ -81,6 +85,8 @@ export const ConversationArea = memo(function ConversationArea({
           isPaused={isPaused}
           liveTranscript={liveTranscript}
           isListening={isListening}
+          voiceError={voiceError}
+          isVoiceReconnecting={isVoiceReconnecting}
           onAnswer={onAnswer}
           onRequestHint={onRequestHint}
         />

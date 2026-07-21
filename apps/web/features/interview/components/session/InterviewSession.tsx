@@ -99,6 +99,13 @@ export function InterviewSession({
     speech.toggle();
   }, [speech]);
 
+  // Cancel current utterance (stop mic + clear interim)
+  const handleMicCancel = useCallback(() => {
+    userStoppedMicRef.current = true;
+    prevTranscriptRef.current = "";
+    speech.stop();
+  }, [speech]);
+
   // Reset refs when session changes
   useEffect(() => {
     prevTranscriptRef.current = "";
@@ -124,6 +131,7 @@ export function InterviewSession({
     { key: "f", ctrl: true, handler: toggleFullscreen },
     { key: "h", ctrl: true, handler: () => requestHint() },
     { key: "m", ctrl: true, handler: handleMicToggle },
+    { key: "Escape", handler: handleMicCancel, enabled: speech.isSpeaking },
   ]);
 
   const handleEndConfirm = useCallback(() => {
@@ -198,8 +206,11 @@ export function InterviewSession({
           <VoiceControls
             isListening={speech.isListening}
             isSpeaking={speech.isSpeaking}
+            isReconnecting={speech.isReconnecting}
             isSupported={speech.isSupported}
+            error={speech.error}
             onToggle={handleMicToggle}
+            onCancel={handleMicCancel}
           />
         </div>
 
@@ -264,6 +275,8 @@ export function InterviewSession({
           liveTranscript={speech.interimTranscript}
           isListening={speech.isListening}
           isSpeaking={speech.isSpeaking}
+          voiceError={speech.error}
+          isVoiceReconnecting={speech.isReconnecting}
           onAnswer={sendAnswer}
           onRequestHint={requestHint}
           className="flex-1"

@@ -11,6 +11,7 @@ const RECONNECT_BASE_DELAY_MS = 1000;
 interface DeepgramRecognitionHook {
   isListening: boolean;
   isSpeaking: boolean;
+  isReconnecting: boolean;
   transcript: string;
   interimTranscript: string;
   autoSubmitTrigger: number;
@@ -27,6 +28,7 @@ export function useDeepgramRecognition(
 ): DeepgramRecognitionHook {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
   const [autoSubmitTrigger, setAutoSubmitTrigger] = useState(0);
@@ -58,6 +60,8 @@ export function useDeepgramRecognition(
           ws.send(JSON.stringify({ type: "start", language }));
           wsRef.current = ws;
           reconnectAttemptsRef.current = 0;
+          setIsReconnecting(false);
+          setError(null);
           resolve(ws);
         };
 
@@ -99,6 +103,7 @@ export function useDeepgramRecognition(
 
           // Auto-reconnect if still in listening mode
           if (shouldReconnectRef.current && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+            setIsReconnecting(true);
             const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttemptsRef.current);
             reconnectAttemptsRef.current += 1;
             setTimeout(() => {
@@ -108,6 +113,10 @@ export function useDeepgramRecognition(
                 });
               }
             }, delay);
+          } else if (shouldReconnectRef.current) {
+            // Max reconnect attempts exhausted
+            setIsReconnecting(false);
+            setError("Voice connection lost. Click mic to retry.");
           }
         };
       }),
@@ -122,6 +131,7 @@ export function useDeepgramRecognition(
     }
 
     setError(null);
+    setIsReconnecting(false);
     bufferRef.current = [];
     setTranscript("");
     setInterimTranscript("");
@@ -185,6 +195,7 @@ export function useDeepgramRecognition(
     shouldReconnectRef.current = false;
     setIsListening(false);
     setIsSpeaking(false);
+    setIsReconnecting(false);
 
     // Disconnect worklet
     if (workletNodeRef.current) {
@@ -245,6 +256,7 @@ export function useDeepgramRecognition(
   return {
     isListening,
     isSpeaking,
+    isReconnecting,
     transcript,
     interimTranscript,
     autoSubmitTrigger,
