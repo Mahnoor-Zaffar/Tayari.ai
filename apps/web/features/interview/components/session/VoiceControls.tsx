@@ -10,6 +10,8 @@ interface VoiceControlsProps {
   isSpeaking: boolean;
   isReconnecting: boolean;
   isSupported: boolean;
+  language: string;
+  audioLevel: number;
   error: string | null;
   onToggle: () => void;
   onCancel: () => void;
@@ -20,6 +22,8 @@ export const VoiceControls = memo(function VoiceControls({
   isSpeaking,
   isReconnecting,
   isSupported,
+  language,
+  audioLevel,
   error,
   onToggle,
   onCancel,
@@ -74,6 +78,10 @@ export const VoiceControls = memo(function VoiceControls({
         ) : (
           <Mic className="h-4 w-4" />
         )}
+        {/* Language badge */}
+        <span className="absolute -bottom-1 -right-1 rounded bg-muted px-1 py-px text-[9px] font-bold leading-none text-muted-foreground">
+          {language.toUpperCase()}
+        </span>
       </Button>
 
       {/* Cancel button — visible while speaking */}
@@ -88,6 +96,18 @@ export const VoiceControls = memo(function VoiceControls({
         >
           <StopCircle className="h-3.5 w-3.5" />
         </Button>
+      )}
+
+      {/* Audio level bar — visible while listening */}
+      {isListening && !isReconnecting && (
+        <div className="hidden sm:flex h-8 w-16 flex-col justify-center gap-0.5">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-green-500 transition-[width] duration-75"
+              style={{ width: `${Math.min(100, Math.round(audioLevel * 100 * 2.5))}%` }}
+            />
+          </div>
+        </div>
       )}
 
       <div className="hidden sm:flex flex-col">

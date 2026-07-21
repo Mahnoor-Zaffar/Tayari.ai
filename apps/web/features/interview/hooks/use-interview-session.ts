@@ -206,6 +206,19 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
     updateState({ state: "completed" });
   }, [timer, updateState]);
 
+  const undoLastAnswer = useCallback(() => {
+    setState((prev) => {
+      if (!prev.isAiThinking) return prev;
+      const lastUserIdx = [...prev.transcript].reverse().findIndex((e) => e.speaker === "user");
+      if (lastUserIdx === -1) return prev;
+      const actualIdx = prev.transcript.length - 1 - lastUserIdx;
+      return {
+        ...prev,
+        transcript: prev.transcript.filter((_, i) => i !== actualIdx),
+      };
+    });
+  }, []);
+
   const reconnect = useCallback(() => {
     const client = clientRef.current;
     if (client) {
@@ -217,6 +230,7 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
     state,
     timer,
     sendAnswer,
+    undoLastAnswer,
     pauseSession,
     resumeSession,
     requestHint,

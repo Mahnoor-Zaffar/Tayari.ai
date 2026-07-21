@@ -43,6 +43,7 @@ export function InterviewSession({
     state,
     timer,
     sendAnswer,
+    undoLastAnswer,
     pauseSession,
     resumeSession,
     requestHint,
@@ -132,6 +133,7 @@ export function InterviewSession({
     { key: "h", ctrl: true, handler: () => requestHint() },
     { key: "m", ctrl: true, handler: handleMicToggle },
     { key: "Escape", handler: handleMicCancel, enabled: speech.isSpeaking },
+    { key: "z", ctrl: true, handler: undoLastAnswer, enabled: state.isAiThinking },
   ]);
 
   const handleEndConfirm = useCallback(() => {
@@ -208,6 +210,8 @@ export function InterviewSession({
             isSpeaking={speech.isSpeaking}
             isReconnecting={speech.isReconnecting}
             isSupported={speech.isSupported}
+            language={spokenLanguage}
+            audioLevel={speech.audioLevel}
             error={speech.error}
             onToggle={handleMicToggle}
             onCancel={handleMicCancel}
@@ -277,8 +281,10 @@ export function InterviewSession({
           isSpeaking={speech.isSpeaking}
           voiceError={speech.error}
           isVoiceReconnecting={speech.isReconnecting}
+          canUndo={state.isAiThinking && state.transcript.some((e) => e.speaker === "user")}
           onAnswer={sendAnswer}
           onRequestHint={requestHint}
+          onUndo={undoLastAnswer}
           className="flex-1"
         />
 

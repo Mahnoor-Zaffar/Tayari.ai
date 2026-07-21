@@ -12,6 +12,7 @@ interface DeepgramRecognitionHook {
   isListening: boolean;
   isSpeaking: boolean;
   isReconnecting: boolean;
+  audioLevel: number;
   transcript: string;
   interimTranscript: string;
   autoSubmitTrigger: number;
@@ -29,6 +30,7 @@ export function useDeepgramRecognition(
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
   const [autoSubmitTrigger, setAutoSubmitTrigger] = useState(0);
@@ -37,8 +39,10 @@ export function useDeepgramRecognition(
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const animFrameRef = useRef<number>(0);
   const bufferRef = useRef<string[]>([]);
   const reconnectAttemptsRef = useRef(0);
   const shouldReconnectRef = useRef(false);
@@ -173,11 +177,31 @@ export function useDeepgramRecognition(
         }
       };
 
-      // 5. Wire up audio graph: mic → worklet → destination (keeps worklet alive)
+      // 5. Wire up audio graph: mic → source → analyser → worklet → destination
       const source = audioContext.createMediaStreamSource(stream);
-      source.connect(workletNode);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyserRef.current = analyser;
+
+      source.connect(analyser);
+      analyser.connect(workletNode);
       workletNode.connect(audioContext.destination);
       sourceRef.current = source;
+
+      // 6. Start audio level monitoring
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const updateLevel = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i]!;
+        }
+        const avg = sum / dataArray.length / 255; // normalize 0–1
+        setAudioLevel(avg);
+        animFrameRef.current = requestAnimationFrame(updateLevel);
+      };
+      animFrameRef.current = requestAnimationFrame(updateLevel);
 
       setIsListening(true);
     } catch (err) {
@@ -196,6 +220,19 @@ export function useDeepgramRecognition(
     setIsListening(false);
     setIsSpeaking(false);
     setIsReconnecting(false);
+    setAudioLevel(0);
+
+    // Stop audio level monitoring
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+    }
+
+    // Disconnect analyser
+    if (analyserRef.current) {
+      analyserRef.current.disconnect();
+      analyserRef.current = null;
+    }
 
     // Disconnect worklet
     if (workletNodeRef.current) {
@@ -245,6 +282,8 @@ export function useDeepgramRecognition(
     return () => {
       shouldReconnectRef.current = false;
       startRequestedRef.current = false;
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (analyserRef.current) analyserRef.current.disconnect();
       if (workletNodeRef.current) workletNodeRef.current.disconnect();
       if (sourceRef.current) sourceRef.current.disconnect();
       if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
@@ -257,6 +296,7 @@ export function useDeepgramRecognition(
     isListening,
     isSpeaking,
     isReconnecting,
+    audioLevel,
     transcript,
     interimTranscript,
     autoSubmitTrigger,

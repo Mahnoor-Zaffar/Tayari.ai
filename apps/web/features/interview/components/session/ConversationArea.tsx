@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { motion } from "framer-motion";
+import { Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Question, TranscriptEntry } from "@/features/interview/lib/session-types";
 import { QuestionBubble } from "./QuestionBubble";
@@ -21,8 +22,10 @@ interface ConversationAreaProps {
   isSpeaking?: boolean;
   voiceError?: string | null;
   isVoiceReconnecting?: boolean;
+  canUndo?: boolean;
   onAnswer: (text: string) => void;
   onRequestHint: () => void;
+  onUndo?: () => void;
   className?: string;
 }
 
@@ -37,8 +40,10 @@ export const ConversationArea = memo(function ConversationArea({
   isSpeaking = false,
   voiceError = null,
   isVoiceReconnecting = false,
+  canUndo = false,
   onAnswer,
   onRequestHint,
+  onUndo,
   className,
 }: ConversationAreaProps) {
   const currentQuestion = questions[questions.length - 1] ?? null;
@@ -67,6 +72,20 @@ export const ConversationArea = memo(function ConversationArea({
 
         {/* AI Thinking */}
         <AIThinkingIndicator isThinking={isAiThinking} />
+
+        {/* Undo button — visible while AI is thinking */}
+        {isAiThinking && canUndo && onUndo && (
+          <motion.button
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            type="button"
+            onClick={onUndo}
+            className="flex items-center gap-1.5 self-end rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Undo2 className="h-3 w-3" />
+            Undo last answer
+          </motion.button>
+        )}
 
         {/* Live Transcript */}
         <div className="mt-6">
