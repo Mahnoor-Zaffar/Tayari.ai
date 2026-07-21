@@ -50,6 +50,9 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
           if (remaining) {
             timer.reset(remaining);
           }
+          if (event.payload.state) {
+            updateState({ state: event.payload.state as SessionState });
+          }
           break;
         }
 

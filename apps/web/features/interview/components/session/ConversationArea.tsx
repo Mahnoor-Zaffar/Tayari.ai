@@ -18,6 +18,7 @@ interface ConversationAreaProps {
   isPaused: boolean;
   liveTranscript?: string;
   isListening?: boolean;
+  isSpeaking?: boolean;
   onAnswer: (text: string) => void;
   onRequestHint: () => void;
   className?: string;
@@ -31,6 +32,7 @@ export const ConversationArea = memo(function ConversationArea({
   isPaused,
   liveTranscript = "",
   isListening = false,
+  isSpeaking = false,
   onAnswer,
   onRequestHint,
   className,
@@ -41,8 +43,22 @@ export const ConversationArea = memo(function ConversationArea({
     <div className={cn("flex flex-col", className)}>
       {/* Question Display */}
       <div className="flex-1 overflow-y-auto space-y-4 p-4">
-        {currentQuestion && (
-          <QuestionBubble question={currentQuestion} isCurrent={true} />
+        {currentQuestion && <QuestionBubble question={currentQuestion} isCurrent={true} />}
+
+        {/* Candidate Speaking Indicator */}
+        {isListening && isSpeaking && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+            </span>
+            Speaking...
+          </motion.div>
         )}
 
         {/* AI Thinking */}

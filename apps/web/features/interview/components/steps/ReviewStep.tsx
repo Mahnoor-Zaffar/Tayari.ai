@@ -146,6 +146,10 @@ export const ReviewStep = memo(function ReviewStep({
             value: values.language ? labelFor("languages", values.language) : "—",
           },
           {
+            label: "Spoken Language",
+            value: values.spoken_language === "ur" ? "Urdu" : "English",
+          },
+          {
             label: "Framework",
             value: values.framework ? labelFor("frameworks", values.framework) : "—",
           },

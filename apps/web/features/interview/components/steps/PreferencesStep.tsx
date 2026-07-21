@@ -88,6 +88,25 @@ export const PreferencesStep = memo(function PreferencesStep({
         )}
       </div>
 
+      {/* Spoken Language (for voice input) */}
+      <div className="space-y-2">
+        <Label htmlFor="spoken_language">Spoken Language (voice input)</Label>
+        <Controller
+          name="spoken_language"
+          control={control}
+          render={({ field }) => (
+            <Select value={field.value ?? "en"} onChange={(e) => field.onChange(e.target.value)}>
+              <option value="en">English</option>
+              <option value="ur">Urdu</option>
+            </Select>
+          )}
+        />
+        <p className="text-sm text-muted-foreground">
+          The language you&apos;ll speak during the interview. Used for real-time voice
+          transcription.
+        </p>
+      </div>
+
       {/* Framework */}
       <div className="space-y-2">
         <Label htmlFor="framework">Framework (optional)</Label>

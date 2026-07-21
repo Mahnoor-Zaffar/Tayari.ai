@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 InterviewType = Literal["coding", "system-design", "behavioral"]
 ExperienceLevel = Literal["junior", "mid-senior", "staff-lead"]
 ProgrammingLanguage = Literal["python", "java", "cpp", "javascript", "csharp"]
+SpokenLanguage = Literal["en", "ur"]
 Difficulty = Literal["easy", "medium", "hard"]
 Framework = Literal["react", "vue", "angular", "svelte", "django", "fastapi", "spring", "express", "next"]
 DurationMinutes = Literal[15, 30, 45]
@@ -45,6 +46,7 @@ class CreateInterviewRequest(BaseModel):
     role: str = Field(min_length=1, max_length=100)
     experience_level: ExperienceLevel
     language: ProgrammingLanguage | None = None
+    spoken_language: SpokenLanguage | None = "en"
     framework: Framework | None = None
     difficulty: Difficulty = "medium"
     duration_minutes: DurationMinutes = 30
@@ -120,6 +122,7 @@ class InterviewResponse(BaseModel):
     role: str
     experience_level: str
     language: str | None = None
+    spoken_language: str | None = "en"
     framework: str | None = None
     difficulty: str = "medium"
     duration_minutes: int = 30

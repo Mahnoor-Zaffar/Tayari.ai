@@ -1,15 +1,10 @@
 import { z } from "zod";
 
-export const WIZARD_STEPS = [
-  "Interview Type",
-  "Preferences",
-  "Uploads",
-  "Review",
-] as const;
+export const WIZARD_STEPS = ["Interview Type", "Preferences", "Uploads", "Review"] as const;
 
 export const STEP_FIELDS: Record<number, string[]> = {
   0: ["type", "company", "role", "experience_level"],
-  1: ["language", "framework", "difficulty", "duration_minutes"],
+  1: ["language", "spoken_language", "framework", "difficulty", "duration_minutes"],
   2: ["custom_instructions"],
   3: [],
 };
@@ -24,6 +19,7 @@ export const interviewSetupSchema = z.object({
     errorMap: () => ({ message: "Please select your experience level" }),
   }),
   language: z.string().nullable().optional(),
+  spoken_language: z.enum(["en", "ur"]).default("en"),
   framework: z.string().nullable().optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
   duration_minutes: z.union([z.literal(15), z.literal(30), z.literal(45)]).default(30),

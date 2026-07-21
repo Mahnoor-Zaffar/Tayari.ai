@@ -45,6 +45,7 @@ export interface InterviewResponse {
   role: string;
   experience_level: string;
   language: string | null;
+  spoken_language: string | null;
   framework: string | null;
   difficulty: string;
   duration_minutes: number;

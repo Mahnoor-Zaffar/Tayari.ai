@@ -24,6 +24,7 @@ interface InterviewSessionProps {
   sessionId: string;
   interviewId: string;
   token: string;
+  spokenLanguage?: string;
   durationMinutes?: number;
   className?: string;
   onComplete?: (sessionId: string) => void;
@@ -33,6 +34,7 @@ export function InterviewSession({
   sessionId,
   interviewId,
   token,
+  spokenLanguage = "en",
   durationMinutes = 30,
   className,
   onComplete,
@@ -60,8 +62,10 @@ export function InterviewSession({
   const [showNotes, setShowNotes] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  const speech = useDeepgramRecognition(token);
+  const speech = useDeepgramRecognition(token, spokenLanguage);
   const prevTranscriptRef = useRef("");
+  const userStoppedMicRef = useRef(false);
+  const questionCountRef = useRef(0);
 
   // Auto-submit answer when Deepgram signals end-of-utterance
   useEffect(() => {
@@ -73,8 +77,33 @@ export function InterviewSession({
     }
   }, [speech.autoSubmitTrigger, speech.transcript, sendAnswer]);
 
+  // Auto-start mic when a new question arrives
+  useEffect(() => {
+    const questionCount = state.questions.length;
+    if (questionCount > questionCountRef.current && state.state === "active") {
+      questionCountRef.current = questionCount;
+      // Auto-start mic if user hasn't manually stopped it
+      if (!userStoppedMicRef.current && !speech.isListening && speech.isSupported) {
+        speech.start();
+      }
+    }
+  }, [state.questions.length, state.state, speech]);
+
+  // Track if user manually stops the mic
+  const handleMicToggle = useCallback(() => {
+    if (speech.isListening) {
+      userStoppedMicRef.current = true;
+    } else {
+      userStoppedMicRef.current = false;
+    }
+    speech.toggle();
+  }, [speech]);
+
+  // Reset refs when session changes
   useEffect(() => {
     prevTranscriptRef.current = "";
+    questionCountRef.current = 0;
+    userStoppedMicRef.current = false;
   }, [sessionId]);
 
   // Keyboard shortcuts
@@ -94,7 +123,7 @@ export function InterviewSession({
     { key: "n", ctrl: true, handler: () => setShowNotes((v) => !v) },
     { key: "f", ctrl: true, handler: toggleFullscreen },
     { key: "h", ctrl: true, handler: () => requestHint() },
-    { key: "m", ctrl: true, handler: () => speech.toggle() },
+    { key: "m", ctrl: true, handler: handleMicToggle },
   ]);
 
   const handleEndConfirm = useCallback(() => {
@@ -170,7 +199,7 @@ export function InterviewSession({
             isListening={speech.isListening}
             isSpeaking={speech.isSpeaking}
             isSupported={speech.isSupported}
-            onToggle={speech.toggle}
+            onToggle={handleMicToggle}
           />
         </div>
 
@@ -234,6 +263,7 @@ export function InterviewSession({
           isPaused={isPaused}
           liveTranscript={speech.interimTranscript}
           isListening={speech.isListening}
+          isSpeaking={speech.isSpeaking}
           onAnswer={sendAnswer}
           onRequestHint={requestHint}
           className="flex-1"
