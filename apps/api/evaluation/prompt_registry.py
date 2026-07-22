@@ -29,6 +29,9 @@ DEFAULT_EVALUATOR_PROMPTS: dict[str, str] = {
         "- code_quality (weight 20%): Readable? Well-structured? Idiomatic?\n"
         "- technical_communication (weight 15%): Explains approach clearly?\n"
         "- language_proficiency (weight 15%): Fluent in language? Uses stdlib?\n\n"
+        "## Per-Question Scoring\n"
+        "For each question/answer pair in the transcript, evaluate the candidate's response "
+        "on each dimension. Include the question text, answer text, scores, and brief feedback.\n\n"
         "## Output Format\n"
         "Return ONLY valid JSON with no markdown fences:\n"
         '{{"overall_score": <0.0-5.0>, '
@@ -37,6 +40,13 @@ DEFAULT_EVALUATOR_PROMPTS: dict[str, str] = {
         '"code_quality": {{"score": <0.0-5.0>, "evidence": "..."}}, '
         '"technical_communication": {{"score": <0.0-5.0>, "evidence": "..."}}, '
         '"language_proficiency": {{"score": <0.0-5.0>, "evidence": "..."}}}}, '
+        '"question_scores": [{{"question_index": 0, "question_text": "...", "answer_text": "...", '
+        '"dimension_scores": {{"correctness": {{"score": <0.0-5.0>, "evidence": "..."}}, '
+        '"efficiency": {{"score": <0.0-5.0>, "evidence": "..."}}, '
+        '"code_quality": {{"score": <0.0-5.0>, "evidence": "..."}}, '
+        '"technical_communication": {{"score": <0.0-5.0>, "evidence": "..."}}, '
+        '"language_proficiency": {{"score": <0.0-5.0>, "evidence": "..."}}}}, '
+        '"overall_score": <0.0-5.0>, "feedback": "..."}}], '
         '"strengths": ["..."], "improvements": ["..."], '
         '"recommendations": ["..."], "confidence": <0.0-1.0>}}'
     ),
@@ -53,6 +63,9 @@ DEFAULT_EVALUATOR_PROMPTS: dict[str, str] = {
         "- architecture (weight 30%): Sound high-level design?\n"
         "- trade_off_analysis (weight 30%): Justified choices, compared alternatives?\n"
         "- communication (weight 20%): Clear, structured explanation?\n\n"
+        "## Per-Question Scoring\n"
+        "For each question/answer pair in the transcript, evaluate the candidate's response "
+        "on each dimension. Include the question text, answer text, scores, and brief feedback.\n\n"
         "## Output Format\n"
         "Return ONLY valid JSON with no markdown fences:\n"
         '{{"overall_score": <0.0-5.0>, '
@@ -60,6 +73,12 @@ DEFAULT_EVALUATOR_PROMPTS: dict[str, str] = {
         '"architecture": {{"score": <0.0-5.0>, "evidence": "..."}}, '
         '"trade_off_analysis": {{"score": <0.0-5.0>, "evidence": "..."}}, '
         '"communication": {{"score": <0.0-5.0>, "evidence": "..."}}}}, '
+        '"question_scores": [{{"question_index": 0, "question_text": "...", "answer_text": "...", '
+        '"dimension_scores": {{"requirements_gathering": {{"score": <0.0-5.0>, "evidence": "..."}}, '
+        '"architecture": {{"score": <0.0-5.0>, "evidence": "..."}}, '
+        '"trade_off_analysis": {{"score": <0.0-5.0>, "evidence": "..."}}, '
+        '"communication": {{"score": <0.0-5.0>, "evidence": "..."}}}}, '
+        '"overall_score": <0.0-5.0>, "feedback": "..."}}], '
         '"strengths": ["..."], "improvements": ["..."], '
         '"recommendations": ["..."], "confidence": <0.0-1.0>}}'
     ),
@@ -76,6 +95,9 @@ DEFAULT_EVALUATOR_PROMPTS: dict[str, str] = {
         "- relevance (weight 25%): Answer directly addresses the question?\n"
         "- specificity (weight 25%): Concrete details vs. vague generalities?\n"
         "- impact (weight 20%): Measurable outcomes, growth demonstrated?\n\n"
+        "## Per-Question Scoring\n"
+        "For each question/answer pair in the transcript, evaluate the candidate's response "
+        "on each dimension. Include the question text, answer text, scores, and brief feedback.\n\n"
         "## Output Format\n"
         "Return ONLY valid JSON with no markdown fences:\n"
         '{{"overall_score": <0.0-5.0>, '
@@ -83,6 +105,12 @@ DEFAULT_EVALUATOR_PROMPTS: dict[str, str] = {
         '"relevance": {{"score": <0.0-5.0>, "evidence": "..."}}, '
         '"specificity": {{"score": <0.0-5.0>, "evidence": "..."}}, '
         '"impact": {{"score": <0.0-5.0>, "evidence": "..."}}}}, '
+        '"question_scores": [{{"question_index": 0, "question_text": "...", "answer_text": "...", '
+        '"dimension_scores": {{"structure_star": {{"score": <0.0-5.0>, "evidence": "..."}}, '
+        '"relevance": {{"score": <0.0-5.0>, "evidence": "..."}}, '
+        '"specificity": {{"score": <0.0-5.0>, "evidence": "..."}}, '
+        '"impact": {{"score": <0.0-5.0>, "evidence": "..."}}}}, '
+        '"overall_score": <0.0-5.0>, "feedback": "..."}}], '
         '"strengths": ["..."], "improvements": ["..."], '
         '"recommendations": ["..."], "confidence": <0.0-1.0>}}'
     ),

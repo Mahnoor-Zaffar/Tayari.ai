@@ -227,3 +227,14 @@ class InterviewRepository:
             )
         )
         return result.scalar_one_or_none()
+
+    # ── Transcript ────────────────────────────────────────────────────────
+
+    async def update_transcript(self, interview_id: UUID, transcript: list[dict]) -> bool:
+        """Persist the session transcript to the interview record."""
+        interview = await self._session.get(InterviewORM, interview_id)
+        if interview is None:
+            return False
+        interview.transcript = transcript
+        await self._session.flush()
+        return True

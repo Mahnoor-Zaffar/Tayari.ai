@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from evaluation.types import EvaluationResult, DimensionScore
+from evaluation.types import EvaluationResult
 from features.reports.models import Evaluation
 
 
@@ -19,10 +19,13 @@ class EvaluationRepository:
 
     async def list_user_evaluations(self, user_id: UUID, limit: int = 50) -> list[dict]:
         from features.interview.models import Interview
+
         result = await self._session.execute(
-            select(Evaluation).join(Interview, Evaluation.interview_id == Interview.id)
+            select(Evaluation)
+            .join(Interview, Evaluation.interview_id == Interview.id)
             .where(Interview.user_id == user_id, Evaluation.deleted_at.is_(None))
-            .order_by(Evaluation.created_at.desc()).limit(limit)
+            .order_by(Evaluation.created_at.desc())
+            .limit(limit)
         )
         evals = list(result.scalars().all())
         return [
@@ -46,10 +49,28 @@ class EvaluationRepository:
         This is the **only** path for writing evaluation data.
         The LLM never writes directly to the database.
         """
+        question_scores_data = []
+        if result.question_scores:
+            for qs in result.question_scores:
+                question_scores_data.append(
+                    {
+                        "question_index": qs.question_index,
+                        "question_text": qs.question_text,
+                        "answer_text": qs.answer_text,
+                        "dimension_scores": [
+                            {"key": ds.key, "label": ds.label, "score": ds.score, "evidence": ds.evidence}
+                            for ds in qs.dimension_scores
+                        ],
+                        "overall_score": qs.overall_score,
+                        "feedback": qs.feedback,
+                    }
+                )
+
         evaluation = Evaluation(
             interview_id=UUID(result.interview_id),
             overall_score=result.overall_score,
             dimension_scores={d.key: {"score": d.score, "evidence": d.evidence} for d in result.dimensions},
+            question_scores=question_scores_data,
             hire_verdict=result.hire_verdict,
             strengths=result.strengths,
             improvements=result.improvements,
@@ -64,17 +85,20 @@ class EvaluationRepository:
         return evaluation
 
     async def get_evaluation(self, interview_id: UUID) -> Evaluation | None:
-        result = await self._session.execute(
-            select(Evaluation).where(Evaluation.interview_id == interview_id)
-        )
+        result = await self._session.execute(select(Evaluation).where(Evaluation.interview_id == interview_id))
         return result.scalar_one_or_none()
 
     async def get_user_evaluations(self, user_id: UUID, limit: int = 20) -> list[Evaluation]:
         from features.interview.models import Interview
+
         result = await self._session.execute(
-            select(Evaluation).join(Interview).where(
+            select(Evaluation)
+            .join(Interview)
+            .where(
                 Interview.user_id == user_id,
                 Evaluation.deleted_at.is_(None),
-            ).order_by(Evaluation.created_at.desc()).limit(limit)
+            )
+            .order_by(Evaluation.created_at.desc())
+            .limit(limit)
         )
         return list(result.scalars().all())

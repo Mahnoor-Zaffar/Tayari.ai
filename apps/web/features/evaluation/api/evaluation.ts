@@ -7,6 +7,15 @@ export interface DimensionData {
   evidence: string;
 }
 
+export interface QuestionScoreData {
+  question_index: number;
+  question_text: string;
+  answer_text: string;
+  dimension_scores: DimensionData[];
+  overall_score: number;
+  feedback: string;
+}
+
 export interface EvaluationData {
   evaluation_id: string;
   interview_id: string;
@@ -14,6 +23,7 @@ export interface EvaluationData {
   overall_score_100: number;
   hire_verdict: string;
   dimensions: DimensionData[];
+  question_scores: QuestionScoreData[];
   strengths: string[];
   improvements: string[];
   recommendations: string[];
@@ -35,12 +45,10 @@ export interface InterviewData {
 }
 
 export const evaluationApi = {
-  getEvaluation: (interviewId: string) =>
-    api.get<EvaluationData>(`/evaluations/${interviewId}`),
+  getEvaluation: (interviewId: string) => api.get<EvaluationData>(`/evaluations/${interviewId}`),
 
   triggerEvaluation: (interviewId: string) =>
     api.post<EvaluationData>(`/evaluations/${interviewId}`),
 
-  getInterview: (interviewId: string) =>
-    api.get<InterviewData>(`/interviews/${interviewId}`),
+  getInterview: (interviewId: string) => api.get<InterviewData>(`/interviews/${interviewId}`),
 };

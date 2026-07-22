@@ -12,8 +12,7 @@ import { RadarChart } from "./RadarChart";
 import { CategoryCard } from "./CategoryCard";
 import { FeedbackCard } from "./FeedbackCard";
 import { RecommendationCard } from "./RecommendationCard";
-import { TranscriptViewer } from "./TranscriptViewer";
-import { Timeline } from "./Timeline";
+import { PracticeReview } from "./PracticeReview";
 import Link from "next/link";
 
 interface EvaluationDashboardProps {
@@ -22,7 +21,8 @@ interface EvaluationDashboardProps {
 }
 
 export const EvaluationDashboard = memo(function EvaluationDashboard({
-  interviewId, className,
+  interviewId,
+  className,
 }: EvaluationDashboardProps) {
   const { evaluation, interview, isLoading, isError, error, refetch } = useEvaluation(interviewId);
 
@@ -35,7 +35,9 @@ export const EvaluationDashboard = memo(function EvaluationDashboard({
           <AlertCircle className="h-8 w-8 text-destructive" />
         </div>
         <h2 className="text-xl font-bold">Failed to load evaluation</h2>
-        <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : "An unexpected error occurred."}</p>
+        <p className="text-sm text-muted-foreground">
+          {error instanceof Error ? error.message : "An unexpected error occurred."}
+        </p>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={refetch}>
             <RefreshCw className="h-4 w-4" /> Retry
@@ -57,7 +59,11 @@ export const EvaluationDashboard = memo(function EvaluationDashboard({
   return (
     <div className={cn("mx-auto max-w-4xl space-y-8 px-4 py-8", className)}>
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center"
+      >
         <h1 className="text-2xl font-bold">Interview Evaluation</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {interview.company} &middot; {interview.role} &middot; {interview.type}
@@ -66,8 +72,12 @@ export const EvaluationDashboard = memo(function EvaluationDashboard({
 
       {/* Score + Radar */}
       <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:justify-center">
-        <ScoreCard score={evaluation.overall_score} score100={evaluation.overall_score_100}
-          label="Overall Score" verdict={evaluation.hire_verdict} />
+        <ScoreCard
+          score={evaluation.overall_score}
+          score100={evaluation.overall_score_100}
+          label="Overall Score"
+          verdict={evaluation.hire_verdict}
+        />
         <RadarChart dimensions={dims} className="hidden sm:flex" />
         <div className="flex flex-wrap gap-2 sm:hidden">
           {dims.map((d, i) => (
@@ -80,11 +90,18 @@ export const EvaluationDashboard = memo(function EvaluationDashboard({
 
       {/* Category Scores */}
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Score Breakdown</h2>
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" /> Score Breakdown
+        </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {evaluation.dimensions.map((dim, i) => (
-            <CategoryCard key={dim.key} label={dim.label} score={dim.score}
-              evidence={dim.evidence} index={i} />
+            <CategoryCard
+              key={dim.key}
+              label={dim.label}
+              score={dim.score}
+              evidence={dim.evidence}
+              index={i}
+            />
           ))}
         </div>
       </section>
@@ -97,13 +114,8 @@ export const EvaluationDashboard = memo(function EvaluationDashboard({
         <RecommendationCard recommendations={evaluation.recommendations} />
       )}
 
-      {/* Timeline + Transcript */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Timeline questions={interview.transcript
-          .filter((t) => t.speaker === "ai" || t.speaker === "assistant")
-          .map((t, i) => ({ id: i + 1, text: t.text, type: i === 0 ? "initial" as const : "follow_up" as const }))} />
-        <TranscriptViewer transcript={interview.transcript} />
-      </div>
+      {/* Question-by-Question Review */}
+      <PracticeReview questionScores={evaluation.question_scores} />
     </div>
   );
 });
@@ -117,7 +129,9 @@ function EvaluationSkeleton() {
         <Skeleton className="h-4 w-64" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-20 rounded-xl" />
+        ))}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Skeleton className="h-32 rounded-xl" />

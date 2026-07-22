@@ -21,6 +21,7 @@ class Evaluation(Base):
     )
     overall_score: Mapped[float] = mapped_column(nullable=True)
     dimension_scores: Mapped[dict] = mapped_column(JSONB, default=dict)
+    question_scores: Mapped[dict] = mapped_column(JSONB, default=list)
     hire_verdict: Mapped[str] = mapped_column(String(20), nullable=True)
     strengths: Mapped[dict] = mapped_column(JSONB, default=list)
     improvements: Mapped[dict] = mapped_column(JSONB, default=list)

@@ -22,6 +22,28 @@ class DimensionScore:
 
 
 @dataclass
+class QuestionDimensionScore:
+    """Dimension score for a single question/answer pair."""
+
+    key: str
+    label: str
+    score: float  # 0.0 – 5.0
+    evidence: str = ""
+
+
+@dataclass
+class QuestionScore:
+    """Per-question evaluation result."""
+
+    question_index: int
+    question_text: str
+    answer_text: str
+    dimension_scores: list[QuestionDimensionScore]
+    overall_score: float  # 0.0 – 5.0
+    feedback: str = ""
+
+
+@dataclass
 class EvaluationResult:
     """Validated, normalized output ready for persistence.
 
@@ -39,6 +61,7 @@ class EvaluationResult:
     improvements: list[str]
     recommendations: list[str]
     confidence: float  # 0.0 – 1.0
+    question_scores: list[QuestionScore] | None = None
     status: str = "completed"
     raw_evaluation: str = ""
     model_used: str = ""
@@ -77,8 +100,9 @@ def get_dimensions_for_type(interview_type: str) -> list[dict]:
 def compute_hire_verdict(score: float) -> str:
     if score >= 4.0:
         return "hire"
-    if score >= 3.0:
-        return "lean_hire"
-    if score >= 2.0:
-        return "lean_no_hire"
-    return "no_hire"
+    elif score >= 3.0:
+        return "lean-hire"
+    elif score >= 2.0:
+        return "lean-no-hire"
+    else:
+        return "no-hire"

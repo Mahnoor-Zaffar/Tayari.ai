@@ -16,12 +16,15 @@ class TestRecommendationService:
             interview_type="coding",
             overall_score=2.5,
             overall_score_100=50.0,
-            hire_verdict="lean_no_hire",
+            hire_verdict="lean-no-hire",
             dimensions=[
                 DimensionScore(key="correctness", label="Correctness", score=2.0, weight=0.3),
                 DimensionScore(key="efficiency", label="Efficiency", score=3.0, weight=0.2),
             ],
-            strengths=[], improvements=[], recommendations=[], confidence=0.8,
+            strengths=[],
+            improvements=[],
+            recommendations=[],
+            confidence=0.8,
         )
         recs = self.service.generate(result)
         assert len(recs) > 0
@@ -38,7 +41,10 @@ class TestRecommendationService:
                 DimensionScore(key="structure_star", label="STAR", score=5.0, weight=0.3),
                 DimensionScore(key="relevance", label="Relevance", score=5.0, weight=0.25),
             ],
-            strengths=[], improvements=[], recommendations=[], confidence=0.9,
+            strengths=[],
+            improvements=[],
+            recommendations=[],
+            confidence=0.9,
         )
         recs = self.service.generate(result)
         assert len(recs) <= 5

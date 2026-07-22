@@ -7,8 +7,6 @@ from uuid import UUID
 
 from ai.openai_provider import OpenAIProvider
 from evaluation.pipeline import EvaluationPipeline
-from evaluation.recommendations import RecommendationService
-from features.code.repository import CodeRepository
 from features.interview.repository import InterviewRepository
 from features.reports.repository import EvaluationRepository
 
@@ -25,14 +23,11 @@ class EvaluationService:
         self,
         eval_repo: EvaluationRepository,
         interview_repo: InterviewRepository,
-        code_repo: CodeRepository | None = None,
         pipeline: EvaluationPipeline | None = None,
     ) -> None:
         self._eval_repo = eval_repo
         self._interview_repo = interview_repo
-        self._code_repo = code_repo
         self._pipeline = pipeline or EvaluationPipeline(provider=OpenAIProvider())
-        self._recommendations = RecommendationService()
 
     async def evaluate_interview(self, interview_id: UUID, user_id: UUID) -> dict:
         """Run the full evaluation pipeline for an interview.
@@ -55,9 +50,6 @@ class EvaluationService:
             language=interview.language or "",
         )
 
-        recommendations = self._recommendations.generate(result)
-        result.recommendations = recommendations
-
         evaluation = await self._eval_repo.create_evaluation(result)
 
         return {
@@ -67,12 +59,25 @@ class EvaluationService:
             "overall_score_100": result.overall_score_100,
             "hire_verdict": result.hire_verdict,
             "dimensions": [
-                {"key": d.key, "label": d.label, "score": d.score, "evidence": d.evidence}
-                for d in result.dimensions
+                {"key": d.key, "label": d.label, "score": d.score, "evidence": d.evidence} for d in result.dimensions
+            ],
+            "question_scores": [
+                {
+                    "question_index": qs.question_index,
+                    "question_text": qs.question_text,
+                    "answer_text": qs.answer_text,
+                    "dimension_scores": [
+                        {"key": ds.key, "label": ds.label, "score": ds.score, "evidence": ds.evidence}
+                        for ds in qs.dimension_scores
+                    ],
+                    "overall_score": qs.overall_score,
+                    "feedback": qs.feedback,
+                }
+                for qs in (result.question_scores or [])
             ],
             "strengths": result.strengths,
             "improvements": result.improvements,
-            "recommendations": recommendations,
+            "recommendations": result.recommendations,
             "confidence": result.confidence,
         }
 
@@ -90,6 +95,7 @@ class EvaluationService:
             "overall_score": evaluation.overall_score,
             "hire_verdict": evaluation.hire_verdict,
             "dimensions": evaluation.dimension_scores,
+            "question_scores": evaluation.question_scores or [],
             "strengths": evaluation.strengths,
             "improvements": evaluation.improvements,
             "status": evaluation.status,

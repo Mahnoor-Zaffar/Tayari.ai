@@ -13,7 +13,7 @@ class TestResultValidator:
         self.validator = ResultValidator()
 
     def test_valid_coding_output(self):
-        raw = '''
+        raw = """
         {
             "overall_score": 4.2,
             "dimensions": {
@@ -28,7 +28,7 @@ class TestResultValidator:
             "recommendations": ["Practice more DP problems"],
             "confidence": 0.9
         }
-        '''
+        """
         result = self.validator.validate(raw, "test-id", "coding")
         assert isinstance(result, EvaluationResult)
         # Weighted: (4.5*.30 + 4.0*.20 + 4.0*.20 + 4.0*.15 + 4.5*.15) / 1.0 ≈ 4.23
@@ -38,7 +38,7 @@ class TestResultValidator:
         assert result.confidence == 0.9
 
     def test_valid_behavioral_output(self):
-        raw = '''
+        raw = """
         {
             "overall_score": 3.5,
             "dimensions": {
@@ -52,9 +52,9 @@ class TestResultValidator:
             "recommendations": ["Practice quantifying impact"],
             "confidence": 0.8
         }
-        '''
+        """
         result = self.validator.validate(raw, "test-id", "behavioral")
-        assert result.hire_verdict == "lean_hire"
+        assert result.hire_verdict == "lean-hire"
         assert len(result.dimensions) == 4
 
     def test_missing_overall_score_raises(self):
@@ -63,7 +63,7 @@ class TestResultValidator:
             self.validator.validate(raw, "test-id", "behavioral")
 
     def test_score_clamped_to_range(self):
-        raw = '''
+        raw = """
         {
             "overall_score": 10.0,
             "dimensions": {
@@ -75,19 +75,23 @@ class TestResultValidator:
             "strengths": [], "improvements": [], "recommendations": [],
             "confidence": 1.0
         }
-        '''
+        """
         result = self.validator.validate(raw, "test-id", "behavioral")
         # Clamped: structure_star=5.0 (clamped from 6.0), weighted = (5*.30 + 4*.25 + 3*.25 + 3*.20) / 1.0 = 3.85
         assert result.overall_score == 3.85
         assert all(d.score <= 5.0 for d in result.dimensions)
 
     def test_markdown_fences_stripped(self):
-        raw = '```json\n{"overall_score": 3.0, "dimensions": {}, "strengths": [], "improvements": [], "recommendations": [], "confidence": 0.5}\n```'
+        raw = (
+            '```json\n{"overall_score": 3.0, "dimensions": {}, '
+            '"strengths": [], "improvements": [], '
+            '"recommendations": [], "confidence": 0.5}\n```'
+        )
         result = self.validator.validate(raw, "test-id", "behavioral")
         assert result.overall_score == 3.0
 
     def test_weighted_scoring(self):
-        raw = '''
+        raw = """
         {
             "overall_score": 3.0,
             "dimensions": {
@@ -99,7 +103,7 @@ class TestResultValidator:
             },
             "strengths": [], "improvements": [], "recommendations": [], "confidence": 0.5
         }
-        '''
+        """
         result = self.validator.validate(raw, "test-id", "coding")
         # correctness 0.30 + efficiency 0.20 + code_quality 0.20 + tech_comm 0.15 + lang 0.15
         # = (5*0.30 + 5*0.20 + 5*0.20 + 1*0.15 + 1*0.15) / 1.0 = 3.8

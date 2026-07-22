@@ -129,6 +129,26 @@ class SessionService:
         }
 
     async def end_session(self, session_id: str) -> dict:
+        session = self._manager.get_session(session_id)
+        if session is None:
+            raise SessionNotFoundError(session_id)
+
+        # Persist transcript to interview record before completing
+        try:
+            if session.transcript and session.interview_id:
+                transcript = session.transcript.get_transcript()
+                if transcript:
+                    from uuid import UUID as _UUID
+
+                    await self._interview_repo.update_transcript(_UUID(session.interview_id), transcript)
+                    logger.info(
+                        "Persisted %d transcript segments for interview %s",
+                        len(transcript),
+                        session.interview_id[:8],
+                    )
+        except Exception as exc:
+            logger.error("Failed to persist transcript: %s (session=%s)", exc, session_id[:8])
+
         session = await self._manager.complete_session(session_id)
         return {
             "session_id": session.session_id,

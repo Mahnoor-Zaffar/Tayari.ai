@@ -39,7 +39,6 @@ from evaluation.composer import ReportComposer
 from evaluation.evaluators import get_evaluators
 from evaluation.recommendations import RecommendationService
 from evaluation.sanitize import sanitize_source_code, sanitize_transcript
-from evaluation.scoring import ScoringEngine
 from evaluation.transcript_analyzer import TranscriptAnalyzer
 from evaluation.types import EvaluationResult
 from evaluation.validator import ResultValidator, ValidationError
@@ -64,7 +63,6 @@ class EvaluationPipeline:
         self._aggregator = ScoreAggregator()
         self._composer = ReportComposer()
         self._validator = ResultValidator()
-        self._scoring = ScoringEngine()
         self._recommendations = RecommendationService()
 
     async def evaluate(
@@ -96,14 +94,11 @@ class EvaluationPipeline:
         code_text = ""
         test_results = ""
         from evaluation.code_analysis import CodeAnalysisService
+
         code_service = CodeAnalysisService()
         if code_submission:
-            code_text = sanitize_source_code(
-                code_service.code_for_prompt(code_submission)
-            )
-            test_results = code_service.format_test_results(
-                code_submission.get("test_results", [])
-            )
+            code_text = sanitize_source_code(code_service.code_for_prompt(code_submission))
+            test_results = code_service.format_test_results(code_submission.get("test_results", []))
 
         evaluators = get_evaluators(interview_type, self._provider)
         evaluator_results: list[dict] = []
@@ -129,28 +124,36 @@ class EvaluationPipeline:
                     last_error = exc
                     logger.warning(
                         "%s attempt %d/%d failed: %s",
-                        type(evaluator).__name__, attempt + 1, MAX_RETRIES + 1, exc,
+                        type(evaluator).__name__,
+                        attempt + 1,
+                        MAX_RETRIES + 1,
+                        exc,
                     )
                     if attempt >= MAX_RETRIES:
                         logger.error(
-                            "%s failed after all retries", type(evaluator).__name__,
+                            "%s failed after all retries",
+                            type(evaluator).__name__,
                         )
 
         if not evaluator_results:
             return EvaluationResult(
                 interview_id=interview_id,
                 interview_type=interview_type,
-                overall_score=0.0, overall_score_100=0.0,
+                overall_score=0.0,
+                overall_score_100=0.0,
                 hire_verdict="error",
-                dimensions=[], strengths=[], improvements=[], recommendations=[],
-                confidence=0.0, status="failed",
+                dimensions=[],
+                strengths=[],
+                improvements=[],
+                recommendations=[],
+                confidence=0.0,
+                status="failed",
                 raw_evaluation=str(last_error) if last_error else "All evaluators failed",
-                model_used=model, prompt_version=prompt_version,
+                model_used=model,
+                prompt_version=prompt_version,
             )
 
-        dimensions, overall_score, confidence, strengths, improvements = (
-            self._aggregator.aggregate(evaluator_results)
-        )
+        dimensions, overall_score, confidence, strengths, improvements = self._aggregator.aggregate(evaluator_results)
 
         recommendations = self._recommendations.generate_from_dimensions(dimensions)
 

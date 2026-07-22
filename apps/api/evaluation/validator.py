@@ -10,7 +10,14 @@ import json
 import logging
 from typing import Any
 
-from evaluation.types import DimensionScore, EvaluationResult, compute_hire_verdict, get_dimensions_for_type
+from evaluation.types import (
+    DimensionScore,
+    EvaluationResult,
+    QuestionDimensionScore,
+    QuestionScore,
+    compute_hire_verdict,
+    get_dimensions_for_type,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,14 +67,16 @@ class ResultValidator:
             score = float(ai_dim.get("score", 0))
             score = max(0.0, min(5.0, score))
 
-            dimensions.append(DimensionScore(
-                key=key,
-                label=dim_config["label"],
-                score=score,
-                weight=dim_config["weight"],
-                evidence=str(ai_dim.get("evidence", "")),
-                confidence=float(ai_dim.get("confidence", 0.8)),
-            ))
+            dimensions.append(
+                DimensionScore(
+                    key=key,
+                    label=dim_config["label"],
+                    score=score,
+                    weight=dim_config["weight"],
+                    evidence=str(ai_dim.get("evidence", "")),
+                    confidence=float(ai_dim.get("confidence", 0.8)),
+                )
+            )
 
         ai_overall = float(parsed.get("overall_score", 0))
         ai_overall = max(0.0, min(5.0, ai_overall))
@@ -78,6 +87,11 @@ class ResultValidator:
 
         confidence = float(parsed.get("confidence", 0.8))
         confidence = max(0.0, min(1.0, confidence))
+
+        question_scores = self._parse_question_scores(
+            parsed.get("question_scores", []),
+            interview_type,
+        )
 
         return EvaluationResult(
             interview_id=interview_id,
@@ -90,6 +104,7 @@ class ResultValidator:
             improvements=[str(s) for s in parsed.get("improvements", [])],
             recommendations=[str(s) for s in parsed.get("recommendations", [])],
             confidence=round(confidence, 2),
+            question_scores=question_scores,
             raw_evaluation=raw_json,
             model_used=model_used,
             prompt_version=prompt_version,
@@ -137,3 +152,51 @@ class ResultValidator:
         if total_weight == 0:
             return 0.0
         return sum(d.score * d.weight for d in dimensions) / total_weight
+
+    def _parse_question_scores(
+        self,
+        raw_question_scores: list[dict[str, Any]],
+        interview_type: str,
+    ) -> list[QuestionScore]:
+        """Parse per-question scores from AI output."""
+        dims_config = get_dimensions_for_type(interview_type)
+        dim_keys = [d["key"] for d in dims_config]
+        dim_labels = {d["key"]: d["label"] for d in dims_config}
+
+        question_scores: list[QuestionScore] = []
+        for i, qs in enumerate(raw_question_scores):
+            if not isinstance(qs, dict):
+                continue
+
+            dim_scores_raw = qs.get("dimension_scores", {})
+            dimension_scores: list[QuestionDimensionScore] = []
+
+            for key in dim_keys:
+                ds = dim_scores_raw.get(key, {})
+                score = float(ds.get("score", 0)) if isinstance(ds, dict) else 0
+                score = max(0.0, min(5.0, score))
+                evidence = str(ds.get("evidence", "")) if isinstance(ds, dict) else ""
+                dimension_scores.append(
+                    QuestionDimensionScore(
+                        key=key,
+                        label=dim_labels.get(key, key),
+                        score=score,
+                        evidence=evidence,
+                    )
+                )
+
+            overall = float(qs.get("overall_score", 0))
+            overall = max(0.0, min(5.0, overall))
+
+            question_scores.append(
+                QuestionScore(
+                    question_index=int(qs.get("question_index", i)),
+                    question_text=str(qs.get("question_text", "")),
+                    answer_text=str(qs.get("answer_text", "")),
+                    dimension_scores=dimension_scores,
+                    overall_score=overall,
+                    feedback=str(qs.get("feedback", "")),
+                )
+            )
+
+        return question_scores
