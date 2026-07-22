@@ -1,8 +1,8 @@
 "use client";
 
-import { memo, useEffect } from "react";
+import { memo, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, RefreshCw, BarChart3, Loader2, ArrowLeft } from "lucide-react";
+import { AlertCircle, RefreshCw, BarChart3, Loader2, ArrowLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -24,9 +24,48 @@ export const EvaluationDashboard = memo(function EvaluationDashboard({
   interviewId,
   className,
 }: EvaluationDashboardProps) {
-  const { evaluation, interview, isLoading, isError, error, refetch } = useEvaluation(interviewId);
+  const {
+    evaluation,
+    interview,
+    isLoading,
+    isError,
+    isNotFound,
+    error,
+    refetch,
+    triggerEvaluation,
+    isTriggering,
+  } = useEvaluation(interviewId);
 
   if (isLoading) return <EvaluationSkeleton />;
+
+  if (isNotFound) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+          <Sparkles className="h-8 w-8 text-primary" />
+        </div>
+        <h2 className="text-xl font-bold">No evaluation yet</h2>
+        <p className="text-sm text-muted-foreground">
+          This interview hasn&apos;t been evaluated yet.
+        </p>
+        <div className="flex gap-2">
+          <Button type="button" onClick={() => triggerEvaluation()} disabled={isTriggering}>
+            {isTriggering ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}{" "}
+            {isTriggering ? "Evaluating..." : "Run Evaluation"}
+          </Button>
+          <Link href="/dashboard">
+            <Button type="button" variant="outline">
+              <ArrowLeft className="h-4 w-4" /> Dashboard
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (isError) {
     return (
