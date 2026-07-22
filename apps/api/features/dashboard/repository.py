@@ -76,7 +76,7 @@ class DashboardRepository:
                 select(
                     func.count(InterviewORM.id).label("total"),
                     func.sum(case((InterviewORM.status == "completed", 1), else_=0)).label("completed"),
-                    func.sum(case((InterviewORM.status.in_(["pending", "in_progress"]), 1), else_=0)).label(
+                    func.sum(case((InterviewORM.status.in_(["pending", "active"]), 1), else_=0)).label(
                         "active_pending"
                     ),
                     func.avg(EvaluationORM.overall_score).label("avg_score"),

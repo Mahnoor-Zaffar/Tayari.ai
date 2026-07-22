@@ -52,7 +52,7 @@ export const InterviewProgress = memo(function InterviewProgress({
               <p className="text-sm font-medium">Latest Evaluation</p>
               <p className="text-2xl font-bold">
                 {latestReport.overall_score != null
-                  ? `${Math.round(latestReport.overall_score)}%`
+                  ? `${Math.round((latestReport.overall_score / 5) * 100)}%`
                   : "—"}
               </p>
               {latestReport.hire_verdict && (

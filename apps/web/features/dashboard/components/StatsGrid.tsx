@@ -55,7 +55,9 @@ export const StatsGrid = memo(function StatsGrid({ stats, isLoading, className }
       />
       <StatCard
         title="Average Score"
-        value={stats?.average_score != null ? `${Math.round(stats.average_score)}%` : "—"}
+        value={
+          stats?.average_score != null ? `${Math.round((stats.average_score / 5) * 100)}%` : "—"
+        }
         icon={Star}
         variant="primary"
         description={stats?.average_score != null ? "Across all evaluations" : "No scores yet"}

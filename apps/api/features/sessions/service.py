@@ -86,6 +86,9 @@ class SessionService:
         await self._manager.prepare_session(session.session_id)
         session = await self._manager.start_session(session.session_id)
 
+        # Mark interview as active in DB
+        await self._interview_repo.update_status(interview_id, "active")
+
         return {
             "session_id": session.session_id,
             "interview_id": session.interview_id,
@@ -150,6 +153,13 @@ class SessionService:
             logger.error("Failed to persist transcript: %s (session=%s)", exc, session_id[:8])
 
         session = await self._manager.complete_session(session_id)
+
+        # Mark interview as completed in DB
+        try:
+            await self._interview_repo.update_status(UUID(session.interview_id), "completed")
+        except Exception as exc:
+            logger.error("Failed to update interview status: %s (session=%s)", exc, session_id[:8])
+
         return {
             "session_id": session.session_id,
             "state": session.state.value,

@@ -228,6 +228,19 @@ class InterviewRepository:
         )
         return result.scalar_one_or_none()
 
+    # ── Status Updates ────────────────────────────────────────────────────
+
+    async def update_status(self, interview_id: UUID, status: str) -> bool:
+        """Update interview status (pending → active → completed)."""
+        interview = await self._session.get(InterviewORM, interview_id)
+        if interview is None:
+            return False
+        interview.status = status
+        if status == "completed":
+            interview.completed_at = _now()
+        await self._session.flush()
+        return True
+
     # ── Transcript ────────────────────────────────────────────────────────
 
     async def update_transcript(self, interview_id: UUID, transcript: list[dict]) -> bool:
