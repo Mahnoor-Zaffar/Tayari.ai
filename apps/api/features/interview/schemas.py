@@ -51,6 +51,7 @@ class CreateInterviewRequest(BaseModel):
     difficulty: Difficulty = "medium"
     duration_minutes: DurationMinutes = 30
     custom_instructions: str | None = Field(None, max_length=2000)
+    system_design_problem: str | None = Field(None, max_length=500)
     resume_id: UUID | None = None
     job_description_id: UUID | None = None
     template_id: UUID | None = None
@@ -127,6 +128,7 @@ class InterviewResponse(BaseModel):
     difficulty: str = "medium"
     duration_minutes: int = 30
     custom_instructions: str | None = None
+    system_design_problem: str | None = None
     status: str = "pending"
     timer_remaining: int = 1800
     resume_id: UUID | None = None
@@ -198,6 +200,7 @@ class CreateTemplateRequest(BaseModel):
     difficulty: Difficulty = "medium"
     duration_minutes: DurationMinutes = 30
     custom_instructions: str | None = Field(None, max_length=2000)
+    system_design_problem: str | None = Field(None, max_length=500)
     resume_id: UUID | None = None
     job_description_id: UUID | None = None
 
@@ -217,6 +220,7 @@ class TemplateResponse(BaseModel):
     difficulty: str = "medium"
     duration_minutes: int = 30
     custom_instructions: str | None = None
+    system_design_problem: str | None = None
     resume_id: UUID | None = None
     job_description_id: UUID | None = None
     created_at: datetime

@@ -177,6 +177,10 @@ class SessionManager:
             experience_level=config.get("experience_level", "mid-senior"),
             language=config.get("language"),
             framework=config.get("framework"),
+            difficulty=config.get("difficulty"),
+            duration_minutes=config.get("duration_minutes", 30),
+            spoken_language=config.get("spoken_language", "en"),
+            system_design_problem=config.get("system_design_problem"),
             resume_context=config.get("resume_context"),
             jd_context=config.get("jd_context"),
             custom_instructions=config.get("custom_instructions"),
@@ -212,10 +216,14 @@ class SessionManager:
         first_question = await session.orchestrator.generate_initial_question()
         session.metadata["first_question"] = first_question
 
-        await self._dispatcher.emit(session_id, EVENT_SESSION_STARTED, {
-            "started_at": session.started_at,
-            "duration_minutes": (session.config or {}).get("duration_minutes", DEFAULT_DURATION_MINUTES),
-        })
+        await self._dispatcher.emit(
+            session_id,
+            EVENT_SESSION_STARTED,
+            {
+                "started_at": session.started_at,
+                "duration_minutes": (session.config or {}).get("duration_minutes", DEFAULT_DURATION_MINUTES),
+            },
+        )
         return session
 
     async def pause_session(self, session_id: str) -> Session:
@@ -254,11 +262,15 @@ class SessionManager:
 
         session_metrics = self._telemetry.session_ended(session_id)
 
-        await self._dispatcher.emit(session_id, EVENT_SESSION_COMPLETED, {
-            "elapsed_seconds": session.elapsed_seconds,
-            "transcript_segments": session.transcript.segment_count if session.transcript else 0,
-            "metrics": session_metrics,
-        })
+        await self._dispatcher.emit(
+            session_id,
+            EVENT_SESSION_COMPLETED,
+            {
+                "elapsed_seconds": session.elapsed_seconds,
+                "transcript_segments": session.transcript.segment_count if session.transcript else 0,
+                "metrics": session_metrics,
+            },
+        )
         return session
 
     async def archive_session(self, session_id: str) -> Session:
@@ -307,12 +319,14 @@ class SessionManager:
 
     def _add_marker(self, session: Session, event: str, extra: dict | None = None) -> None:
         """Append an event marker for replay and debugging."""
-        session.event_markers.append({
-            "event": event,
-            "timestamp": time.time(),
-            "state": session.state.value,
-            **(extra or {}),
-        })
+        session.event_markers.append(
+            {
+                "event": event,
+                "timestamp": time.time(),
+                "state": session.state.value,
+                **(extra or {}),
+            }
+        )
 
     # ── WebSocket / Connection ────────────────────────────────────────────
 

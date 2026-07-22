@@ -50,6 +50,7 @@ export interface InterviewResponse {
   difficulty: string;
   duration_minutes: number;
   custom_instructions: string | null;
+  system_design_problem: string | null;
   status: string;
   timer_remaining: number;
   resume_id: string | null;

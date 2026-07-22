@@ -15,6 +15,7 @@ interface SessionData {
   initial_question: string;
   duration_minutes: number;
   interview_type: string;
+  language: string | null;
   spoken_language: string;
 }
 
@@ -72,6 +73,7 @@ export default function InterviewRoomPage({ params }: { params: Promise<{ id: st
           initial_question: result.initial_question,
           duration_minutes: interview.duration_minutes ?? 30,
           interview_type: interview.type,
+          language: interview.language ?? null,
           spoken_language: interview.spoken_language ?? "en",
         };
         try {
@@ -122,6 +124,7 @@ export default function InterviewRoomPage({ params }: { params: Promise<{ id: st
           sessionId={session.session_id}
           interviewId={session.interview_id}
           token={accessToken ?? ""}
+          language={session.language}
           durationMinutes={session.duration_minutes}
           onComplete={handleComplete}
         />

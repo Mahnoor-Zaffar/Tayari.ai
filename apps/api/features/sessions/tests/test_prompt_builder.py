@@ -79,3 +79,40 @@ class TestPromptBuilder:
             language="python",
         )
         assert "evaluat" in prompt.lower()
+
+    def test_difficulty_and_duration_interpolated(self, builder: PromptBuilder):
+        prompt = builder.build_system_prompt(
+            interview_type="coding",
+            company="Meta",
+            role="Software Engineer",
+            experience_level="junior",
+            difficulty="easy",
+            duration_minutes=15,
+        )
+        assert "Difficulty: easy" in prompt
+        assert "Duration: 15 minutes" in prompt
+
+    def test_system_design_problem_interpolated(self, builder: PromptBuilder):
+        prompt = builder.build_system_prompt(
+            interview_type="system-design",
+            company="Netflix",
+            role="Staff Engineer",
+            experience_level="staff-lead",
+            difficulty="hard",
+            system_design_problem="Design a video streaming service",
+        )
+        assert "Design a video streaming service" in prompt
+
+    def test_resume_and_jd_context_appended(self, builder: PromptBuilder):
+        prompt = builder.build_system_prompt(
+            interview_type="behavioral",
+            company="Amazon",
+            role="Engineering Manager",
+            experience_level="mid-senior",
+            resume_context="10 years of backend experience",
+            jd_context="Looking for distributed systems leaders",
+        )
+        assert "Candidate Background" in prompt
+        assert "10 years of backend experience" in prompt
+        assert "Target Role Context" in prompt
+        assert "Looking for distributed systems leaders" in prompt

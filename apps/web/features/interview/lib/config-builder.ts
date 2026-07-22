@@ -35,9 +35,11 @@ export interface InterviewConfiguration {
   role: string;
   seniority: InterviewSeniorityLevel;
   language: InterviewLanguage;
+  spoken_language: "en" | "ur";
   framework: InterviewFramework;
   duration_minutes: number;
   difficulty: InterviewDifficulty;
+  system_design_problem: string | null;
   resume_reference: string | null;
   job_description_reference: string | null;
   template_reference: string | null;
@@ -54,9 +56,11 @@ export function buildInterviewConfiguration(
     role: values.role,
     seniority: values.experience_level as InterviewSeniorityLevel,
     language: (values.language || null) as InterviewLanguage,
+    spoken_language: values.spoken_language ?? "en",
     framework: (values.framework || null) as InterviewFramework,
     duration_minutes: values.duration_minutes,
     difficulty: values.difficulty as InterviewDifficulty,
+    system_design_problem: values.system_design_problem ?? null,
     resume_reference: values.resume_id ?? null,
     job_description_reference: values.job_description_id ?? null,
     template_reference: values.template_id ?? null,
@@ -80,9 +84,11 @@ export function buildInterviewConfigurationFromResponse(
     role: response.role,
     seniority: response.experience_level as InterviewSeniorityLevel,
     language: (response.language || null) as InterviewLanguage,
+    spoken_language: (response.spoken_language ?? "en") as "en" | "ur",
     framework: (response.framework || null) as InterviewFramework,
     duration_minutes: response.duration_minutes,
     difficulty: response.difficulty as InterviewDifficulty,
+    system_design_problem: response.system_design_problem ?? null,
     resume_reference: response.resume_id ?? null,
     job_description_reference: response.job_description_id ?? null,
     template_reference: response.template_id ?? null,

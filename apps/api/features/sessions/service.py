@@ -64,17 +64,33 @@ class SessionService:
         if interview is None:
             raise ValueError("Interview not found")
 
+        # Load resume and job description context if uploaded
+        resume_context: str | None = None
+        if interview.resume_id:
+            resume = await self._interview_repo.get_resume_with_content(interview.resume_id, user_id)
+            if resume is not None:
+                resume_context = resume.parsed_content or resume.original_filename
+
+        jd_context: str | None = None
+        if interview.job_description_id:
+            jd = await self._interview_repo.get_job_description_with_content(interview.job_description_id, user_id)
+            if jd is not None:
+                jd_context = (jd.raw_content or "") + (jd.parsed_content or "")
+
         config = {
             "type": interview.type,
             "company": interview.company,
             "role": interview.role,
             "experience_level": interview.experience_level,
             "language": interview.language,
+            "spoken_language": interview.spoken_language,
             "framework": interview.framework,
+            "difficulty": interview.difficulty,
             "duration_minutes": interview.duration_minutes,
             "custom_instructions": interview.custom_instructions,
-            "resume_context": None,
-            "jd_context": None,
+            "system_design_problem": interview.system_design_problem,
+            "resume_context": resume_context,
+            "jd_context": jd_context or None,
         }
 
         session = await self._manager.create_session(

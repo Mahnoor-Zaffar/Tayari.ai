@@ -46,6 +46,7 @@ class Interview(Base):
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     framework: Mapped[str | None] = mapped_column(String(50), nullable=True)
     custom_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    system_design_problem: Mapped[str | None] = mapped_column(Text, nullable=True)
     resume_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("resumes.id"), nullable=True)
     job_description_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("job_descriptions.id"), nullable=True
@@ -97,6 +98,7 @@ class InterviewConfiguration(Base):
     difficulty: Mapped[str] = mapped_column(String(10), nullable=False, default="medium")
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     custom_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    system_design_problem: Mapped[str | None] = mapped_column(Text, nullable=True)
     device_checks: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 

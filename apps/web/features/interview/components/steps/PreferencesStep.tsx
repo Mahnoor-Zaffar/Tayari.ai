@@ -4,6 +4,7 @@ import { memo } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { InterviewOptions } from "@/features/interview/types";
 import type { InterviewSetupFormValues } from "@/features/interview/lib/wizard-schema";
@@ -44,6 +45,7 @@ export const PreferencesStep = memo(function PreferencesStep({
   const durations = options?.durations ?? [];
 
   const isCodingInterview = interviewType === "coding";
+  const isSystemDesignInterview = interviewType === "system-design";
 
   return (
     <fieldset className={cn("space-y-6", className)} disabled={isLoading}>
@@ -106,6 +108,40 @@ export const PreferencesStep = memo(function PreferencesStep({
           transcription.
         </p>
       </div>
+
+      {/* System Design Problem */}
+      {isSystemDesignInterview && (
+        <div className="space-y-2">
+          <Label htmlFor="system_design_problem">
+            Design Problem <span className="text-destructive">*</span>
+          </Label>
+          <Controller
+            name="system_design_problem"
+            control={control}
+            render={({ field }) => (
+              <Textarea
+                id="system_design_problem"
+                placeholder="e.g. Design a URL shortener like Bitly"
+                maxLength={500}
+                value={field.value ?? ""}
+                onChange={(e) => field.onChange(e.target.value || undefined)}
+                aria-invalid={!!errors.system_design_problem}
+                aria-describedby={
+                  errors.system_design_problem ? "system-design-problem-error" : undefined
+                }
+              />
+            )}
+          />
+          <p className="text-sm text-muted-foreground">
+            What system should the candidate design during this interview?
+          </p>
+          {errors.system_design_problem && (
+            <p id="system-design-problem-error" className="text-sm text-destructive" role="alert">
+              {errors.system_design_problem.message}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Framework */}
       <div className="space-y-2">

@@ -47,6 +47,10 @@ class PromptBuilder:
         experience_level: str,
         language: str | None = None,
         framework: str | None = None,
+        difficulty: str | None = None,
+        duration_minutes: int = 30,
+        spoken_language: str | None = "en",
+        system_design_problem: str | None = None,
         resume_context: str | None = None,
         jd_context: str | None = None,
         custom_instructions: str | None = None,
@@ -61,10 +65,19 @@ class PromptBuilder:
         6. Append custom instructions if provided.
         """
         cache_key = self._config_hash(
-            interview_type=interview_type, company=company, role=role,
-            experience_level=experience_level, language=language,
-            framework=framework, resume_context=resume_context,
-            jd_context=jd_context, custom_instructions=custom_instructions,
+            interview_type=interview_type,
+            company=company,
+            role=role,
+            experience_level=experience_level,
+            language=language,
+            framework=framework,
+            difficulty=difficulty,
+            duration_minutes=str(duration_minutes),
+            spoken_language=spoken_language,
+            system_design_problem=system_design_problem,
+            resume_context=resume_context,
+            jd_context=jd_context,
+            custom_instructions=custom_instructions,
         )
         cached = self._cache.get(cache_key)
         if cached is not None:
@@ -72,6 +85,10 @@ class PromptBuilder:
 
         base = self._load_interviewer_prompt(interview_type)
         company_prompt = self._load_company_template(company)
+
+        # Determine system design problem and missing aspect
+        problem = system_design_problem or "a scalable system relevant to the role"
+        missing_aspect = self._derive_missing_aspect(problem)
 
         parts: list[str] = []
 
@@ -83,8 +100,11 @@ class PromptBuilder:
             level=experience_level,
             language=language or "",
             framework=framework or "",
-            problem="",
-            missing_aspect="",
+            difficulty=difficulty or "medium",
+            duration_minutes=str(duration_minutes),
+            spoken_language=spoken_language or "en",
+            problem=problem,
+            missing_aspect=missing_aspect,
         )
         parts.append(interpolated)
 
@@ -116,6 +136,8 @@ class PromptBuilder:
         role: str,
         experience_level: str,
         language: str | None = None,
+        difficulty: str | None = None,
+        framework: str | None = None,
     ) -> str:
         """Build the evaluator prompt for post-interview evaluation."""
         base = self._load_evaluator_prompt(interview_type)
@@ -125,6 +147,8 @@ class PromptBuilder:
             role=role,
             level=experience_level,
             language=language or "",
+            difficulty=difficulty or "medium",
+            framework=framework or "",
         )
 
     def _load_interviewer_prompt(self, interview_type: str) -> str:
@@ -153,3 +177,18 @@ class PromptBuilder:
         if not INTERVIEWER_DIR.exists():
             return []
         return [p.stem for p in sorted(INTERVIEWER_DIR.glob("*.md"))]
+
+    def _derive_missing_aspect(self, problem: str) -> str:
+        """Return a plausible missing aspect to probe for system design problems."""
+        problem_lower = problem.lower()
+        if "database" in problem_lower or "storage" in problem_lower or "sql" in problem_lower:
+            return "failure recovery and replication"
+        if "cache" in problem_lower or "redis" in problem_lower:
+            return "cache invalidation and consistency"
+        if "message" in problem_lower or "queue" in problem_lower or "kafka" in problem_lower:
+            return "message ordering and dead-letter handling"
+        if "api" in problem_lower or "gateway" in problem_lower or "load" in problem_lower:
+            return "rate limiting and circuit breakers"
+        if "auth" in problem_lower or "login" in problem_lower or "session" in problem_lower:
+            return "token expiry and session revocation"
+        return "scalability under load"

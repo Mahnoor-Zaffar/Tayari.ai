@@ -86,6 +86,7 @@ class InterviewService:
             "difficulty": request.difficulty,
             "duration_minutes": request.duration_minutes,
             "custom_instructions": request.custom_instructions,
+            "system_design_problem": request.system_design_problem,
             "device_checks": request.device_checks,
         }
         config = await self._repo.create_configuration(config_data)
@@ -103,6 +104,7 @@ class InterviewService:
             "difficulty": request.difficulty,
             "duration_minutes": request.duration_minutes,
             "custom_instructions": request.custom_instructions,
+            "system_design_problem": request.system_design_problem,
             "resume_id": request.resume_id,
             "job_description_id": request.job_description_id,
             "template_id": request.template_id,
@@ -303,6 +305,7 @@ class InterviewService:
             "difficulty": request.difficulty,
             "duration_minutes": request.duration_minutes,
             "custom_instructions": request.custom_instructions,
+            "system_design_problem": request.system_design_problem,
             "resume_id": request.resume_id,
             "job_description_id": request.job_description_id,
         }
@@ -580,6 +583,7 @@ def _interview_to_response(interview: InterviewORM) -> InterviewResponse:
         difficulty=interview.difficulty,
         duration_minutes=interview.duration_minutes,
         custom_instructions=interview.custom_instructions,
+        system_design_problem=interview.system_design_problem,
         status=interview.status,
         timer_remaining=interview.timer_remaining,
         resume_id=interview.resume_id,
@@ -645,6 +649,7 @@ def _template_to_response(template) -> TemplateResponse:
         difficulty=template.difficulty,
         duration_minutes=template.duration_minutes,
         custom_instructions=template.custom_instructions,
+        system_design_problem=template.system_design_problem,
         resume_id=template.resume_id,
         job_description_id=template.job_description_id,
         created_at=template.created_at,

@@ -4,7 +4,14 @@ export const WIZARD_STEPS = ["Interview Type", "Preferences", "Uploads", "Review
 
 export const STEP_FIELDS: Record<number, string[]> = {
   0: ["type", "company", "role", "experience_level"],
-  1: ["language", "spoken_language", "framework", "difficulty", "duration_minutes"],
+  1: [
+    "language",
+    "spoken_language",
+    "framework",
+    "difficulty",
+    "duration_minutes",
+    "system_design_problem",
+  ],
   2: ["custom_instructions"],
   3: [],
 };
@@ -24,6 +31,7 @@ export const interviewSetupSchema = z.object({
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
   duration_minutes: z.union([z.literal(15), z.literal(30), z.literal(45)]).default(30),
   custom_instructions: z.string().max(2000).optional(),
+  system_design_problem: z.string().max(500).optional(),
   resume_id: z.string().uuid().nullable().optional(),
   job_description_id: z.string().uuid().nullable().optional(),
   template_id: z.string().uuid().nullable().optional(),
@@ -85,6 +93,7 @@ export function validateStep(step: number, values: InterviewSetupFormValues): bo
   }
   if (step === 1) {
     if (values.type === "coding" && !values.language) return false;
+    if (values.type === "system-design" && !values.system_design_problem) return false;
     return true;
   }
   return true;

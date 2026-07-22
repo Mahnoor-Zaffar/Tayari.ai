@@ -155,6 +155,9 @@ export const ReviewStep = memo(function ReviewStep({
           },
           { label: "Difficulty", value: labelFor("difficulties", values.difficulty) },
           { label: "Duration", value: `${values.duration_minutes} minutes` },
+          ...(values.type === "system-design" && values.system_design_problem
+            ? [{ label: "Design Problem", value: values.system_design_problem }]
+            : []),
         ],
       },
       {
@@ -196,6 +199,7 @@ export const ReviewStep = memo(function ReviewStep({
         difficulty: values.difficulty,
         duration_minutes: values.duration_minutes,
         custom_instructions: values.custom_instructions ?? null,
+        system_design_problem: values.system_design_problem ?? null,
         resume_id: values.resume_id ?? null,
         job_description_id: values.job_description_id ?? null,
       });

@@ -19,6 +19,7 @@ export interface TemplateData {
   difficulty?: string;
   duration_minutes?: number;
   custom_instructions?: string | null;
+  system_design_problem?: string | null;
   resume_id?: string | null;
   job_description_id?: string | null;
 }
@@ -36,6 +37,7 @@ export interface TemplateResponse {
   difficulty: string;
   duration_minutes: number;
   custom_instructions: string | null;
+  system_design_problem: string | null;
   resume_id: string | null;
   job_description_id: string | null;
   created_at: string;
@@ -160,9 +162,12 @@ export const interviewSetupApi = {
   // ── Session ─────────────────────────────────────────────────────────────
 
   startSession: (interviewId: string) =>
-    api.post<{ session_id: string; interview_id: string; status: string; initial_question: string }>(
-      "/sessions", { interview_id: interviewId },
-    ),
+    api.post<{
+      session_id: string;
+      interview_id: string;
+      status: string;
+      initial_question: string;
+    }>("/sessions", { interview_id: interviewId }),
 
   getSessionStatus: (sessionId: string) =>
     api.get<{ state: string; remaining_seconds: number }>(`/sessions/${sessionId}`),

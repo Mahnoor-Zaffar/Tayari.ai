@@ -199,6 +199,7 @@ export function InterviewSetupWizard({ onSuccess, className }: InterviewSetupWiz
         difficulty: formValues.difficulty,
         duration_minutes: formValues.duration_minutes,
         custom_instructions: formValues.custom_instructions ?? null,
+        system_design_problem: formValues.system_design_problem ?? null,
         resume_id: formValues.resume_id ?? null,
         job_description_id: formValues.job_description_id ?? null,
         template_id: formValues.template_id ?? null,
