@@ -6,7 +6,7 @@ or ORM instances — the service layer converts to Pydantic models.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -79,6 +79,40 @@ class InterviewRepository:
             )
         )
         return len(list(result.scalars().all()))
+
+    async def find_pending_duplicate(
+        self,
+        user_id: UUID,
+        interview_type: str,
+        company: str,
+        role: str,
+        experience_level: str,
+        language: str | None,
+        difficulty: str,
+        duration_minutes: int,
+        seconds_window: int = 120,
+    ) -> InterviewORM | None:
+        """Return a pending interview with the same config created within seconds_window, if any."""
+        cutoff = datetime.now(UTC) - timedelta(seconds=seconds_window)
+        result = await self._session.execute(
+            select(InterviewORM)
+            .where(
+                InterviewORM.user_id == user_id,
+                InterviewORM.type == interview_type,
+                InterviewORM.company == company,
+                InterviewORM.role == role,
+                InterviewORM.experience_level == experience_level,
+                InterviewORM.language == language,
+                InterviewORM.difficulty == difficulty,
+                InterviewORM.duration_minutes == duration_minutes,
+                InterviewORM.status == "pending",
+                InterviewORM.deleted_at.is_(None),
+                InterviewORM.created_at >= cutoff,
+            )
+            .order_by(InterviewORM.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
 
     async def soft_delete(self, interview_id: UUID) -> bool:
         """Soft-delete an interview by setting ``deleted_at``."""

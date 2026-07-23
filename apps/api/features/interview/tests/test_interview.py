@@ -224,6 +224,7 @@ class TestInterviewService:
         repo.get_job_description_by_id = AsyncMock(return_value=None)
         repo.list_interviews = AsyncMock(return_value=[])
         repo.get_interview_by_id = AsyncMock(return_value=None)
+        repo.find_pending_duplicate = AsyncMock(return_value=None)
         return repo
 
     @pytest.fixture

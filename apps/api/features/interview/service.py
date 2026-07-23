@@ -55,7 +55,24 @@ class InterviewService:
         Checks:
             - Free-tier users are limited to one interview (FR-05.1).
             - Referenced resume/JD belong to the user.
+            - Duplicate pending interview guard (same config within 2 minutes).
         """
+        # Duplicate guard: if a pending interview with the same config was
+        # created in the last 2 minutes, return it instead of creating another.
+        duplicate = await self._repo.find_pending_duplicate(
+            user_id=user_id,
+            interview_type=request.type,
+            company=request.company,
+            role=request.role,
+            experience_level=request.experience_level,
+            language=request.language,
+            difficulty=request.difficulty,
+            duration_minutes=request.duration_minutes,
+            seconds_window=120,
+        )
+        if duplicate is not None:
+            return _interview_to_response(duplicate)
+
         # Free-tier eligibility
         existing = await self._repo.count_user_interviews(user_id)
         if existing >= FREE_TIER_INTERVIEW_LIMIT:
