@@ -65,6 +65,12 @@ export default function InterviewRoomPage({ params }: { params: Promise<{ id: st
         }
 
         const interview = await interviewSetupApi.get(id);
+
+        if (interview.status === "completed") {
+          router.push(`/dashboard/interview/${id}/evaluation`);
+          return;
+        }
+
         const result = await interviewSetupApi.startSession(interview.id);
         const sessionData: SessionData = {
           session_id: result.session_id,

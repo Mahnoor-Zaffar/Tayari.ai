@@ -28,7 +28,11 @@ export const InterviewSetupHome = memo(function InterviewSetupHome() {
 
   const handleLoadConfig = useCallback(
     (interview: InterviewResponse) => {
-      router.push(`/dashboard/interview/${interview.id}`);
+      if (interview.status === "completed") {
+        router.push(`/dashboard/interview/${interview.id}/evaluation`);
+      } else {
+        router.push(`/dashboard/interview/${interview.id}`);
+      }
     },
     [router],
   );

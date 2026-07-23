@@ -64,6 +64,9 @@ class SessionService:
         if interview is None:
             raise ValueError("Interview not found")
 
+        if interview.status == "completed":
+            raise ValueError("Interview has already been completed")
+
         # Load resume and job description context if uploaded
         resume_context: str | None = None
         if interview.resume_id:
