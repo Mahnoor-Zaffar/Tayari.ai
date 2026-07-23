@@ -243,6 +243,8 @@ class TestInterviewService:
             difficulty="medium",
             duration_minutes=30,
             custom_instructions=None,
+            spoken_language="en",
+            system_design_problem=None,
             status="pending",
             timer_remaining=1800,
             resume_id=None,
@@ -258,7 +260,7 @@ class TestInterviewService:
         mock_repo.create_interview.assert_called_once()
 
     async def test_create_interview_free_tier_limit(self, service: InterviewService, mock_repo: MagicMock) -> None:
-        mock_repo.count_user_interviews.return_value = 1
+        mock_repo.count_user_interviews.return_value = 10
 
         from core.errors import ConflictError
 

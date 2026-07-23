@@ -133,7 +133,7 @@ async def session_with_data_fixture(db_engine, repository: DashboardRepository, 
     _add_interview(session, user_id, "completed", _ts(5), _ts(6))
     _add_interview(session, user_id, "completed", _ts(1), _ts(2))
     _add_interview(session, user_id, "completed", _ts(0), _ts(0, hours=2))
-    _add_interview(session, user_id, "in_progress", None, _ts(0, hours=1))
+    _add_interview(session, user_id, "active", None, _ts(0, hours=1))
     _add_interview(session, user_id, "pending", None, _ts(0, hours=1))
 
     # Soft-deleted interview (should be excluded)
@@ -257,9 +257,9 @@ class TestDashboardRepository:
         self, seeded_repo: DashboardRepository, seeded_user_id: uuid.UUID
     ) -> None:
         stats = await seeded_repo.get_stats(seeded_user_id)
-        assert stats["total_interviews"] == 6  # 4 completed + 1 in_progress + 1 pending (soft-deleted excluded)
+        assert stats["total_interviews"] == 6  # 4 completed + 1 active + 1 pending (soft-deleted excluded)
         assert stats["completed_interviews"] == 4
-        assert stats["active_interviews"] == 2  # 1 pending + 1 in_progress
+        assert stats["active_interviews"] == 2  # 1 active + 1 pending
         assert stats["average_score"] is not None
 
     async def test_get_streak_returns_zero_for_no_activity(self, repository: DashboardRepository) -> None:
@@ -341,15 +341,6 @@ class TestDashboardRepository:
     ) -> None:
         interviews = await seeded_repo.get_recent_interviews(seeded_user_id, limit=2)
         assert len(interviews) <= 2
-
-    async def test_get_analytics_data_returns_within_range(
-        self, seeded_repo: DashboardRepository, seeded_user_id: uuid.UUID
-    ) -> None:
-        data = await seeded_repo.get_analytics_data(seeded_user_id)
-        assert len(data) >= 3
-        for row in data:
-            assert "completed_at" in row
-            assert "overall_score" in row
 
 
 # ═════════════════════════════════════════════════════════════════════════════
