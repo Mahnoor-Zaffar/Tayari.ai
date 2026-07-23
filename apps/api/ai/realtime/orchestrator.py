@@ -26,21 +26,23 @@ WRAP_UP_MESSAGE = (
 class AIOrchestrator:
     """Manages the AI-driven turn loop for a single interview session."""
 
-    MAX_QUESTIONS = 5
-
     def __init__(
         self,
         provider: AIProvider,
         prompt_builder: PromptBuilder,
         memory: ConversationMemory,
         transcript: TranscriptManager,
-        max_tokens: int = 300,
+        max_tokens: int = 500,
+        interview_type: str = "coding",
+        duration_minutes: int = 30,
     ) -> None:
         self._provider = provider
         self._prompt_builder = prompt_builder
         self._memory = memory
         self._transcript = transcript
         self._max_tokens = max_tokens
+        self._interview_type = interview_type
+        self._duration_minutes = duration_minutes
         self._current_question_id = 0
         self._last_question = ""
         self._question_count = 0
@@ -55,6 +57,12 @@ class AIOrchestrator:
         self._transcript.append_static("ai", question)
         return question
 
+    def _max_questions(self) -> int:
+        """Return the max question count for this interview type."""
+        if self._interview_type == "behavioral":
+            return max(12, self._duration_minutes // 2)
+        return max(6, self._duration_minutes // 5)
+
     async def process_answer(self, answer: str) -> str | None:
         """Process a user answer and generate the next AI response.
 
@@ -64,7 +72,7 @@ class AIOrchestrator:
         self._memory.append("user", answer)
         self._transcript.commit_partial("user")
 
-        if self._question_count >= self.MAX_QUESTIONS:
+        if self._question_count >= self._max_questions():
             return None
 
         self._current_question_id += 1
@@ -88,14 +96,16 @@ class AIOrchestrator:
     async def generate_hint(self, question_id: int | None = None) -> str | None:
         """Generate a hint for the current or specified question."""
         messages = self._memory.get_all_messages()
-        messages.append({
-            "role": "user",
-            "content": "Can you give me a hint? I'm stuck.",
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": "Can you give me a hint? I'm stuck.",
+            }
+        )
         response = await self._provider.chat(
             messages=messages,
             system_prompt="You are a helpful interview coach. Give a brief hint (1-2 sentences) "
-                          "that guides the candidate without giving away the full solution.",
+            "that guides the candidate without giving away the full solution.",
             max_tokens=150,
         )
         hint = response.content.strip()
@@ -104,8 +114,12 @@ class AIOrchestrator:
         return hint or None
 
     async def evaluate(
-        self, interview_type: str, company: str, role: str,
-        experience_level: str, language: str | None = None,
+        self,
+        interview_type: str,
+        company: str,
+        role: str,
+        experience_level: str,
+        language: str | None = None,
     ) -> dict:
         """Run evaluation on the completed transcript (blocking, in worker)."""
         evaluator_prompt = self._prompt_builder.build_evaluator_prompt(

@@ -193,6 +193,8 @@ class SessionManager:
             prompt_builder=self._prompt_builder,
             memory=memory,
             transcript=transcript,
+            interview_type=config.get("type", "coding"),
+            duration_minutes=config.get("duration_minutes", 30),
         )
 
         session.memory = memory
