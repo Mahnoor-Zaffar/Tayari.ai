@@ -204,6 +204,26 @@ class SessionService:
 
         return next_question
 
+    async def process_answer_stream(self, session_id: str, text: str):
+        """Process a user answer and stream the next AI response.
+
+        Yields token strings.  After iteration the full response is stored
+        in the orchestrator and available via ``get_last_question``.
+        Yields nothing if the safety question ceiling is hit.
+        """
+        session = self._manager.get_session(session_id)
+        if session is None or session.orchestrator is None:
+            raise ValueError("Session or orchestrator not found")
+        async for token in session.orchestrator.process_answer_stream(text):
+            yield token
+
+    def get_last_question(self, session_id: str) -> str | None:
+        """Return the last fully generated question text, or None."""
+        session = self._manager.get_session(session_id)
+        if session and session.orchestrator:
+            return session.orchestrator.last_question
+        return None
+
     async def request_hint(self, session_id: str) -> str | None:
         session = self._manager.get_session(session_id)
         if session is None or session.orchestrator is None:

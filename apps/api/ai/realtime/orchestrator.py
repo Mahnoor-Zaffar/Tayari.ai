@@ -97,6 +97,31 @@ class AIOrchestrator:
         self._transcript.append_static("ai", next_question)
         return next_question
 
+    async def process_answer_stream(self, answer: str):
+        """Process a user answer and stream the next AI response token by token.
+
+        Yields token strings.  After iteration completes the full response is
+        stored in memory and available via ``last_question``.
+        Yields nothing if the safety question ceiling is hit.
+        """
+        self._memory.append("user", answer)
+        self._transcript.commit_partial("user")
+
+        if self._question_count >= self.SAFETY_MAX_QUESTIONS:
+            return
+
+        self._current_question_id += 1
+        self._question_count += 1
+
+        full_text = ""
+        async for token in self._generate_question_stream():
+            full_text += token
+            yield token
+
+        self._last_question = full_text
+        self._memory.append("assistant", full_text)
+        self._transcript.append_static("ai", full_text)
+
     async def generate_wrap_up(self) -> str:
         """Generate the concluding remarks from the AI."""
         self._memory.append("assistant", WRAP_UP_MESSAGE)
@@ -149,6 +174,16 @@ class AIOrchestrator:
             system_prompt=evaluator_prompt,
         )
         return result
+
+    async def _generate_question_stream(self, is_initial: bool = False):
+        """Call the AI provider and yield tokens as they arrive."""
+        messages = list(self._memory.get_all_messages())
+        messages.append({"role": "system", "content": self._remaining_time_context()})
+        try:
+            async for token in self._provider.chat_stream(messages=messages):
+                yield token
+        except Exception as exc:
+            logger.error("AI stream generation failed: %s", exc)
 
     async def _generate_question(self, is_initial: bool = False) -> str | None:
         """Call the AI provider to generate the next question.

@@ -284,17 +284,16 @@ async def _handle_message(
     elif msg.type == "user.answer":
         text = _sanitize_text(msg.payload.get("text", ""))
         if text:
-            next_question = await service.process_answer(session_id, text)
-            if next_question:
-                await _send(
-                    websocket,
-                    "ai.question",
-                    {
-                        "id": 0,
-                        "text": next_question,
-                        "type": "follow_up",
-                    },
-                )
+            had_tokens = False
+            async for token in service.process_answer_stream(session_id, text):
+                if not had_tokens:
+                    await _send(websocket, "ai.stream_start", {"id": 0})
+                    had_tokens = True
+                await _send(websocket, "ai.token", {"token": token})
+
+            if had_tokens:
+                full_text = service.get_last_question(session_id) or ""
+                await _send(websocket, "ai.stream_end", {"text": full_text})
             else:
                 await _send(websocket, "session.completing", {})
                 await service.end_session(session_id)
@@ -306,7 +305,6 @@ async def _handle_message(
                         "redirect_url": f"/dashboard/interview/{session_id}",
                     },
                 )
-                # Trigger evaluation in background
                 session_snapshot = service.get_session(session_id)
                 if session_snapshot:
                     asyncio.create_task(_background_evaluate(session_id, session_snapshot["user_id"]))

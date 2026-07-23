@@ -50,6 +50,18 @@ export interface SessionCompletedPayload {
   redirect_url?: string;
 }
 
+export interface AIStreamStartPayload {
+  id: number;
+}
+
+export interface AIStreamTokenPayload {
+  token: string;
+}
+
+export interface AIStreamEndPayload {
+  text: string;
+}
+
 export interface ErrorPayload {
   code: string;
   message: string;
@@ -59,6 +71,9 @@ export type ServerEvent =
   | { type: "session.connected"; payload: SessionConnectedPayload }
   | { type: "ai.question"; payload: AIQuestionPayload }
   | { type: "ai.hint"; payload: AIHintPayload }
+  | { type: "ai.stream_start"; payload: AIStreamStartPayload }
+  | { type: "ai.token"; payload: AIStreamTokenPayload }
+  | { type: "ai.stream_end"; payload: AIStreamEndPayload }
   | { type: "session.paused"; payload: SessionPausedPayload }
   | { type: "session.resumed"; payload: SessionResumedPayload }
   | { type: "session.completing"; payload: Record<string, unknown> }
