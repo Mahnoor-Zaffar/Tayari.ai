@@ -28,6 +28,7 @@ export const EvaluationDashboard = memo(function EvaluationDashboard({
     evaluation,
     interview,
     isLoading,
+    isPolling,
     isError,
     isNotFound,
     error,
@@ -36,7 +37,7 @@ export const EvaluationDashboard = memo(function EvaluationDashboard({
     isTriggering,
   } = useEvaluation(interviewId);
 
-  if (isLoading) return <EvaluationSkeleton />;
+  if (isLoading || isPolling) return <EvaluationPreparing />;
 
   if (isNotFound) {
     return (
@@ -158,6 +159,20 @@ export const EvaluationDashboard = memo(function EvaluationDashboard({
     </div>
   );
 });
+
+function EvaluationPreparing() {
+  return (
+    <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+      <h2 className="text-xl font-bold">Preparing your evaluation</h2>
+      <p className="text-sm text-muted-foreground">
+        Analyzing your responses... this should take just a moment.
+      </p>
+    </div>
+  );
+}
 
 function EvaluationSkeleton() {
   return (

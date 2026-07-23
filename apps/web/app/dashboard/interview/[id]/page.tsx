@@ -35,7 +35,7 @@ export default function InterviewRoomPage({ params }: { params: Promise<{ id: st
     } catch {
       /* ignore */
     }
-    setTimeout(() => router.push(`/dashboard/interview/${id}/evaluation`), 2000);
+    router.push(`/dashboard/interview/${id}/evaluation`);
   }, [id, router]);
 
   useEffect(() => {

@@ -202,9 +202,7 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
 
   const endSession = useCallback(() => {
     clientRef.current?.send("session.end");
-    timer.pause();
-    updateState({ state: "completed" });
-  }, [timer, updateState]);
+  }, []);
 
   const undoLastAnswer = useCallback(() => {
     setState((prev) => {

@@ -347,6 +347,21 @@ async def _handle_message(
             },
         )
 
+    elif msg.type == "session.end":
+        await _send(websocket, "session.completing", {})
+        await service.end_session(session_id)
+        await _send(
+            websocket,
+            "session.completed",
+            {
+                "interview_id": session_id,
+                "redirect_url": f"/dashboard/interview/{session_id}",
+            },
+        )
+        session_snapshot = service.get_session(session_id)
+        if session_snapshot:
+            asyncio.create_task(_background_evaluate(session_id, session_snapshot["user_id"]))
+
     elif msg.type == "heartbeat":
         service.record_heartbeat(session_id)
         await _send(websocket, "heartbeat_ack", {"timestamp": time.time()})
