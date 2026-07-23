@@ -35,7 +35,7 @@ class TestPromptBuilder:
         assert "Meta" in prompt
         assert "Leadership" in prompt
         assert "Conflict Resolution" in prompt
-        assert "10-15 questions" in prompt
+        assert "Adaptability" in prompt
 
     def test_load_interviewer_prompt_system_design(self, builder: PromptBuilder):
         prompt = builder.build_system_prompt(
