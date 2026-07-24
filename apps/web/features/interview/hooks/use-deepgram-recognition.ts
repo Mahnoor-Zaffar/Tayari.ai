@@ -15,6 +15,9 @@ interface DeepgramRecognitionHook {
   audioLevel: number;
   transcript: string;
   interimTranscript: string;
+  /** Set to the latest speech_final utterance text, incremented on each end-of-utterance */
+  pendingUtterance: string;
+  /** Monotonic counter bumped on each speech_final — use as trigger */
   autoSubmitTrigger: number;
   isSupported: boolean;
   error: string | null;
@@ -33,6 +36,7 @@ export function useDeepgramRecognition(
   const [audioLevel, setAudioLevel] = useState(0);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
+  const [pendingUtterance, setPendingUtterance] = useState("");
   const [autoSubmitTrigger, setAutoSubmitTrigger] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,6 +90,7 @@ export function useDeepgramRecognition(
               if (data.speech_final) {
                 // End of utterance — trigger auto-submit
                 setIsSpeaking(false);
+                setPendingUtterance(data.text?.trim() || "");
                 setAutoSubmitTrigger((n) => n + 1);
               }
             } else if (data.type === "error") {
@@ -299,6 +304,7 @@ export function useDeepgramRecognition(
     audioLevel,
     transcript,
     interimTranscript,
+    pendingUtterance,
     autoSubmitTrigger,
     isSupported,
     error,
