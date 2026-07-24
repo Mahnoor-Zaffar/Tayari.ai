@@ -64,19 +64,22 @@ export function InterviewSession({
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const speech = useDeepgramRecognition(token, spokenLanguage);
-  const prevTranscriptRef = useRef("");
+  const consumedTriggerRef = useRef(0);
   const userStoppedMicRef = useRef(false);
   const questionCountRef = useRef(0);
 
   // Auto-submit answer when Deepgram signals end-of-utterance
   useEffect(() => {
-    if (speech.autoSubmitTrigger === 0) return;
-    const newText = speech.transcript.slice(prevTranscriptRef.current.length).trim();
-    if (newText) {
-      sendAnswer(newText);
-      prevTranscriptRef.current = speech.transcript;
+    if (speech.autoSubmitTrigger <= consumedTriggerRef.current) return;
+    // If AI is already generating, wait until it's done — the trigger
+    // stays unconsumed so it fires again when isAiThinking flips to false
+    if (state.isAiThinking) return;
+    consumedTriggerRef.current = speech.autoSubmitTrigger;
+    const utterance = speech.pendingUtterance;
+    if (utterance) {
+      sendAnswer(utterance);
     }
-  }, [speech.autoSubmitTrigger, speech.transcript, sendAnswer]);
+  }, [speech.autoSubmitTrigger, speech.pendingUtterance, sendAnswer, state.isAiThinking]);
 
   // Auto-start mic when a new question arrives
   useEffect(() => {
@@ -100,16 +103,15 @@ export function InterviewSession({
     speech.toggle();
   }, [speech]);
 
-  // Cancel current utterance (stop mic + clear interim)
+  // Cancel current utterance (stop mic)
   const handleMicCancel = useCallback(() => {
     userStoppedMicRef.current = true;
-    prevTranscriptRef.current = "";
     speech.stop();
   }, [speech]);
 
   // Reset refs when session changes
   useEffect(() => {
-    prevTranscriptRef.current = "";
+    consumedTriggerRef.current = 0;
     questionCountRef.current = 0;
     userStoppedMicRef.current = false;
   }, [sessionId]);

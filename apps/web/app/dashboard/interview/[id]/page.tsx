@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { InterviewSession } from "@/features/interview/components/session/InterviewSession";
 import { CodingInterviewLayout } from "@/features/coding/components/CodingInterviewLayout";
@@ -28,6 +28,7 @@ export default function InterviewRoomPage({ params }: { params: Promise<{ id: st
   const [session, setSession] = useState<SessionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const startingRef = useRef(false);
 
   const handleComplete = useCallback(() => {
     try {
@@ -46,6 +47,8 @@ export default function InterviewRoomPage({ params }: { params: Promise<{ id: st
     }
 
     const startInterview = async () => {
+      if (startingRef.current) return;
+      startingRef.current = true;
       try {
         const stored = typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null;
         if (stored) {
@@ -92,6 +95,7 @@ export default function InterviewRoomPage({ params }: { params: Promise<{ id: st
         const msg = err instanceof Error ? err.message : "Failed to start interview";
         setError(msg);
       } finally {
+        startingRef.current = false;
         setLoading(false);
       }
     };

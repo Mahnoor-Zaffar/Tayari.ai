@@ -9,6 +9,7 @@ Manages the turn-based interview loop:
 from __future__ import annotations
 
 import logging
+import time
 
 from ai.provider import AIProvider
 from ai.realtime.memory_manager import ConversationMemory
@@ -26,13 +27,15 @@ WRAP_UP_MESSAGE = (
 class AIOrchestrator:
     """Manages the AI-driven turn loop for a single interview session."""
 
+    SAFETY_MAX_QUESTIONS = 30
+
     def __init__(
         self,
         provider: AIProvider,
         prompt_builder: PromptBuilder,
         memory: ConversationMemory,
         transcript: TranscriptManager,
-        max_tokens: int = 500,
+        max_tokens: int = 800,
         interview_type: str = "coding",
         duration_minutes: int = 30,
     ) -> None:
@@ -46,9 +49,21 @@ class AIOrchestrator:
         self._current_question_id = 0
         self._last_question = ""
         self._question_count = 0
+        self._started_at: float | None = None
+
+    def _remaining_time_context(self) -> str:
+        """Build a short time-remaining string injected at each turn."""
+        if self._started_at is None:
+            elapsed = 0
+        else:
+            elapsed = time.time() - self._started_at
+        remaining = max(0, self._duration_minutes * 60 - int(elapsed))
+        mins = remaining // 60
+        return f"[Time: ~{mins} of {self._duration_minutes} minutes remaining]"
 
     async def generate_initial_question(self) -> str:
         """Generate the opening question from the AI interviewer."""
+        self._started_at = time.time()
         self._current_question_id += 1
         self._question_count += 1
         question = await self._generate_question(is_initial=True)
@@ -57,22 +72,17 @@ class AIOrchestrator:
         self._transcript.append_static("ai", question)
         return question
 
-    def _max_questions(self) -> int:
-        """Return the max question count for this interview type."""
-        if self._interview_type == "behavioral":
-            return max(12, self._duration_minutes // 2)
-        return max(6, self._duration_minutes // 5)
-
     async def process_answer(self, answer: str) -> str | None:
         """Process a user answer and generate the next AI response.
 
         Returns the next question text, or None if the interview
-        should proceed to wrap-up (question limit reached).
+        should proceed to wrap-up (safety ceiling hit).
         """
         self._memory.append("user", answer)
         self._transcript.commit_partial("user")
 
-        if self._question_count >= self._max_questions():
+        if self._question_count >= self.SAFETY_MAX_QUESTIONS:
+            logger.warning("Safety question ceiling hit (%s)", self.SAFETY_MAX_QUESTIONS)
             return None
 
         self._current_question_id += 1
@@ -86,6 +96,31 @@ class AIOrchestrator:
         self._memory.append("assistant", next_question)
         self._transcript.append_static("ai", next_question)
         return next_question
+
+    async def process_answer_stream(self, answer: str):
+        """Process a user answer and stream the next AI response token by token.
+
+        Yields token strings.  After iteration completes the full response is
+        stored in memory and available via ``last_question``.
+        Yields nothing if the safety question ceiling is hit.
+        """
+        self._memory.append("user", answer)
+        self._transcript.commit_partial("user")
+
+        if self._question_count >= self.SAFETY_MAX_QUESTIONS:
+            return
+
+        self._current_question_id += 1
+        self._question_count += 1
+
+        full_text = ""
+        async for token in self._generate_question_stream():
+            full_text += token
+            yield token
+
+        self._last_question = full_text
+        self._memory.append("assistant", full_text)
+        self._transcript.append_static("ai", full_text)
 
     async def generate_wrap_up(self) -> str:
         """Generate the concluding remarks from the AI."""
@@ -140,12 +175,23 @@ class AIOrchestrator:
         )
         return result
 
+    async def _generate_question_stream(self, is_initial: bool = False):
+        """Call the AI provider and yield tokens as they arrive."""
+        messages = list(self._memory.get_all_messages())
+        messages.append({"role": "system", "content": self._remaining_time_context()})
+        try:
+            async for token in self._provider.chat_stream(messages=messages):
+                yield token
+        except Exception as exc:
+            logger.error("AI stream generation failed: %s", exc)
+
     async def _generate_question(self, is_initial: bool = False) -> str | None:
         """Call the AI provider to generate the next question.
 
         Returns the question text, or None if the provider fails.
         """
-        messages = self._memory.get_all_messages()
+        messages = list(self._memory.get_all_messages())
+        messages.append({"role": "system", "content": self._remaining_time_context()})
         try:
             response = await self._provider.chat(
                 messages=messages,

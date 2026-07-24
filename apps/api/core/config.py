@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3030", "http://localhost:3001"]
 
-    AI_INTERVIEWER_MODEL: str = "gpt-4o-mini"
+    AI_INTERVIEWER_MODEL: str = "gpt-4o"
     AI_EVALUATOR_MODEL: str = "gpt-4o"
     AI_MAX_TOKENS_PER_INTERVIEW: int = 10000
     AI_COST_CAP_DOLLARS: float = 0.30
@@ -68,7 +68,7 @@ class Settings(BaseSettings):
 
     DEEPGRAM_API_KEY: str = ""
     DEEPGRAM_MODEL: str = "nova-3"
-    DEEPGRAM_ENDPOINTING: int = 300  # ms of silence before finalizing speech
+    DEEPGRAM_ENDPOINTING: int = 2000  # ms of silence before finalizing speech
 
 
 settings = Settings()

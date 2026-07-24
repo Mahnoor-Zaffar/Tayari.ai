@@ -76,6 +76,56 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
           break;
         }
 
+        case "ai.stream_start": {
+          setState((prev) => ({
+            ...prev,
+            isAiThinking: false,
+            transcript: [
+              ...prev.transcript,
+              { speaker: "ai", text: "", timestamp: Date.now(), is_final: false },
+            ],
+          }));
+          break;
+        }
+
+        case "ai.token": {
+          setState((prev) => {
+            const updated = [...prev.transcript];
+            const last = updated[updated.length - 1];
+            if (last && last.speaker === "ai" && !last.is_final) {
+              updated[updated.length - 1] = {
+                ...last,
+                text: last.text + event.payload.token,
+              };
+            }
+            return { ...prev, transcript: updated };
+          });
+          break;
+        }
+
+        case "ai.stream_end": {
+          setState((prev) => {
+            const updated = [...prev.transcript];
+            const last = updated[updated.length - 1];
+            if (last && last.speaker === "ai") {
+              updated[updated.length - 1] = { ...last, is_final: true };
+            }
+            const q: Question = {
+              id: 0,
+              text: event.payload.text,
+              type: "follow_up",
+              timestamp: Date.now(),
+            };
+            return {
+              ...prev,
+              currentQuestion: q,
+              questions: [...prev.questions, q],
+              transcript: updated,
+            };
+          });
+          break;
+        }
+
         case "ai.hint": {
           setState((prev) => ({
             ...prev,
