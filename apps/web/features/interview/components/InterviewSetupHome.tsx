@@ -3,10 +3,12 @@
 import { memo, useCallback, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { RotateCcw, Clock, History } from "lucide-react";
+import { RotateCcw, Clock, History, AlertCircle, RefreshCw } from "lucide-react";
 import { InterviewSetupWizard } from "./InterviewSetupWizard";
 import { ErrorBoundary } from "@/components/error/ErrorBoundary";
+import { ErrorMessage } from "@/components/error/ErrorMessage";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useRecentConfigs, useTemplates } from "@/features/interview/hooks/use-interview-setup";
@@ -55,7 +57,27 @@ export const InterviewSetupHome = memo(function InterviewSetupHome() {
       </div>
 
       {/* ── Recent Configurations ───────────────────────────────────────── */}
-      {!showWizard && recentConfigs.length > 0 && (
+      {!showWizard && recentQuery.isError ? (
+        <ErrorMessage
+          message="Failed to load recent configurations"
+          onRetry={() => recentQuery.refetch()}
+        />
+      ) : !showWizard && recentQuery.isLoading ? (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold">Recent Configurations</h3>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-border bg-background p-3">
+                <Skeleton className="h-4 w-32 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : !showWizard && recentConfigs.length > 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -89,10 +111,27 @@ export const InterviewSetupHome = memo(function InterviewSetupHome() {
             ))}
           </div>
         </motion.div>
-      )}
+      ) : null}
 
       {/* ── Saved Templates ─────────────────────────────────────────────── */}
-      {!showWizard && templates.length > 0 && (
+      {!showWizard && templatesQuery.isError ? (
+        <ErrorMessage message="Failed to load templates" onRetry={() => templatesQuery.refetch()} />
+      ) : !showWizard && templatesQuery.isLoading ? (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <RotateCcw className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold">Your Templates</h3>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-border bg-background p-3">
+                <Skeleton className="h-4 w-24 mb-1" />
+                <Skeleton className="h-3 w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : !showWizard && templates.length > 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -119,7 +158,7 @@ export const InterviewSetupHome = memo(function InterviewSetupHome() {
             ))}
           </div>
         </motion.div>
-      )}
+      ) : null}
 
       <ErrorBoundary>
         {showWizard ? (

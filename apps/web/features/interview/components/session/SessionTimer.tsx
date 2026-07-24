@@ -26,12 +26,12 @@ export const SessionTimer = memo(function SessionTimer({
   const isCritical = remainingSeconds <= 60;
 
   return (
-    <div className="flex items-center gap-4" role="timer" aria-label="Interview timer">
+    <div className="flex items-center gap-2 sm:gap-4" role="timer" aria-label="Interview timer">
       <div className="text-center">
         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
           Elapsed
         </p>
-        <p className="text-lg font-mono font-bold tabular-nums">
+        <p className="text-base sm:text-lg font-mono font-bold tabular-nums">
           {formatTime(elapsedSeconds)}
         </p>
       </div>
@@ -41,7 +41,7 @@ export const SessionTimer = memo(function SessionTimer({
         </p>
         <p
           className={cn(
-            "text-lg font-mono font-bold tabular-nums transition-colors",
+            "text-base sm:text-lg font-mono font-bold tabular-nums transition-colors",
             isCritical && "text-destructive animate-pulse",
             isLow && !isCritical && "text-warning",
             !isLow && "text-foreground",
@@ -50,7 +50,7 @@ export const SessionTimer = memo(function SessionTimer({
           {isPaused ? "—:—" : formatTime(remainingSeconds)}
         </p>
       </div>
-      <div className="w-32">
+      <div className="hidden sm:block w-32">
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
             className={cn(

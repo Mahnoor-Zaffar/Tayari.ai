@@ -25,12 +25,17 @@ log = get_logger("app")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from core.logging import setup_logging
+    from workers.scheduler import scheduler
 
     setup_logging()
     validate_prod_settings()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    scheduler.start()
+    log.info("APScheduler started with PostgreSQL job store")
     yield
+    scheduler.shutdown(wait=False)
+    log.info("APScheduler shut down")
     await engine.dispose()
 
 
@@ -201,15 +206,15 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 from features.analytics.router import router as analytics_router  # noqa: E402
 from features.auth.routes import router as auth_router  # noqa: E402
 from features.billing.routes import router as billing_router  # noqa: E402
+from features.code.routes import router as code_router  # noqa: E402
 from features.dashboard.router import router as dashboard_router  # noqa: E402
 from features.health.routes import router as health_router  # noqa: E402
 from features.interview.routes import router as interview_router  # noqa: E402
+from features.reports.routes import router as evaluations_router  # noqa: E402
 from features.reports.routes import router as reports_router  # noqa: E402
+from features.sessions.routes import router as sessions_router  # noqa: E402
 from features.users.routes import router as users_router  # noqa: E402
 from features.voice.routes import router as voice_router  # noqa: E402
-from features.sessions.routes import router as sessions_router  # noqa: E402
-from features.code.routes import router as code_router  # noqa: E402
-from features.reports.routes import router as evaluations_router  # noqa: E402
 
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")

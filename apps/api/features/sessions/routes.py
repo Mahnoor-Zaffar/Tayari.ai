@@ -22,7 +22,7 @@ from features.sessions.schemas import (
     WSMessage,
 )
 from features.sessions.service import SessionService
-from workers.evaluation import generate_evaluation
+from workers.scheduler import schedule_evaluation
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ async def end_session(
         result = await service.end_session(session_id)
     except SessionNotFoundError:
         raise NotFoundError("Session not found")
-    asyncio.create_task(generate_evaluation(session_id, str(current_user.id)))
+    await schedule_evaluation(session_id, str(current_user.id))
     return success_response(result)
 
 
@@ -309,7 +309,7 @@ async def _handle_message(
                 # Trigger evaluation in background
                 session_snapshot = service.get_session(session_id)
                 if session_snapshot:
-                    asyncio.create_task(generate_evaluation(session_id, session_snapshot["user_id"]))
+                    await schedule_evaluation(session_id, session_snapshot["user_id"])
 
     elif msg.type == "user.code":
         language = _sanitize_text(msg.payload.get("language", ""), max_length=50)
@@ -360,7 +360,7 @@ async def _handle_message(
         )
         session_snapshot = service.get_session(session_id)
         if session_snapshot:
-            asyncio.create_task(generate_evaluation(session_id, session_snapshot["user_id"]))
+            await schedule_evaluation(session_id, session_snapshot["user_id"])
 
     elif msg.type == "heartbeat":
         service.record_heartbeat(session_id)

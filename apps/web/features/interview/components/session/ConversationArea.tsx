@@ -51,7 +51,7 @@ export const ConversationArea = memo(function ConversationArea({
   return (
     <div className={cn("flex flex-col", className)}>
       {/* Question Display */}
-      <div className="flex-1 overflow-y-auto space-y-4 p-4">
+      <div className="flex-1 overflow-y-auto space-y-4 p-3 sm:p-4">
         {currentQuestion && <QuestionBubble question={currentQuestion} isCurrent={true} />}
 
         {/* Candidate Speaking Indicator */}
