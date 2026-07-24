@@ -14,7 +14,6 @@ from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
 
 from ai.realtime.session_manager import SessionNotFoundError
-from core.database import async_session
 from core.errors import NotFoundError, success_response
 from features.auth.guard import CurrentUser, get_current_user
 from features.sessions.dependencies import get_session_service
@@ -23,6 +22,7 @@ from features.sessions.schemas import (
     WSMessage,
 )
 from features.sessions.service import SessionService
+from workers.evaluation import generate_evaluation
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ async def end_session(
         result = await service.end_session(session_id)
     except SessionNotFoundError:
         raise NotFoundError("Session not found")
-    asyncio.create_task(_background_evaluate(session_id, str(current_user.id)))
+    asyncio.create_task(generate_evaluation(session_id, str(current_user.id)))
     return success_response(result)
 
 
@@ -309,7 +309,7 @@ async def _handle_message(
                 # Trigger evaluation in background
                 session_snapshot = service.get_session(session_id)
                 if session_snapshot:
-                    asyncio.create_task(_background_evaluate(session_id, session_snapshot["user_id"]))
+                    asyncio.create_task(generate_evaluation(session_id, session_snapshot["user_id"]))
 
     elif msg.type == "user.code":
         language = _sanitize_text(msg.payload.get("language", ""), max_length=50)
@@ -360,7 +360,7 @@ async def _handle_message(
         )
         session_snapshot = service.get_session(session_id)
         if session_snapshot:
-            asyncio.create_task(_background_evaluate(session_id, session_snapshot["user_id"]))
+            asyncio.create_task(generate_evaluation(session_id, session_snapshot["user_id"]))
 
     elif msg.type == "heartbeat":
         service.record_heartbeat(session_id)
@@ -368,27 +368,6 @@ async def _handle_message(
 
     else:
         await _send(websocket, "error", {"code": "UNKNOWN_MESSAGE_TYPE", "message": f"Unknown type: {msg.type}"})
-
-
-async def _background_evaluate(session_id: str, user_id: str) -> None:
-    """Run evaluation pipeline in the background after session ends."""
-    try:
-        from uuid import UUID
-
-        from features.interview.repository import InterviewRepository
-        from features.reports.repository import EvaluationRepository
-        from features.reports.service import EvaluationService
-
-        async with async_session() as db:
-            eval_repo = EvaluationRepository(db)
-            interview_repo = InterviewRepository(db)
-            eval_service = EvaluationService(eval_repo=eval_repo, interview_repo=interview_repo)
-            await eval_service.evaluate_interview(UUID(session_id), UUID(user_id))
-            if db.is_active:
-                await db.commit()
-        logger.info("Evaluation completed for session %s", session_id[:8])
-    except Exception:
-        logger.exception("Background evaluation failed for session %s", session_id[:8])
 
 
 async def _send(websocket: WebSocket, msg_type: str, payload: dict) -> None:
