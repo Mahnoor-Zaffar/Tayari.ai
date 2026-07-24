@@ -71,9 +71,10 @@ export function InterviewSession({
   // Auto-submit answer when Deepgram signals end-of-utterance
   useEffect(() => {
     if (speech.autoSubmitTrigger <= consumedTriggerRef.current) return;
-    consumedTriggerRef.current = speech.autoSubmitTrigger;
-    // Don't submit while AI is already generating a response
+    // If AI is already generating, wait until it's done — the trigger
+    // stays unconsumed so it fires again when isAiThinking flips to false
     if (state.isAiThinking) return;
+    consumedTriggerRef.current = speech.autoSubmitTrigger;
     const utterance = speech.pendingUtterance;
     if (utterance) {
       sendAnswer(utterance);
