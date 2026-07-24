@@ -71,12 +71,17 @@ export function InterviewSession({
   // Auto-submit answer when Deepgram signals end-of-utterance
   useEffect(() => {
     if (speech.autoSubmitTrigger === 0) return;
+    // Don't submit while AI is already generating a response
+    if (state.isAiThinking) return;
     const newText = speech.transcript.slice(prevTranscriptRef.current.length).trim();
     if (newText) {
       sendAnswer(newText);
       prevTranscriptRef.current = speech.transcript;
+      // Stop mic so user isn't cut off mid-thought; mic re-starts
+      // automatically when the AI response arrives (auto-start on new question)
+      speech.stop();
     }
-  }, [speech.autoSubmitTrigger, speech.transcript, sendAnswer]);
+  }, [speech.autoSubmitTrigger, speech.transcript, sendAnswer, speech, state.isAiThinking]);
 
   // Auto-start mic when a new question arrives
   useEffect(() => {

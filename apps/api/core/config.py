@@ -68,7 +68,7 @@ class Settings(BaseSettings):
 
     DEEPGRAM_API_KEY: str = ""
     DEEPGRAM_MODEL: str = "nova-3"
-    DEEPGRAM_ENDPOINTING: int = 300  # ms of silence before finalizing speech
+    DEEPGRAM_ENDPOINTING: int = 2000  # ms of silence before finalizing speech
 
 
 settings = Settings()
