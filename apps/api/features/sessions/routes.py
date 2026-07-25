@@ -197,9 +197,14 @@ async def interview_websocket(
         },
     )
 
-    first_question = session.get("current_question")
-    if first_question:
-        await _send(websocket, "ai.question", {"id": 1, "text": first_question, "type": "initial"})
+    current_question = session.get("current_question")
+    current_question_type = session.get("current_question_type", "initial")
+    if current_question:
+        await _send(
+            websocket,
+            "ai.question",
+            {"id": 1, "text": current_question, "type": current_question_type},
+        )
 
     heartbeat_task = asyncio.create_task(_heartbeat_sender(websocket, session_id, service))
 
@@ -272,20 +277,49 @@ async def _handle_message(
     All user text is sanitized before processing.
     """
     if msg.type == "session.join":
-        await _send(
-            websocket,
-            "session.connected",
-            {
-                "session_id": session_id,
-                "state": "connected",
-            },
-        )
+        is_reconnect = msg.payload.get("reconnect", False)
+        if is_reconnect:
+            service.record_reconnect(session_id)
+            session_snapshot = service.get_session(session_id)
+            if session_snapshot:
+                await _send(
+                    websocket,
+                    "session.connected",
+                    {
+                        "session_id": session_id,
+                        "state": session_snapshot.get("state", "unknown"),
+                        "remaining_seconds": session_snapshot.get("remaining_seconds", 0),
+                    },
+                )
+                current_q = session_snapshot.get("current_question")
+                if current_q:
+                    await _send(
+                        websocket,
+                        "ai.question",
+                        {
+                            "id": 0,
+                            "text": current_q,
+                            "type": session_snapshot.get("current_question_type", "follow_up"),
+                        },
+                    )
+            else:
+                await _send(websocket, "error", {"code": "SESSION_NOT_FOUND", "message": "Session not found"})
+        else:
+            await _send(
+                websocket,
+                "session.connected",
+                {
+                    "session_id": session_id,
+                    "state": "connected",
+                },
+            )
 
     elif msg.type == "user.answer":
         text = _sanitize_text(msg.payload.get("text", ""))
         if text:
             next_question = await service.process_answer(session_id, text)
             if next_question:
+                service.set_current_question(session_id, next_question, "follow_up")
                 await _send(
                     websocket,
                     "ai.question",
@@ -296,6 +330,7 @@ async def _handle_message(
                     },
                 )
             else:
+                service.set_current_question(session_id, "", "wrap_up")
                 await _send(websocket, "session.completing", {})
                 await service.end_session(session_id)
                 await _send(
@@ -313,12 +348,14 @@ async def _handle_message(
 
     elif msg.type == "user.code":
         language = _sanitize_text(msg.payload.get("language", ""), max_length=50)
+        text = f"I see you've written some {language} code. Can you walk me through your approach?"
+        service.set_current_question(session_id, text, "follow_up")
         await _send(
             websocket,
             "ai.question",
             {
                 "id": 0,
-                "text": f"I see you've written some {language} code. Can you walk me through your approach?",
+                "text": text,
                 "type": "follow_up",
             },
         )

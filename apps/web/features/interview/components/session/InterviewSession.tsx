@@ -49,6 +49,8 @@ export function InterviewSession({
     requestHint,
     endSession,
     reconnect,
+    reconnectAttempts,
+    maxAttempts,
   } = useInterviewSession({
     sessionId,
     interviewId,
@@ -307,6 +309,8 @@ export function InterviewSession({
         status={state.connectionStatus}
         error={state.error}
         onReconnect={reconnect}
+        attemptCount={reconnectAttempts}
+        maxAttempts={maxAttempts}
       />
       <EndInterviewDialog
         isOpen={showEndDialog}

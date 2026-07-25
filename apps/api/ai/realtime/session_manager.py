@@ -90,6 +90,10 @@ class Session:
     question_timestamps: list[dict] = field(default_factory=list)
     pause_timestamps: list[dict] = field(default_factory=list)
 
+    # ── Current question (for reconnect replay) ────────────────────────────
+    current_question: str | None = None
+    current_question_type: str = "initial"
+
     # ── Extensible metadata ────────────────────────────────────────────────
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -217,6 +221,8 @@ class SessionManager:
         assert session.orchestrator is not None
         first_question = await session.orchestrator.generate_initial_question()
         session.metadata["first_question"] = first_question
+        session.current_question = first_question
+        session.current_question_type = "initial"
 
         await self._dispatcher.emit(
             session_id,
@@ -338,6 +344,11 @@ class SessionManager:
         session.last_disconnect_at = time.time()
         return session
 
+    def record_reconnect(self, session_id: str) -> Session:
+        session = self._get(session_id)
+        session.last_reconnect_at = time.time()
+        return session
+
     def can_reconnect(self, session_id: str) -> bool:
         session = self._get(session_id)
         if is_terminal(session.state):
@@ -346,6 +357,12 @@ class SessionManager:
             return True
         elapsed = time.time() - session.last_disconnect_at
         return elapsed < GRACE_PERIOD_SECONDS
+
+    def set_current_question(self, session_id: str, text: str, question_type: str = "follow_up") -> None:
+        """Update the current question for a session (used for reconnect replay)."""
+        session = self._get(session_id)
+        session.current_question = text
+        session.current_question_type = question_type
 
     # ── Query ─────────────────────────────────────────────────────────────
 
@@ -384,6 +401,8 @@ class SessionManager:
             "total_paused_seconds": session.total_paused_seconds,
             "disconnect_count": session.disconnect_count,
             "error_count": session.error_count,
+            "current_question": session.current_question,
+            "current_question_type": session.current_question_type,
         }
 
     # ── Validation ────────────────────────────────────────────────────────

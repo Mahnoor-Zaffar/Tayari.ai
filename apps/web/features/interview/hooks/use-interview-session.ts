@@ -34,6 +34,8 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
   const clientRef = useRef<SessionClient | null>(null);
 
   const timer = useInterviewTimer(durationMinutes * 60);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const maxAttemptsRef = useRef(10);
 
   const updateState = useCallback((patch: Partial<InterviewSessionState>) => {
     setState((prev) => ({ ...prev, ...patch }));
@@ -138,15 +140,18 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
     const wsUrl = `${WS_BASE}/sessions/${sessionId}/ws`;
     const client = new SessionClient(wsUrl, token);
     clientRef.current = client;
+    maxAttemptsRef.current = client.maxAttempts;
 
     client.subscribe((event) => {
       switch (event.type) {
         case "open":
+          setReconnectAttempts(0);
           updateState({ connectionStatus: "connected" });
           break;
 
         case "close":
           if (event.code !== 1000) {
+            setReconnectAttempts(client.attemptCount);
             updateState({ connectionStatus: "disconnected" });
           }
           break;
@@ -157,6 +162,7 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
 
         case "error":
           if (event.error === "reconnecting") {
+            setReconnectAttempts(client.attemptCount);
             updateState({ connectionStatus: "reconnecting" });
           } else if (event.error) {
             updateState({ error: event.error, connectionStatus: "disconnected" });
@@ -234,5 +240,7 @@ export function useInterviewSession(options: UseInterviewSessionOptions) {
     requestHint,
     endSession,
     reconnect,
+    reconnectAttempts,
+    maxAttempts: maxAttemptsRef.current,
   };
 }

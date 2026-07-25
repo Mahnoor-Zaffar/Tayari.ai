@@ -1,11 +1,12 @@
 /** WebSocket client for the interview session protocol.
 
-Handles connection lifecycle, reconnection with backoff,
-heartbeat, and message parsing.
+Handles connection lifecycle, reconnection with jittered backoff,
+heartbeat, message parsing, and session resumption.
 */
 
 const RECONNECT_BASE_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 15_000;
+const JITTER_FRACTION = 0.3;
 const HEARTBEAT_INTERVAL_MS = 10_000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 
@@ -26,6 +27,7 @@ export class SessionClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private closed = false;
+  private lastSequence = -1;
 
   constructor(url: string, token: string) {
     this.url = url;
@@ -44,15 +46,24 @@ export class SessionClient {
       this.ws = new WebSocket(this.url);
 
       this.ws.onopen = () => {
+        const isReconnect = this.reconnectAttempts > 0;
         this.reconnectAttempts = 0;
         this._emit({ type: "open" });
         this._startHeartbeat();
-        this._send({ type: "session.join", payload: { token: this.token } });
+        const payload: Record<string, unknown> = { token: this.token };
+        if (isReconnect) {
+          payload.reconnect = true;
+          payload.last_sequence = this.lastSequence;
+        }
+        this._send({ type: "session.join", payload });
       };
 
       this.ws.onmessage = (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data) as Record<string, unknown>;
+          if (typeof data.payload?.sequence === "number") {
+            this.lastSequence = data.payload.sequence as number;
+          }
           this._emit({ type: "message", data });
         } catch {
           // Ignore unparseable messages
@@ -62,7 +73,6 @@ export class SessionClient {
       this.ws.onclose = (event: CloseEvent) => {
         this._stopHeartbeat();
         this._emit({ type: "close", code: event.code, reason: event.reason });
-        // Don't reconnect if explicitly closed by client, session not found (4004), or max attempts
         if (!this.closed && event.code !== 4004) {
           this._scheduleReconnect();
         }
@@ -100,7 +110,6 @@ export class SessionClient {
       if (this.ws.readyState === WebSocket.OPEN) {
         this.ws.close(1000, "Client closed");
       } else if (this.ws.readyState === WebSocket.CONNECTING) {
-        // Still connecting — abort without firing onclose reconnection
         this.ws.onclose = null;
         this.ws.onerror = null;
         this.ws.close();
@@ -128,10 +137,12 @@ export class SessionClient {
     if (this.closed || this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) return;
     this.reconnectAttempts++;
     this._emit({ type: "error", error: "reconnecting" });
-    const delay = Math.min(
+    const baseDelay = Math.min(
       RECONNECT_BASE_DELAY_MS * Math.pow(2, this.reconnectAttempts - 1),
       RECONNECT_MAX_DELAY_MS,
     );
+    const jitter = 1 + (Math.random() * 2 - 1) * JITTER_FRACTION;
+    const delay = Math.round(baseDelay * jitter);
     this.reconnectTimer = setTimeout(() => this._open(), delay);
   }
 
@@ -155,5 +166,9 @@ export class SessionClient {
 
   get attemptCount(): number {
     return this.reconnectAttempts;
+  }
+
+  get maxAttempts(): number {
+    return MAX_RECONNECT_ATTEMPTS;
   }
 }

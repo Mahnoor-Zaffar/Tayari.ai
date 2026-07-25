@@ -223,6 +223,20 @@ class SessionService:
         except Exception:
             pass
 
+    def record_reconnect(self, session_id: str) -> None:
+        """Record a WebSocket reconnect for a session."""
+        try:
+            self._manager.record_reconnect(session_id)
+        except Exception:
+            pass
+
+    def set_current_question(self, session_id: str, text: str, question_type: str = "follow_up") -> None:
+        """Update the current question for reconnect replay."""
+        try:
+            self._manager.set_current_question(session_id, text, question_type)
+        except Exception:
+            pass
+
     def record_heartbeat(self, session_id: str) -> None:
         """Record a heartbeat for a session."""
         self._manager.record_heartbeat(session_id)

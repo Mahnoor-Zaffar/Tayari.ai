@@ -1,0 +1,4 @@
+name: tayari
+
+include:
+  - infrastructure/docker-compose.yml

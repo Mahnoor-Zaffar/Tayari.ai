@@ -10,16 +10,21 @@ interface ReconnectOverlayProps {
   status: WSConnectionStatus;
   error?: string | null;
   onReconnect: () => void;
+  attemptCount?: number;
+  maxAttempts?: number;
 }
 
 export const ReconnectOverlay = memo(function ReconnectOverlay({
   status,
   error,
   onReconnect,
+  attemptCount = 0,
+  maxAttempts = 10,
 }: ReconnectOverlayProps) {
   const show = status === "disconnected" || status === "reconnecting";
 
   const isSessionNotFound = error?.includes("Session not found");
+  const isMaxAttempts = status === "disconnected" && attemptCount >= maxAttempts;
 
   return (
     <AnimatePresence>
@@ -54,10 +59,18 @@ export const ReconnectOverlay = memo(function ReconnectOverlay({
             <p className="max-w-sm text-sm text-muted-foreground">
               {isSessionNotFound
                 ? "This interview session has expired or was lost. Please start a new interview from the dashboard."
-                : status === "reconnecting"
-                  ? "Attempting to reconnect..."
-                  : "Your connection dropped. You can try to rejoin."}
+                : isMaxAttempts
+                  ? "Unable to reconnect after multiple attempts."
+                  : status === "reconnecting"
+                    ? "Attempting to reconnect..."
+                    : "Your connection dropped. You can try to rejoin."}
             </p>
+            {!isSessionNotFound && attemptCount > 0 && (
+              <span className="text-xs text-muted-foreground">
+                Attempt {attemptCount}/{maxAttempts}
+                {status === "reconnecting" && " — retrying..."}
+              </span>
+            )}
             {isSessionNotFound ? (
               <Button
                 type="button"
