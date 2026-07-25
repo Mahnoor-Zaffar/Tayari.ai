@@ -58,9 +58,6 @@ jobs:
       - name: Install Python deps
         run: uv sync --directory apps/api --all-extras
 
-      - name: Debug ruff (ignore failure)
-        run: uv run --directory apps/api ruff check . --no-cache --output-format=concise || echo "RUFF_CHECK_DONE"
-
       - run: pnpm lint
       - run: pnpm typecheck
 
@@ -122,8 +119,6 @@ jobs:
           cache-dependency-glob: apps/api/pyproject.toml
       - name: Install Python deps
         run: uv sync --directory apps/api --all-extras
-      - name: Check ruff installed
-        run: uv run --directory apps/api ruff --version
       - name: Run API tests
         run: uv run --directory apps/api python -m pytest tests/ --ignore=tests/test_e2e_evaluation.py -x --quiet
         env:
