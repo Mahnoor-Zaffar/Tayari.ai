@@ -2,6 +2,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from core.config import settings
 from features.auth.domain.user import User, UserCreate, UserUpdate
 from features.auth.exceptions import (
     EmailAlreadyExistsError,
@@ -15,6 +16,7 @@ from features.auth.interfaces import (
     TokenServiceProtocol,
     UserRepositoryProtocol,
 )
+from features.email.service import send_reset_email
 
 # ── Admin detection ──────────────────────────────────────────────────────────
 
@@ -153,7 +155,8 @@ class AuthenticationService:
             return
 
         reset_token = self._tokens.create_password_reset_token(user.id)
-        _ = reset_token  # TODO: send via email using RESEND_API_KEY
+        reset_url = f"{settings.FRONTEND_URL}/auth/reset-password?token={reset_token}"
+        send_reset_email(to=user.email, reset_url=reset_url)
 
     async def reset_password(self, token: str, new_password: str) -> None:
         """Verify a password‑reset token and update the user's password hash."""

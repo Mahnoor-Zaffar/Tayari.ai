@@ -39,6 +39,11 @@ export interface ForgotPasswordInput {
   email: string;
 }
 
+export interface ResetPasswordInput {
+  token: string;
+  new_password: string;
+}
+
 // ── API calls ──────────────────────────────────────────────────────────────
 
 export const authApi = {
@@ -49,6 +54,8 @@ export const authApi = {
   logout: () => api.post<void>("/auth/logout"),
 
   forgotPassword: (data: ForgotPasswordInput) => api.post<void>("/auth/forgot-password", data),
+
+  resetPassword: (data: ResetPasswordInput) => api.post<void>("/auth/reset-password", data),
 
   me: () => api.get<AuthUser>("/users/me"),
 

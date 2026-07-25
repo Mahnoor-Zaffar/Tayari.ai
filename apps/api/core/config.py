@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3030", "http://localhost:3001"]
+    FRONTEND_URL: str = "http://localhost:3000"
 
     AI_INTERVIEWER_MODEL: str = "gpt-4o-mini"
     AI_EVALUATOR_MODEL: str = "gpt-4o"
