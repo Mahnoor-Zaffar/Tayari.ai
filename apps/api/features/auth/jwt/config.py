@@ -21,8 +21,8 @@ class JWTConfig(BaseModel):
 
     # ── Algorithm ─────────────────────────────────────────────────────────
     # HS256 is the safe default for single-service deployments.
-    # Switch to RS256 in production when you need third-party verification
-    # of tokens (e.g. JWKS endpoint, OAuth compatibility).
+    # At runtime ``dependencies.py`` overrides this with ``Settings.JWT_ALGORITHM``
+    # (which defaults to ``"RS256"`` for production readiness).
     ALGORITHM: str = "HS256"
 
     # ── Time-to-live per token type ───────────────────────────────────────

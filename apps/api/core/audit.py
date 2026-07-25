@@ -24,6 +24,8 @@ class AuthEvent(StrEnum):
     LOGIN_FAILED = "login_failed"
     PASSWORD_RESET_REQUESTED = "password_reset_requested"
     PASSWORD_RESET_COMPLETED = "password_reset_completed"
+    EMAIL_VERIFIED = "email_verified"
+    EMAIL_VERIFICATION_FAILED = "email_verification_failed"
     TOKEN_REFRESHED = "token_refreshed"
     TOKEN_REFRESH_REJECTED = "token_refresh_rejected"
 

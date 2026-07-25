@@ -16,7 +16,7 @@ from features.auth.interfaces import (
     TokenServiceProtocol,
     UserRepositoryProtocol,
 )
-from features.email.service import send_reset_email
+from features.email.service import send_reset_email, send_verification_email
 
 # ── Admin detection ──────────────────────────────────────────────────────────
 
@@ -84,6 +84,11 @@ class AuthenticationService:
         )
 
         roles, permissions = _user_roles(data.email)
+
+        verify_token = self._tokens.create_email_verification_token(user.id)
+        verify_url = f"{settings.FRONTEND_URL}/auth/verify-email?token={verify_token}"
+        send_verification_email(to=user.email, verify_url=verify_url)
+
         return AuthResult(
             user=user,
             access_token=self._tokens.create_access_token(user.id, roles=roles, permissions=permissions),

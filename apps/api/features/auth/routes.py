@@ -29,6 +29,7 @@ from features.auth.schemas import (
     RegisterRequest,
     ResetPasswordRequest,
     UserResponse,
+    VerifyEmailRequest,
 )
 from features.auth.services import AuthenticationService, AuthResult, RegistrationData
 
@@ -264,3 +265,33 @@ async def reset_password(
         )
     )
     return success_response({"message": "Password has been reset successfully"})
+
+
+@router.post(
+    "/auth/verify-email",
+    status_code=status.HTTP_200_OK,
+    summary="Verify a user's email address",
+)
+async def verify_email(
+    body: VerifyEmailRequest,
+    request: Request,
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> dict:
+    try:
+        await auth_service.verify_email(body.token)
+    except InvalidTokenError as exc:
+        request.state.audit.log(
+            AuditEvent(
+                AuthEvent.EMAIL_VERIFICATION_FAILED,
+                outcome="failure",
+                failure_reason="invalid_or_expired_token",
+            )
+        )
+        raise TokenError(str(exc))
+
+    request.state.audit.log(
+        AuditEvent(
+            AuthEvent.EMAIL_VERIFIED,
+        )
+    )
+    return success_response({"message": "Email verified successfully"})

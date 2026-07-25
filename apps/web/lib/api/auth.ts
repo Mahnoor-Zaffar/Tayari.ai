@@ -44,6 +44,10 @@ export interface ResetPasswordInput {
   new_password: string;
 }
 
+export interface VerifyEmailInput {
+  token: string;
+}
+
 // ── API calls ──────────────────────────────────────────────────────────────
 
 export const authApi = {
@@ -56,6 +60,8 @@ export const authApi = {
   forgotPassword: (data: ForgotPasswordInput) => api.post<void>("/auth/forgot-password", data),
 
   resetPassword: (data: ResetPasswordInput) => api.post<void>("/auth/reset-password", data),
+
+  verifyEmail: (data: VerifyEmailInput) => api.post<void>("/auth/verify-email", data),
 
   me: () => api.get<AuthUser>("/users/me"),
 
