@@ -61,8 +61,9 @@ export class SessionClient {
       this.ws.onmessage = (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data) as Record<string, unknown>;
-          if (typeof data.payload?.sequence === "number") {
-            this.lastSequence = data.payload.sequence as number;
+          const payload = data.payload as Record<string, unknown> | undefined;
+          if (typeof payload?.sequence === "number") {
+            this.lastSequence = payload.sequence;
           }
           this._emit({ type: "message", data });
         } catch {

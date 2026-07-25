@@ -16,4 +16,26 @@ export default [
   {
     ignores: [".next/"],
   },
+  {
+    files: ["public/audio-processor.js"],
+    languageOptions: {
+      globals: {
+        AudioWorkletProcessor: "readonly",
+        registerProcessor: "readonly",
+        sampleRate: "readonly",
+      },
+    },
+  },
+  {
+    files: ["scripts/performance-budget.mjs"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+    rules: {
+      "no-console": "off",
+    },
+  },
 ];

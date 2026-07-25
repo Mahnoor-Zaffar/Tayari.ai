@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from ai.provider import AIProvider, AIResponse
 
-
 MOCK_QUESTIONS = [
     "Welcome! Let's start with an easy one. Can you describe your approach to designing a scalable web application?",
     "Interesting. How would you handle a sudden spike in traffic to 10x your normal load?",

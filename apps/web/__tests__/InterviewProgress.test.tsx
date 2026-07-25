@@ -19,7 +19,7 @@ describe("InterviewProgress", () => {
   it("renders progress and latest report", () => {
     const report: LatestReport = {
       interview_id: "1",
-      overall_score: 88,
+      overall_score: 4.4,
       hire_verdict: "hire",
       created_at: "2025-06-15T10:00:00Z",
     };

@@ -6,30 +6,69 @@ import asyncio
 import uuid
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import async_session
 
 # Import all models to ensure they are registered with SQLAlchemy
 from features.auth.models import User  # noqa: F401,E402
-from features.interview.models import Interview, InterviewConfiguration, InterviewTemplate, JobDescription, Resume, UserTemplate  # noqa: F401,E402
-from features.reports.models import Evaluation  # noqa: F401,E402
 from features.billing.models import BillingEvent, Subscription  # noqa: F401,E402
+from features.interview.models import (  # noqa: F401,E402
+    Interview,
+    InterviewConfiguration,
+    InterviewTemplate,
+    JobDescription,
+    Resume,
+    UserTemplate,
+)
+from features.reports.models import Evaluation  # noqa: F401,E402
 
 COMPANIES = [
-    "Google", "Meta", "Amazon", "Apple", "Microsoft", "Netflix", "Tesla",
-    "Stripe", "Airbnb", "Uber", "Lyft", "Spotify", "Adobe", "Salesforce",
-    "Oracle", "IBM", "Intel", "Nvidia", "LinkedIn", "Slack", "Square",
-    "Palantir", "Snowflake", "Datadog", "Databricks", "ByteDance", "Snap",
-    "Pinterest", "Reddit",
+    "Google",
+    "Meta",
+    "Amazon",
+    "Apple",
+    "Microsoft",
+    "Netflix",
+    "Tesla",
+    "Stripe",
+    "Airbnb",
+    "Uber",
+    "Lyft",
+    "Spotify",
+    "Adobe",
+    "Salesforce",
+    "Oracle",
+    "IBM",
+    "Intel",
+    "Nvidia",
+    "LinkedIn",
+    "Slack",
+    "Square",
+    "Palantir",
+    "Snowflake",
+    "Datadog",
+    "Databricks",
+    "ByteDance",
+    "Snap",
+    "Pinterest",
+    "Reddit",
 ]
 
 ROLES = [
-    "Software Engineer", "Senior Software Engineer", "Staff Software Engineer",
-    "Frontend Engineer", "Backend Engineer", "Full-Stack Engineer",
-    "DevOps Engineer", "Site Reliability Engineer", "Machine Learning Engineer",
-    "Data Engineer", "Security Engineer", "Engineering Manager",
-    "Technical Lead", "Principal Engineer",
+    "Software Engineer",
+    "Senior Software Engineer",
+    "Staff Software Engineer",
+    "Frontend Engineer",
+    "Backend Engineer",
+    "Full-Stack Engineer",
+    "DevOps Engineer",
+    "Site Reliability Engineer",
+    "Machine Learning Engineer",
+    "Data Engineer",
+    "Security Engineer",
+    "Engineering Manager",
+    "Technical Lead",
+    "Principal Engineer",
 ]
 
 TEMPLATES = [
@@ -89,20 +128,22 @@ async def seed() -> None:
             return
 
         for tmpl in TEMPLATES:
-            session.add(InterviewTemplate(
-                id=uuid.uuid4(),
-                name=tmpl["name"],
-                description=tmpl["description"],
-                interview_type=tmpl["interview_type"],
-                default_company=tmpl.get("default_company"),
-                default_role=tmpl.get("default_role"),
-                default_experience_level=tmpl.get("default_experience_level"),
-                default_language=tmpl.get("default_language"),
-                default_framework=tmpl.get("default_framework"),
-                default_difficulty=tmpl["default_difficulty"],
-                default_duration_minutes=tmpl["default_duration_minutes"],
-                is_active=True,
-            ))
+            session.add(
+                InterviewTemplate(
+                    id=uuid.uuid4(),
+                    name=tmpl["name"],
+                    description=tmpl["description"],
+                    interview_type=tmpl["interview_type"],
+                    default_company=tmpl.get("default_company"),
+                    default_role=tmpl.get("default_role"),
+                    default_experience_level=tmpl.get("default_experience_level"),
+                    default_language=tmpl.get("default_language"),
+                    default_framework=tmpl.get("default_framework"),
+                    default_difficulty=tmpl["default_difficulty"],
+                    default_duration_minutes=tmpl["default_duration_minutes"],
+                    is_active=True,
+                )
+            )
 
         await session.commit()
         print(f"Seeded {len(TEMPLATES)} templates and {len(COMPANIES)} companies.")

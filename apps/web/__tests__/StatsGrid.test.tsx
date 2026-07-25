@@ -16,7 +16,7 @@ describe("StatsGrid", () => {
       total_interviews: 10,
       completed_interviews: 7,
       active_interviews: 3,
-      average_score: 85,
+      average_score: 4.25,
       current_streak: 5,
       credits_remaining: 100,
     };
@@ -52,7 +52,7 @@ describe("StatsGrid", () => {
       total_interviews: 5,
       completed_interviews: 3,
       active_interviews: 1,
-      average_score: 70,
+      average_score: 3.5,
       current_streak: 1,
       credits_remaining: 50,
     };

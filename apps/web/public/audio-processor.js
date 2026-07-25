@@ -15,7 +15,7 @@ class PCMProcessor extends AudioWorkletProcessor {
     this._resampleRatio = sampleRate / this._targetSampleRate;
   }
 
-  process(inputs, outputs, parameters) {
+  process(inputs, _outputs, _parameters) {
     const input = inputs[0];
     if (!input || input.length === 0) return true;
 
