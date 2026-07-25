@@ -50,6 +50,12 @@ interface AuthContextValue {
   isLoading: boolean;
   /** ``true`` once a user is available. */
   isAuthenticated: boolean;
+  /** ``true`` when the user has the ``admin`` role. */
+  isAdmin: boolean;
+  /** Check if the user has a specific role. */
+  hasRole: (role: string) => boolean;
+  /** Check if the user has a specific permission. */
+  hasPermission: (permission: string) => boolean;
   /** Authenticate with email + password. */
   login: (input: LoginInput) => Promise<AuthResponse>;
   /** Create a new account. */
@@ -146,17 +152,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── Memoised context value ───────────────────────────────────────────
 
+  const isAdmin = user?.roles?.includes("admin") ?? false;
+
+  const hasRole = useCallback((role: string) => user?.roles?.includes(role) ?? false, [user]);
+
+  const hasPermission = useCallback(
+    (permission: string) => user?.permissions?.includes(permission) ?? false,
+    [user],
+  );
+
   const value = useMemo(
     () => ({
       user,
       accessToken,
       isLoading,
       isAuthenticated: !!user,
+      isAdmin,
+      hasRole,
+      hasPermission,
       login,
       register,
       logout,
     }),
-    [user, accessToken, isLoading, login, register, logout],
+    [user, accessToken, isLoading, isAdmin, hasRole, hasPermission, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

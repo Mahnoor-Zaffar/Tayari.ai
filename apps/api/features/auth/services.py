@@ -16,6 +16,18 @@ from features.auth.interfaces import (
     UserRepositoryProtocol,
 )
 
+# ── Admin detection ──────────────────────────────────────────────────────────
+
+_ADMIN_EMAILS = frozenset({"admin@tayari.ai"})
+
+
+def _user_roles(email: str) -> tuple[list[str], list[str]]:
+    """Return (roles, permissions) for a user based on their email."""
+    if email in _ADMIN_EMAILS:
+        return (["admin", "user"], ["users:read", "users:write", "users:delete"])
+    return (["user"], [])
+
+
 # ── Service-level models ───────────────────────────────────────────────────
 
 
@@ -40,12 +52,7 @@ class RegistrationData(BaseModel):
 
 
 class AuthenticationService:
-    """Orchestrates authentication workflows.
-
-    Delegates persistence to ``repository``, password operations to
-    ``password_service``, and token operations to ``token_service``.
-    Contains zero database or HTTP logic — only business rules.
-    """
+    """Orchestrates authentication workflows."""
 
     def __init__(
         self,
@@ -74,9 +81,10 @@ class AuthenticationService:
             )
         )
 
+        roles, permissions = _user_roles(data.email)
         return AuthResult(
             user=user,
-            access_token=self._tokens.create_access_token(user.id, roles=["user"], permissions=[]),
+            access_token=self._tokens.create_access_token(user.id, roles=roles, permissions=permissions),
             refresh_token=self._tokens.create_refresh_token(user.id),
         )
 
@@ -92,9 +100,10 @@ class AuthenticationService:
         if not user.is_active:
             raise UserNotActiveError("Account is disabled or deleted")
 
+        roles, permissions = _user_roles(email)
         return AuthResult(
             user=user,
-            access_token=self._tokens.create_access_token(user.id, roles=["user"], permissions=[]),
+            access_token=self._tokens.create_access_token(user.id, roles=roles, permissions=permissions),
             refresh_token=self._tokens.create_refresh_token(user.id),
         )
 

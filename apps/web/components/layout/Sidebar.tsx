@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Mic,
   Settings,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ interface NavItem {
   icon: LucideIcon;
   badge?: string;
   flag?: "interviews" | "reports" | "billing" | "settings";
+  adminOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -33,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/reports", label: "Reports", icon: BarChart3 },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard, flag: "billing" },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, flag: "settings" },
+  { href: "/dashboard/admin", label: "Admin", icon: Shield, adminOnly: true },
 ];
 
 interface SidebarProps {
@@ -42,7 +45,7 @@ interface SidebarProps {
 
 export const Sidebar = memo(function Sidebar({ className, onNavClick }: SidebarProps) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const showInterviews = useFeatureFlag("interviews");
   const showReports = useFeatureFlag("reports");
   const showBilling = useFeatureFlag("billing");
@@ -64,6 +67,7 @@ export const Sidebar = memo(function Sidebar({ className, onNavClick }: SidebarP
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
         {NAV_ITEMS.filter((item) => {
+          if (item.adminOnly) return isAdmin;
           if (!item.flag) return true;
           const flagMap = {
             interviews: showInterviews,

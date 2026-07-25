@@ -3,6 +3,7 @@
 Two read-only endpoints:
 - ``GET /dashboard``         → full dashboard aggregate
 - ``GET /dashboard/recent``   → recent interview activity
+- ``GET /dashboard/admin``    → system-wide stats (admin only)
 
 Time-series analytics moved to ``features/analytics/`` at ``GET /analytics``.
 """
@@ -12,9 +13,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from core.errors import success_response
-from features.auth.guard import CurrentUser, get_current_user
+from features.auth.guard import CurrentUser, RoleChecker, get_current_user
 from features.dashboard.dependencies import get_dashboard_service
 from features.dashboard.service import DashboardService
+from features.users.dependencies import get_user_service
+from features.users.service import UserService
 
 router = APIRouter(tags=["dashboard"])
 
@@ -45,3 +48,17 @@ async def get_recent_interviews(
     """Return recent interview activity for the authenticated user."""
     data = await dashboard_service.get_recent_interviews(current_user.id)
     return success_response({"interviews": [r.model_dump() for r in data]})
+
+
+@router.get(
+    "/dashboard/admin",
+    summary="System-wide stats (admin)",
+    description="Returns total users, active/inactive counts for the admin dashboard.",
+)
+async def get_admin_stats(
+    _admin: CurrentUser = Depends(RoleChecker("admin")),
+    user_service: UserService = Depends(get_user_service),
+) -> dict:
+    """Return system-wide stats for the admin dashboard."""
+    stats = await user_service.get_stats()
+    return success_response(stats)
