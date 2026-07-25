@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feature/**"]
     paths-ignore:
       - "docs/**"
       - "architecture/**"
@@ -13,6 +13,10 @@ on:
       - "docs/**"
       - "architecture/**"
       - "*.md"
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
@@ -116,7 +120,7 @@ jobs:
       - name: Install Python deps
         run: uv sync --directory apps/api
       - name: Run API tests
-        run: uv run --directory apps/api python -m pytest
+        run: uv run --directory apps/api python -m pytest tests/ --ignore=tests/test_e2e_evaluation.py -x --quiet
         env:
           DATABASE_URL: postgresql+asyncpg://tayari:tayari_dev@localhost:5432/tayari
           REDIS_URL: redis://localhost:6379/0

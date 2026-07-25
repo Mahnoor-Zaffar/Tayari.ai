@@ -6,8 +6,21 @@ on:
     paths:
       - "apps/api/**"
       - "apps/web/**"
+      - "packages/**"
       - "infrastructure/**"
       - "Dockerfile*"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "apps/web/**"
+      - "packages/**"
+      - "infrastructure/**"
+      - "Dockerfile*"
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
@@ -28,7 +41,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: buildx-${{ runner.os }}-${{ hashFiles('apps/api/**', 'apps/web/**', 'Dockerfile*') }}
+          key: buildx-${{ runner.os }}-${{ hashFiles('apps/api/**', 'apps/web/**', 'packages/**', 'Dockerfile*') }}
           restore-keys: |
             buildx-${{ runner.os }}-
 
@@ -39,7 +52,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: apps/api
-          file: apps/api/Dockerfile.dev
+          file: apps/api/Dockerfile
           tags: tayari-api:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
@@ -47,8 +60,8 @@ jobs:
       - name: Build Web image
         uses: docker/build-push-action@v6
         with:
-          context: apps/web
-          file: apps/web/Dockerfile.dev
+          context: .
+          file: apps/web/Dockerfile
           tags: tayari-web:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
