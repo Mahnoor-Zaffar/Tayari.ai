@@ -2021,13 +2021,6 @@ dev = [
     { name = "ruff" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "aiosqlite" },
-    { name = "coverage" },
-    { name = "pytest-asyncio" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", marker = "extra == 'dev'", specifier = ">=0.20.0" },
@@ -2061,13 +2054,6 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
 ]
 provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "aiosqlite", specifier = ">=0.22.1" },
-    { name = "coverage", specifier = ">=7.15.0" },
-    { name = "pytest-asyncio", specifier = ">=1.4.0" },
-]
 
 [[package]]
 name = "tqdm"

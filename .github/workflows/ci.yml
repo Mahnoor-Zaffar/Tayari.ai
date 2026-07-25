@@ -56,7 +56,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Install Python deps
-        run: uv sync --directory apps/api
+        run: uv sync --directory apps/api --all-extras
 
       - run: pnpm lint
       - run: pnpm typecheck
@@ -118,7 +118,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: apps/api/pyproject.toml
       - name: Install Python deps
-        run: uv sync --directory apps/api
+        run: uv sync --directory apps/api --all-extras
       - name: Run API tests
         run: uv run --directory apps/api python -m pytest tests/ --ignore=tests/test_e2e_evaluation.py -x --quiet
         env:
