@@ -74,6 +74,9 @@ class Settings(BaseSettings):
 
     SENTRY_DSN: str = ""
 
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
+
     # Comma-separated list of email addresses that are granted admin role
     # on registration.  Falls back to "admin@tayari.ai" when unset.
     ADMIN_EMAILS: str = "admin@tayari.ai"
