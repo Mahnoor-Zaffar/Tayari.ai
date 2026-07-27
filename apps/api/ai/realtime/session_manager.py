@@ -378,6 +378,37 @@ class SessionManager:
     def list_active(self) -> list[Session]:
         return [s for s in self._sessions.values() if not is_terminal(s.state)]
 
+    def restore_sessions(self, active_sessions: list[dict]) -> int:
+        """Load active sessions from a DB snapshot into memory.
+
+        Called during startup to preserve sessions across restarts.
+        Restored sessions are bare (no memory/transcript/orchestrator) and
+        will be re-initialized on the next client reconnection.
+        """
+        restored = 0
+        for data in active_sessions:
+            sid = data["session_id"]
+            if sid in self._sessions:
+                continue
+            try:
+                state = SessionState(data.get("state", "idle"))
+            except ValueError:
+                state = SessionState.IDLE
+            session = Session(
+                session_id=sid,
+                interview_id=data["interview_id"],
+                user_id=data["user_id"],
+                state=state,
+                config=data.get("config"),
+                current_question=data.get("current_question"),
+                current_question_type=data.get("current_question_type", "initial"),
+            )
+            self._sessions[sid] = session
+            self._heartbeat.register(sid)
+            restored += 1
+            logger.info("Restored session %s (iv=%s, state=%s)", sid[:8], session.interview_id[:8], session.state)
+        return restored
+
     def remove_session(self, session_id: str) -> None:
         self._sessions.pop(session_id, None)
         self._heartbeat.unregister(session_id)

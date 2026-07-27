@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from core.audit import auth_audit_middleware
 from core.config import settings
-from core.database import Base, engine
+from core.database import Base, async_session, engine
 from core.errors import AppError, ErrorCode
 from core.logging import get_logger, request_id
 from core.secrets import validate_prod_settings
@@ -46,6 +46,21 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     scheduler.start()
     log.info("APScheduler started with PostgreSQL job store")
+
+    # Restore active sessions from DB (survives server restarts)
+    try:
+        from features.sessions.dependencies import get_session_manager
+        from features.sessions.repository import SessionRepository
+
+        manager = get_session_manager()
+        async with async_session() as restore_db:
+            repo = SessionRepository(restore_db)
+            active = await repo.find_active_sessions()
+            if active:
+                count = manager.restore_sessions(active)
+                log.info("Restored %d/%d active sessions from database", count, len(active))
+    except Exception as exc:
+        log.warning("Failed to restore active sessions: %s", exc)
     yield
     scheduler.shutdown(wait=False)
     log.info("APScheduler shut down")

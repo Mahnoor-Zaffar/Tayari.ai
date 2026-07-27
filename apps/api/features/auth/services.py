@@ -18,14 +18,16 @@ from features.auth.interfaces import (
 )
 from features.email.service import send_reset_email, send_verification_email
 
-# ── Admin detection ──────────────────────────────────────────────────────────
 
-_ADMIN_EMAILS = frozenset({"admin@tayari.ai"})
+def _get_admin_emails() -> frozenset[str]:
+    """Return admin emails from settings, falling back to the default."""
+    raw = settings.ADMIN_EMAILS or "admin@tayari.ai"
+    return frozenset(email.strip().lower() for email in raw.split(",") if email.strip())
 
 
 def _user_roles(email: str) -> tuple[list[str], list[str]]:
     """Return (roles, permissions) for a user based on their email."""
-    if email in _ADMIN_EMAILS:
+    if email.lower() in _get_admin_emails():
         return (["admin", "user"], ["users:read", "users:write", "users:delete"])
     return (["user"], [])
 

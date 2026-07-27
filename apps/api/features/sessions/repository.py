@@ -10,7 +10,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from features.interview.models import Interview
 from features.sessions.models import SessionEvent
+
+_TERMINAL_STATES = frozenset({"completed", "cancelled", "archived"})
 
 
 class SessionRepository:
@@ -18,6 +21,37 @@ class SessionRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def find_active_sessions(self) -> list[dict]:
+        """Return session metadata for all non-terminal sessions.
+
+        Finds distinct session_ids from ``session_events`` whose
+        associated interview is still active (not completed/cancelled).
+        """
+        result = await self._session.execute(
+            select(SessionEvent.session_id, SessionEvent.interview_id)
+            .distinct(SessionEvent.session_id)
+            .order_by(SessionEvent.session_id, SessionEvent.created_at.desc())
+        )
+        rows = result.all()
+
+        active = []
+        for row in rows:
+            interview = await self._session.get(Interview, row.interview_id)
+            if interview is None or interview.status in _TERMINAL_STATES:
+                continue
+            active.append(
+                {
+                    "session_id": row.session_id,
+                    "interview_id": str(row.interview_id),
+                    "user_id": str(interview.user_id),
+                    "state": interview.status,
+                    "config": None,
+                    "current_question": None,
+                    "current_question_type": "initial",
+                }
+            )
+        return active
 
     async def create_event(
         self,
@@ -71,7 +105,5 @@ class SessionRepository:
 
     async def count_events(self, session_id: str) -> int:
         """Count total events for a session."""
-        result = await self._session.execute(
-            select(SessionEvent.id).where(SessionEvent.session_id == session_id)
-        )
+        result = await self._session.execute(select(SessionEvent.id).where(SessionEvent.session_id == session_id))
         return len(list(result.scalars().all()))

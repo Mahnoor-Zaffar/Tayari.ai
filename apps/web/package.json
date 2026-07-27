@@ -14,7 +14,9 @@
     "analyze": "ANALYZE=true next build",
     "perf:budget": "node scripts/performance-budget.mjs",
     "perf:check": "npm run analyze && npm run perf:budget",
-    "clean": "rm -rf .next node_modules"
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "clean": "rm -rf .next node_modules playwright-report"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -39,6 +41,7 @@
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "^15.0.0",
+    "@playwright/test": "^1.62.0",
     "@tailwindcss/postcss": "^4.3.2",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.0",
