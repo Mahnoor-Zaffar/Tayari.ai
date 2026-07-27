@@ -70,7 +70,17 @@ async def lifespan(app: FastAPI):
 # ── App ─────────────────────────────────────────────────────────────────────
 
 
-app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan)
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    lifespan=lifespan,
+    description="AI mock interview platform — live coding, system-design, and behavioral with AI evaluation.",
+    terms_of_service="https://tayari.ai/terms",
+    contact={"name": "Tayari AI", "email": "support@tayari.ai", "url": "https://tayari.ai"},
+    license_info={"name": "MIT", "identifier": "MIT"},
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -121,6 +131,14 @@ def _custom_openapi() -> dict:
 
 
 app.openapi = _custom_openapi  # type: ignore[method-assign]
+
+app.openapi_tags = [
+    {"name": "auth", "description": "Registration, login, token refresh, email verification, password reset"},
+    {"name": "interviews", "description": "Interview lifecycle: create, configure, upload resume/JD, validate"},
+    {"name": "evaluations", "description": "Post-interview evaluation: trigger, list, retrieve scores and verdicts"},
+    {"name": "billing", "description": "Subscription management and Stripe checkout (stubbed)"},
+    {"name": "health", "description": "Service health check endpoint"},
+]
 
 
 # ── Exception handlers ──────────────────────────────────────────────────────
