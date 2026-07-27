@@ -5,6 +5,7 @@ from core.config import settings
 from core.database import get_db
 from features.auth.jwt.config import JWTConfig
 from features.auth.jwt.jti_blacklist import MemoryBlacklist
+from features.auth.jwt.redis_blacklist import RedisBlacklist
 from features.auth.jwt.service import TokenService
 from features.auth.password.service import PasswordService
 from features.auth.repositories import UserRepository
@@ -19,7 +20,12 @@ _jwt_config = JWTConfig(
     EMAIL_VERIFY_TTL=settings.jwt_email_verify_ttl,
     PASSWORD_RESET_TTL=settings.jwt_password_reset_ttl,
 )
-_blacklist = MemoryBlacklist()
+# Use Redis-backed blacklist in production/dev when Redis is available,
+# fall back to in-memory for testing / local environments without Redis.
+if settings.REDIS_URL and not settings.REDIS_URL.startswith("redis://localhost"):
+    _blacklist = RedisBlacklist()
+else:
+    _blacklist = MemoryBlacklist()
 _token_service = TokenService(config=_jwt_config, blacklist=_blacklist)
 
 
