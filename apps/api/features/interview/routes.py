@@ -4,13 +4,15 @@ All business logic is delegated to ``InterviewService`` — routes contain
 no business logic, only HTTP wiring.
 
 Endpoints:
-    POST   /interviews                  — Create interview from setup wizard
-    GET    /interviews/options           — Return all selectable options
-    POST   /interviews/upload-resume     — Upload resume metadata
-    POST   /interviews/upload-job-description — Upload JD (text or file)
-    POST   /interviews/device-check      — Validate device capabilities
-    GET    /interviews                   — List user's interviews
-    GET    /interviews/{interview_id}    — Fetch single interview
+    POST   /interviews                       — Create interview from setup wizard
+    GET    /interviews/options                — Return all selectable options
+    POST   /interviews/upload-resume          — Upload resume metadata
+    GET    /interviews/resumes/{resume_id}/file  — Download resume file
+    POST   /interviews/upload-job-description    — Upload JD (text or file)
+    GET    /interviews/job-descriptions/{jd_id}/file — Download JD file
+    POST   /interviews/device-check           — Validate device capabilities
+    GET    /interviews                        — List user's interviews
+    GET    /interviews/{interview_id}         — Fetch single interview
 """
 
 from __future__ import annotations
@@ -18,8 +20,9 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import Response
 
-from core.errors import success_response
+from core.errors import NotFoundError, success_response
 from features.auth.guard import CurrentUser, get_current_user
 from features.interview.dependencies import get_interview_service
 from features.interview.schemas import (
@@ -146,6 +149,30 @@ async def upload_resume(
     return success_response(result.model_dump(mode="json"))
 
 
+# ── Download Resume ──────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/interviews/resumes/{resume_id}/file",
+    summary="Download resume file",
+    description="Retrieve the uploaded resume file content. Returns the file as-is with its original MIME type.",
+)
+async def download_resume_file(
+    resume_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: InterviewService = Depends(get_interview_service),
+) -> Response:
+    resume = await service.get_resume_file(current_user.id, resume_id)
+    if resume is None:
+        raise NotFoundError("Resume not found")
+    content, mime_type, filename = resume
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # ── Parse Resume ──────────────────────────────────────────────────────────────
 
 
@@ -177,6 +204,30 @@ async def upload_job_description(
 ) -> dict:
     result = await service.upload_job_description(current_user.id, request)
     return success_response(result.model_dump(mode="json"))
+
+
+# ── Download Job Description ─────────────────────────────────────────────────
+
+
+@router.get(
+    "/interviews/job-descriptions/{jd_id}/file",
+    summary="Download job description file",
+    description="Retrieve the uploaded JD file content. Returns the file as-is with its original MIME type.",
+)
+async def download_jd_file(
+    jd_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    service: InterviewService = Depends(get_interview_service),
+) -> Response:
+    jd_data = await service.get_jd_file(current_user.id, jd_id)
+    if jd_data is None:
+        raise NotFoundError("Job description not found")
+    content, mime_type, filename = jd_data
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ── Analyze Job Description ──────────────────────────────────────────────────

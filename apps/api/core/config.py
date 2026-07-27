@@ -66,10 +66,13 @@ class Settings(BaseSettings):
     STORAGE_ENDPOINT: str = ""
     STORAGE_ACCESS_KEY: str = ""
     STORAGE_SECRET_KEY: str = ""
+    STORAGE_REGION: str = "us-east-1"
 
     DEEPGRAM_API_KEY: str = ""
     DEEPGRAM_MODEL: str = "nova-3"
     DEEPGRAM_ENDPOINTING: int = 300  # ms of silence before finalizing speech
+
+    SENTRY_DSN: str = ""
 
 
 settings = Settings()

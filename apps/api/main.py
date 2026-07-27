@@ -28,6 +28,19 @@ async def lifespan(app: FastAPI):
     from workers.scheduler import scheduler
 
     setup_logging()
+
+    if settings.SENTRY_DSN:
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.ENVIRONMENT,
+            release=f"tayari-api@{settings.VERSION}",
+            traces_sample_rate=0.1 if settings.ENVIRONMENT == "production" else 1.0,
+            profiles_sample_rate=0.1 if settings.ENVIRONMENT == "production" else 0.0,
+        )
+        log.info("Sentry initialized for environment=%s", settings.ENVIRONMENT)
+
     validate_prod_settings()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -187,6 +200,12 @@ async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JS
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     rid = request_id.get()
     log.exception("unhandled exception", extra={"request_id": rid})
+    try:
+        import sentry_sdk
+
+        sentry_sdk.capture_exception(exc)
+    except ImportError:
+        pass
     return JSONResponse(
         status_code=500,
         content={

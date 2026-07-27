@@ -1,12 +1,17 @@
-"use client"
+"use client";
 
-import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { useState, type ReactNode } from "react"
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { AuthProvider } from "@/features/auth/hooks/use-auth"
-import { getErrorMessage } from "@/lib/errors"
+import { AuthProvider } from "@/features/auth/hooks/use-auth";
+import { getErrorMessage } from "@/lib/errors";
+import { initSentry, captureException } from "@/lib/sentry";
 
 export function Providers({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    initSentry();
+  }, []);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -18,22 +23,20 @@ export function Providers({ children }: { children: ReactNode }) {
         },
         queryCache: new QueryCache({
           onError: (err) => {
-            // Log every query error — swap with your monitoring service (Sentry,
-            // DataDog, etc.) in production.
-            console.error("[query]", getErrorMessage(err))
+            captureException(err, { source: "react-query" });
           },
         }),
         mutationCache: new MutationCache({
           onError: (err) => {
-            console.error("[mutation]", getErrorMessage(err))
+            captureException(err, { source: "react-query-mutation" });
           },
         }),
       }),
-  )
+  );
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>{children}</AuthProvider>
     </QueryClientProvider>
-  )
+  );
 }

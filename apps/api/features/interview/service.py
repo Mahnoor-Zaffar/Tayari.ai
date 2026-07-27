@@ -13,6 +13,7 @@ import hashlib
 from uuid import UUID
 
 from core.errors import ConflictError, NotFoundError, ValidationError
+from core.storage import get_storage_service
 from features.interview.models import Interview as InterviewORM
 from features.interview.repository import InterviewRepository
 from features.interview.schemas import (
@@ -46,6 +47,7 @@ class InterviewService:
 
     def __init__(self, repository: InterviewRepository) -> None:
         self._repo = repository
+        self._storage = get_storage_service()
 
     # ── Create Interview ─────────────────────────────────────────────────
 
@@ -282,6 +284,30 @@ class InterviewService:
             original_filename=jd.original_filename,
             created_at=jd.created_at,
         )
+
+    # ── File Retrieval ──────────────────────────────────────────────────
+
+    async def get_resume_file(self, user_id: UUID, resume_id: UUID) -> tuple[bytes, str, str] | None:
+        """Return resume file bytes, MIME type, and original filename."""
+        resume = await self._repo.get_resume_by_id(resume_id, user_id)
+        if resume is None or not resume.storage_path:
+            return None
+        content = await self._storage.retrieve_file(resume.storage_path)
+        if content is None:
+            return None
+        return content, resume.mime_type, resume.original_filename
+
+    async def get_jd_file(self, user_id: UUID, jd_id: UUID) -> tuple[bytes, str, str] | None:
+        """Return JD file bytes, MIME type, and original filename."""
+        jd = await self._repo.get_job_description_by_id(jd_id, user_id)
+        if jd is None or not jd.storage_path:
+            return None
+        content = await self._storage.retrieve_file(jd.storage_path)
+        if content is None:
+            return None
+        mime = jd.mime_type or "text/plain"
+        filename = jd.original_filename or f"jd-{jd_id}.txt"
+        return content, mime, filename
 
     # ── Device Check ─────────────────────────────────────────────────────
 
