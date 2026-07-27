@@ -1,6 +1,6 @@
 # Tayari AI
 
-> AI-powered mock interview platform for software engineers. Live voice conversations with a trained AI interviewer across coding, system design, and behavioral formats — with scored evaluations and progress tracking.
+AI-powered mock interview platform for software engineers. Real-time voice conversations with a trained AI interviewer across coding, system design, and behavioral formats — with scored evaluations and progress tracking.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)](https://www.typescriptlang.org/)
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=fff)](https://www.python.org/)
@@ -12,121 +12,107 @@
 
 ---
 
-## Architecture
+## Overview
 
-```
-                    Cloudflare CDN
-                           │
-                  ┌────────┴────────┐
-                  │                 │
-            Vercel Hobby      Railway / Fly.io
-           (Next.js 15 app)   (FastAPI backend)
-                  │                 │
-                  └────────┬────────┘
-                           │
-                    FastAPI (modular monolith)
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-         Neon PG 17    Cloudflare R2   APScheduler
-         (primary DB)  (objects)       (bg tasks)
+Tayari conducts live, AI-driven technical interviews. A candidate joins a WebSocket-powered session, answers questions via voice (Deepgram STT) or text, and receives a structured evaluation after completion. Three interview modalities are supported:
 
-         WebSocket (interview events)
-         WebRTC   (audio, post-MVP)
-```
+- **Coding** — Algorithmic problem-solving with Monaco editor
+- **System Design** — Whiteboard-style architecture discussion
+- **Behavioral** — STAR-method leadership and collaboration questions
 
-The backend is a **feature-based modular monolith** — each domain (auth, interview, reports, billing, users, voice) owns its models, schemas, routes, and services. This keeps boundaries clean without paying the operational cost of microservices.
+The AI interviewer is prompt-driven (not fine-tuned) with per-company and per-modality templates in `packages/prompts/`. Evaluations run asynchronously via APScheduler after the interview completes.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Cost |
-|---|---|---|
-| Frontend | Next.js 15 + React 19 + TypeScript | Free (Vercel Hobby) |
-| UI | Tailwind CSS v4 + shadcn/ui | Free |
-| State | TanStack Query | Free |
-| Backend | FastAPI + Python 3.13 + uvicorn | Free (Railway/Fly.io) |
-| Package mgmt | uv (Python) + pnpm (Node) | Free |
-| Database | PostgreSQL 17 (Neon free tier) | Free (500MB) |
-| ORM | SQLAlchemy 2 (async) + Alembic | Free |
-| Cache | Redis 7 (upstash/self-hosted post-MVP) | Free tier |
-| Auth | Custom JWT (RS256) | Free |
-| Voice (MVP) | Web Speech API + Speech Synthesis API | Free (browser APIs) |
-| Voice (future) | OpenAI Realtime API | Paid |
-| AI Interviewer | GPT-4o-mini | ~$0.06-0.18/interview |
-| AI Evaluator | GPT-4o | ~$0.03-0.05/interview |
-| Code Execution | Pyodide + QuickJS (client-side WASM) | Free |
-| Storage | Cloudflare R2 | Free (10GB) |
-| Email | Resend | Free (500/mo) |
-| Payments | Stripe | Per-transaction fee |
-| Background Jobs | APScheduler (MVP) → Celery + Redis (later) | Free |
-| Monitoring | Sentry + Prometheus + Grafana | Free tiers |
-| CI/CD | GitHub Actions | Free (2000 min/mo) |
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind v4 |
+| State | TanStack Query, framer-motion |
+| Backend | FastAPI, Python 3.13, uvicorn |
+| Package mgmt | uv (Python), pnpm 9 (Node) — monorepo via Turborepo |
+| Database | PostgreSQL 17 via asyncpg, SQLAlchemy 2.0 async, Alembic |
+| Cache | Redis 7 |
+| Auth | Custom JWT (RS256/HS256) with refresh token rotation |
+| Realtime | WebSocket (first-party, no Socket.IO), heartbeat monitoring |
+| STT | Deepgram (nova-3 model) |
+| AI | OpenAI-compatible (OpenRouter) — GPT-4o-mini (interviewer), GPT-4o (evaluator) |
+| Email | Resend |
+| Background Jobs | APScheduler with PostgreSQL job store |
+| Code Editor | Monaco |
+| CI/CD | GitHub Actions (lint, typecheck, test, build) |
+| Containerization | Docker Compose (Postgres, Redis, API, Web) |
+| Reverse Proxy | Traefik v3 (infrastructure config provided) |
 
 ---
 
-## Project Structure
+## Repository Structure
 
 ```
 ai-interview-platform/
 ├── apps/
-│   ├── web/                    # Next.js 15 (App Router, RSC)
+│   ├── web/                         # Next.js 15 (App Router)
 │   │   ├── app/
-│   │   ├── features/           # Feature-sliced UI modules
-│   │   ├── lib/api/            # Typed API client
-│   │   └── env.ts              # t3-env validated env vars
-│   └── api/                    # FastAPI modular monolith
-│       ├── core/               # Config, DB, security, errors, logging, rate limiting
-│       ├── features/           # Domain modules
-│       │   ├── auth/           # Auth models, schemas, routes, services
-│       │   ├── interview/      # Interview lifecycle
-│       │   ├── reports/        # Evaluation generation
-│       │   ├── billing/        # Stripe integration
-│       │   ├── users/          # Profile management
-│       │   └── voice/          # WebSocket audio streaming
-│       ├── ai/                 # AI provider abstraction (ABC → OpenAI)
-│       └── workers/            # Background job definitions
+│   │   │   ├── auth/                # Login, register, password reset, verify email
+│   │   │   ├── dashboard/           # Main app (interviews, reports, admin)
+│   │   │   └── ...
+│   │   ├── features/                # Feature-sliced UI modules
+│   │   │   ├── auth/                # AuthProvider, useAuth, forms
+│   │   │   ├── interview/           # Setup wizard, session client, components
+│   │   │   ├── dashboard/           # Stats grid, activity list, widgets
+│   │   │   ├── evaluation/          # Score cards, radar chart, transcript viewer
+│   │   │   ├── coding/              # Monaco editor, code session, test panel
+│   │   │   ├── reports/             # Report dashboard
+│   │   │   └── admin/               # User management
+│   │   ├── lib/api/                 # Typed API client with auto-refresh
+│   │   └── components/              # Shared UI (shadcn/ui style)
+│   └── api/                         # FastAPI modular monolith
+│       ├── core/                    # Config, database, audit logging, middleware
+│       ├── features/
+│       │   ├── auth/                # JWT, password hashing, guards, routes
+│       │   ├── interview/           # CRUD, setup wizard, configuration
+│       │   ├── sessions/            # WebSocket session persistence, reconnect
+│       │   ├── reports/             # Evaluation pipeline, score persistence
+│       │   ├── billing/             # Stripe stubs (not yet wired)
+│       │   ├── users/               # Admin user management
+│       │   ├── voice/               # Deepgram STT integration
+│       │   ├── code/                # Code submission + review
+│       │   ├── dashboard/           # Aggregated stats
+│       │   └── analytics/           # Usage analytics
+│       ├── ai/                      # AI provider abstraction + realtime engine
+│       │   ├── provider.py          # ABC: chat, chat_stream, structured_output
+│       │   ├── openai_provider.py   # OpenAI/OpenRouter implementation
+│       │   ├── mock_provider.py     # Dev-mode canned responses
+│       │   ├── code_review.py       # AI code review service
+│       │   └── realtime/            # Session state machine, orchestrator,
+│       │                             # memory, transcript, heartbeat, telemetry
+│       └── workers/                 # APScheduler integration + evaluation worker
 ├── packages/
-│   ├── ui/                     # Shared React components (shadcn)
-│   ├── types/                  # Zod schemas shared between web + api
-│   ├── config/                 # ESLint, TypeScript configs
-│   └── prompts/                # Version-controlled AI system prompts
-├── architecture/               # ADRs, C4 diagrams, ERD
-│   ├── decisions/              # Architecture Decision Records
-│   ├── C4/                     # Context + Container diagrams
-│   └── database/               # DBML entity relationship diagram
-├── infrastructure/             # Docker, Traefik, Terraform (future)
-└── docs/                       # PRD, SRS, AI architecture docs
+│   ├── prompts/                     # Version-controlled AI prompt templates
+│   │   ├── interviewers/            # coding.md, system-design.md, behavioral.md
+│   │   ├── evaluators/              # Per-modality evaluation rubrics
+│   │   └── templates/company-specific/  # Google, Amazon, Meta interview styles
+│   ├── types/                       # Zod schemas shared web↔api
+│   ├── config/                      # Shared ESLint + TypeScript configs
+│   └── ui/                          # Shared React components
+├── infrastructure/                  # Docker Compose, Traefik config
+├── .github/workflows/               # CI (lint, test, build, docker)
+└── ARCHITECTURE.md                  # Full system architecture reference
 ```
 
 ---
 
-## Features
+## Key Design Decisions
 
-### MVP (Phase 1 — shipped)
+- **Modular monolith** over microservices — each domain owns its models, routes, services, and tests within `features/`. Clean boundaries without operational overhead.
+- **In-memory session manager** with DB snapshots — live interview state is a Python dataclass dict. Snapshots persist to PostgreSQL on transitions. This avoids per-turn DB latency (sub-ms state changes vs. 5-15ms round trips) at the cost of session loss on process restart.
+- **APScheduler over Celery** — background evaluations run in-process with `SQLAlchemyJobStore`. Survives restarts. No Redis dependency for the MVP queue volume. Celery is declared as a dependency but unused.
+- **Custom JWT with refresh rotation** — short-lived access tokens (24h), long-lived refresh tokens (7d) with rotation. Revoked tokens share a `token_family` — reuse detection blocks replay attacks.
+- **Feature-first auth guards** — `get_current_user`, `RoleChecker`, `PermissionChecker` composable dependencies. Admin detection is email-based (`admin@tayari.ai`).
+- **Prompt-driven AI** — no fine-tuning. Interviewer behavior is controlled entirely by `packages/prompts/*.md` templates. Per-company style notes (Google, Amazon, Meta) modify tone and focus areas.
 
-| Feature | Status |
-|---|---|
-| Email/password authentication | Scaﬀolded |
-| Interview setup wizard (type → company → level) | Scaﬀolded |
-| Coding interview room (Monaco + WASM execution) | Scaﬀolded |
-| Pseudo-realtime voice (Browser Speech API) | Scaﬀolded |
-| AI interviewer (GPT-4o-mini) | Scaﬀolded |
-| Post-interview evaluation (GPT-4o) | Scaﬀolded |
-| Interview history with scores | Scaﬀolded |
-| Stripe checkout + subscription management | Scaﬀolded |
-| Company directory (665+) | Planned |
-| Concept directory (71 algorithms) | Planned |
-
-### Post-MVP (Phase 2+)
-
-- System design interviews (Excalidraw canvas)
-- Behavioral interviews (STAR framework)
-- OpenAI Realtime API (true low-latency voice)
-- Resume / job description parsing
-- Admin dashboard
-- Admin portal (users, revenue, feature flags)
+For detailed trade-off analysis, see [ARCHITECTURE.md](ARCHITECTURE.md#5-design-decisions--trade-offs-adrs).
 
 ---
 
@@ -134,127 +120,116 @@ ai-interview-platform/
 
 ### Prerequisites
 
-- Python 3.13 (`uv` for dependency management)
-- Node.js 22 (`pnpm` for package management)
+- Python 3.13+, Node.js 22+, pnpm 9+
 - Docker Desktop (for local PostgreSQL + Redis)
+- uv (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
-### Clone and install
+### Install
 
 ```bash
 git clone https://github.com/Mahnoor-Zaffar/Tayari.ai.git
 cd Tayari.ai
 
-# Install Python dependencies
+# Start infrastructure
+docker compose -f infrastructure/docker-compose.yml up -d db redis
+
+# Install Python deps
 cd apps/api
-uv sync --dev
+uv sync --all-extras
+uv run alembic upgrade head
+uv run python scripts/seed.py
 cd ../..
 
-# Install Node dependencies
+# Install JS deps
 pnpm install
-```
 
-### Environment setup
-
-```bash
-cp .env.example .env.local
-# Edit .env.local with your API keys:
-#   OPENAI_API_KEY, STRIPE_SECRET_KEY, RESEND_API_KEY
-```
-
-### Start local development
-
-```bash
-# Start PostgreSQL + Redis
-docker compose -f infrastructure/docker-compose.yml up -d
-
-# Start API (FastAPI with hot reload)
-cd apps/api && uv run uvicorn main:app --reload
-
-# Start Web (Next.js with hot reload)
-cd apps/web && pnpm dev
-```
-
-### Run database migrations
-
-```bash
-cd apps/api
-alembic revision --autogenerate -m "description"
-alembic upgrade head
+# Start development (turbo runs API + Web concurrently)
+pnpm dev
 ```
 
 ### Verify
 
-- Web: [http://localhost:3000](http://localhost:3000)
-- API: [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger UI)
-- Health: [http://localhost:8000/health](http://localhost:8000/health)
+- Web: http://localhost:3000
+- API docs: http://localhost:8000/docs
+- Health: http://localhost:8000/health
+
+### Environment
+
+Copy and edit the API env file:
+
+```bash
+cp apps/api/.env.example apps/api/.env
+# Set OPENAI_API_KEY, RESEND_API_KEY, etc.
+```
+
+Frontend env vars are in `apps/web/.env.local` (pre-configured for local dev).
 
 ---
 
-## Key Design Decisions
+## Testing
 
-| Decision | Rationale |
-|---|---|
-| Modular monolith over microservices | Faster to ship, cheaper to operate, easier to extract later |
-| Client-side WASM (Pyodide + QuickJS) for code execution | Zero server cost, no network latency for compile/run |
-| Browser Speech API over OpenAI Realtime for MVP | $0 vs ~$1.80/interview in audio costs |
-| Custom JWT over Better Auth | Works natively with FastAPI, no vendor lock-in |
-| Manual Zod + Pydantic over OpenAPI codegen | Simple, full type control, no build step |
-| APScheduler over Celery for MVP | No Redis dependency until queue volume justiﬁes it |
+```bash
+# Backend (requires PostgreSQL + Redis running)
+cd apps/api
+uv run pytest tests/ --ignore=tests/test_e2e_evaluation.py -v
 
-See `architecture/decisions/` for full Architecture Decision Records.
+# Frontend
+pnpm --filter @tayari/web test
 
----
+# All lint + typecheck
+pnpm lint
+pnpm typecheck
+```
 
-## Performance Budgets
-
-| Metric | Target |
-|---|---|
-| Voice chunk roundtrip (STT → AI → TTS) | <2s P95 |
-| Code execution (Python WASM) | <500ms P95 |
-| Page load (interview setup) | <2s LCP |
-| API response (non-AI) | <200ms P95 |
-| Evaluation generation (ﬁrst token) | <3s |
-| WebSocket reconnection | <2s |
+Pre-commit hooks (`ruff check --fix` + `ruff format` + `pytest`) run automatically on `git commit`.
 
 ---
 
-## Monitoring & Observability
+## CI/CD
 
-- **Errors:** Sentry (error tracking with request/session/interview context)
-- **Metrics:** Prometheus + Grafana (API latency, AI latency, token usage, DB pool)
-- **Analytics:** PostHog (user behavior, conversion funnels, feature usage)
-- **Health:** UptimeRobot (synthetic checks on /health)
+GitHub Actions runs on push/PR to `main` or `feature/**`:
+
+1. **Lint & TypeCheck** — ruff, mypy, eslint, tsc
+2. **JS Tests** — vitest (92 tests)
+3. **Python Tests** — pytest with PostgreSQL 17 + Redis 7 service containers (437+ tests)
+4. **Build** — next build + performance budget check
+5. **Docker** — builds production images for API (multi-stage Python) and Web (multi-stage Next.js)
 
 ---
 
-## AI Cost Strategy
+## Current State
 
-Tayari is designed to operate on a tight AI budget. Every interview is capped:
+### What works
+- Full auth flow (register, login, logout, refresh, email verification, password reset)
+- Interview setup wizard (3 types, config presets, resume/JD upload)
+- Coding interviews with Monaco editor + live AI interviewer via WebSocket
+- System design interviews with whiteboard canvas
+- Behavioral interviews with STAR-based AI interviewer
+- Deepgram voice transcription (300ms → 2000ms endpointing)
+- Token-streaming AI responses with auto-scroll
+- Session reconnection with jittered backoff (max 10 attempts) + state replay
+- Post-interview evaluation via background APScheduler worker
+- Dashboard (stats grid, activity list, interview progress, subscription status)
+- Evaluation reports with radar charts and dimension scores
+- Admin user management
+- Transactional email (password reset, email verification)
+- Error/loading/empty states across all major surfaces
+- Mobile-responsive interview session UI
 
-| Component | Model | Est. Cost/Session |
-|---|---|---|
-| Interviewer (30 min) | GPT-4o-mini | $0.06-0.18 |
-| Evaluator (post-session) | GPT-4o | $0.03-0.05 |
-| **Total** | | **$0.09-0.23** |
-
-Hard cap: **$0.30/interview**. If exceeded, the interviewer degrades to GPT-4o-mini with reduced context.
+### What's in development / stubbed
+- Stripe billing — all 4 routes return "Not implemented"
+- Celery integration — dependency declared, never wired
+- S3-compatible storage — config exists, no code uses it
+- E2E tests — excluded from CI
 
 ---
 
 ## Architecture Documentation
 
-- `01_Reverse_Engineering_Report.md` — Full site analysis, data model, API spec, edge cases
-- `02_PRD.md` — Product requirements, MVP scope, free-tier constraints
-- `architecture/decisions/` — ADR-001 (monorepo), ADR-002 (voice), ADR-003 (AI provider)
-- `architecture/C4/` — C4 context + container diagrams (Mermaid)
-- `architecture/database/erd.dbml` — Entity relationship diagram
+- [ARCHITECTURE.md](ARCHITECTURE.md) — Full system reference: architecture, data model, API contracts, ADRs, operational runbooks, security model, technical debt inventory
 
 ---
 
 ## License
 
 MIT
-
----
-
-*Built with pnpm, Turborepo, FastAPI, and Next.js — deployed on free tiers, designed for production.*
