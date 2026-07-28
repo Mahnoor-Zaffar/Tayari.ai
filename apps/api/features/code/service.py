@@ -6,10 +6,12 @@ import time
 import uuid
 from uuid import UUID
 
+from ai.code_review import get_code_review_service
 from features.code.repository import CodeRepository
 from features.code.schemas import RunCodeResponse
 from judge.judge import judge_test_cases
 from judge.logger import log_execution
+from judge.queue import ExecutionQueue
 from judge.registry import get_language, get_supported_languages
 from judge.sandbox import Sandbox, SandboxResult
 
@@ -17,8 +19,9 @@ from judge.sandbox import Sandbox, SandboxResult
 class CodeExecutionService:
     """Service for code execution and submission management."""
 
-    def __init__(self, repo: CodeRepository) -> None:
+    def __init__(self, repo: CodeRepository, queue: ExecutionQueue) -> None:
         self._repo = repo
+        self._queue = queue
 
     async def run_code(
         self,
@@ -34,16 +37,17 @@ class CodeExecutionService:
         if config is None:
             raise ValueError(f"Unsupported language: {language}")
 
-        result = await Sandbox.run(
-            source_code=source_code,
-            language=language,
-            test_input=test_input,
-            file_extension=config.file_extension,
-            run_command=config.run_command,
-            compile_command=config.compile_command,
-            time_limit_s=config.timeout_s,
-            memory_limit_mb=config.memory_limit_mb,
-        )
+        async with self._queue.concurrency_semaphore:
+            result = await Sandbox.run(
+                source_code=source_code,
+                language=language,
+                test_input=test_input,
+                file_extension=config.file_extension,
+                run_command=config.run_command,
+                compile_command=config.compile_command,
+                time_limit_s=config.timeout_s,
+                memory_limit_mb=config.memory_limit_mb,
+            )
 
         return RunCodeResponse(
             stdout=result.stdout,
@@ -70,14 +74,16 @@ class CodeExecutionService:
             raise ValueError(f"Unsupported language: {language}")
 
         submission_id = uuid.uuid4()
-        await self._repo.create_submission({
-            "id": submission_id,
-            "interview_id": interview_id,
-            "user_id": user_id,
-            "language": language,
-            "source_code": source_code,
-            "status": "running",
-        })
+        await self._repo.create_submission(
+            {
+                "id": submission_id,
+                "interview_id": interview_id,
+                "user_id": user_id,
+                "language": language,
+                "source_code": source_code,
+                "status": "running",
+            }
+        )
 
         log_execution(str(submission_id), language, "started")
         test_inputs = test_inputs or [""]
@@ -86,24 +92,24 @@ class CodeExecutionService:
         compiler_output = ""
 
         for i, test_input in enumerate(test_inputs):
-            result = await Sandbox.run(
-                source_code=source_code,
-                language=language,
-                test_input=test_input,
-                file_extension=config.file_extension,
-                run_command=config.run_command,
-                compile_command=config.compile_command,
-                time_limit_s=config.timeout_s,
-                memory_limit_mb=config.memory_limit_mb,
-            )
+            async with self._queue.concurrency_semaphore:
+                result = await Sandbox.run(
+                    source_code=source_code,
+                    language=language,
+                    test_input=test_input,
+                    file_extension=config.file_extension,
+                    run_command=config.run_command,
+                    compile_command=config.compile_command,
+                    time_limit_s=config.timeout_s,
+                    memory_limit_mb=config.memory_limit_mb,
+                )
             results.append(result)
             if i == 0 and result.stderr:
                 compiler_output = result.stderr
 
         # Judge test results
         test_case_dicts = [
-            {"id": str(i), "input": ti, "expected_output": "", "is_hidden": False}
-            for i, ti in enumerate(test_inputs)
+            {"id": str(i), "input": ti, "expected_output": "", "is_hidden": False} for i, ti in enumerate(test_inputs)
         ]
         actual_outputs = {str(i): r.stdout for i, r in enumerate(results)}
 
@@ -113,19 +119,25 @@ class CodeExecutionService:
         total_ms = sum(r.execution_ms for r in results)
         stderr = "\n".join(r.stderr for r in results if r.stderr).strip()
 
-        await self._repo.update_submission(submission_id, {
-            "status": status,
-            "test_results": judged["results"],
-            "passed_count": judged["overall_passed"],
-            "total_count": judged["overall_total"],
-            "execution_ms": total_ms,
-            "stdout": "\n".join(r.stdout for r in results if r.stdout).strip(),
-            "stderr": stderr or None,
-            "compiler_output": compiler_output or None,
-            "completed_at": time.time(),
-        })
+        await self._repo.update_submission(
+            submission_id,
+            {
+                "status": status,
+                "test_results": judged["results"],
+                "passed_count": judged["overall_passed"],
+                "total_count": judged["overall_total"],
+                "execution_ms": total_ms,
+                "stdout": "\n".join(r.stdout for r in results if r.stdout).strip(),
+                "stderr": stderr or None,
+                "compiler_output": compiler_output or None,
+                "completed_at": time.time(),
+            },
+        )
 
         log_execution(str(submission_id), language, "completed", execution_ms=total_ms)
+
+        # Auto-trigger AI code review
+        await self._generate_code_review(submission_id, language, source_code, judged["results"])
 
         return {
             "submission_id": str(submission_id),
@@ -143,6 +155,40 @@ class CodeExecutionService:
             "execution_ms": total_ms,
             "compiler_output": compiler_output or None,
         }
+
+    async def _generate_code_review(
+        self,
+        submission_id: UUID,
+        language: str,
+        source_code: str,
+        test_results: list[dict],
+    ) -> None:
+        """Generate and persist an AI code review for a completed submission."""
+        try:
+            review_service = get_code_review_service()
+            review = await review_service.generate_review(
+                source_code=source_code,
+                language=language,
+                test_results=test_results,
+            )
+            if review and review.get("overall_score") is not None:
+                await self._repo.create_code_review(
+                    {
+                        "submission_id": submission_id,
+                        "interview_id": None,
+                        "overall_score": review["overall_score"],
+                        "dimensions": review.get("dimensions", {}),
+                        "strengths": review.get("strengths", []),
+                        "improvements": review.get("improvements", []),
+                        "line_comments": [],
+                        "raw_review": str(review),
+                        "model_used": "gpt-4o",
+                        "status": "completed",
+                    }
+                )
+                log_execution(str(submission_id), language, "review_generated")
+        except Exception as exc:
+            log_execution(str(submission_id), language, "review_failed", error=str(exc))
 
     async def get_submission_result(self, submission_id: UUID, user_id: UUID) -> dict | None:
         submission = await self._repo.get_submission(submission_id, user_id)

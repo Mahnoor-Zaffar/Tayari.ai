@@ -10,7 +10,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ai.provider import AIProvider, OpenAIProvider
+from ai.openai_provider import OpenAIProvider
+from ai.provider import AIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -115,10 +116,7 @@ class CodeReviewService:
             return "No test results available."
         passed = sum(1 for r in results if r.get("passed"))
         total = len(results)
-        details = "\n".join(
-            f"  Test {i+1}: {'PASS' if r.get('passed') else 'FAIL'}"
-            for i, r in enumerate(results)
-        )
+        details = "\n".join(f"  Test {i + 1}: {'PASS' if r.get('passed') else 'FAIL'}" for i, r in enumerate(results))
         return f"{passed}/{total} tests passed\n{details}"
 
 

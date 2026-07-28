@@ -80,6 +80,11 @@ class ExecutionQueue:
         return False
 
     @property
+    def concurrency_semaphore(self) -> asyncio.Semaphore:
+        """Public access to the concurrency limiter for direct use by services."""
+        return self._semaphore
+
+    @property
     def pending_count(self) -> int:
         return self._queue.qsize()
 
