@@ -28,6 +28,7 @@ from features.auth.schemas import (
     RefreshRequest,
     RegisterRequest,
     ResetPasswordRequest,
+    SocialLoginRequest,
     UserResponse,
     VerifyEmailRequest,
 )
@@ -130,6 +131,34 @@ async def login(
             AuthEvent.LOGIN,
             user_id=str(result.user.id),
             email=result.user.email,
+        )
+    )
+    return _format_auth_result(result)
+
+
+@router.post(
+    "/auth/social",
+    status_code=status.HTTP_200_OK,
+    summary="Sign in with Supabase social login (Google, GitHub)",
+)
+async def social_login(
+    body: SocialLoginRequest,
+    request: Request,
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> dict:
+    try:
+        result = await auth_service.social_login(body.provider, body.access_token)
+    except InvalidCredentialsError:
+        raise AuthenticationError("Invalid social login token")
+    except EmailAlreadyExistsError as exc:
+        raise ConflictError(str(exc))
+
+    request.state.audit.log(
+        AuditEvent(
+            AuthEvent.LOGIN,
+            user_id=str(result.user.id),
+            email=result.user.email,
+            metadata={"provider": body.provider},
         )
     )
     return _format_auth_result(result)

@@ -62,6 +62,8 @@ interface AuthContextValue {
   register: (input: RegisterInput) => Promise<AuthResponse>;
   /** End the session — clears tokens, redirects to login. */
   logout: () => void;
+  /** Directly set auth state (for social login callback). */
+  setSession: (token: string, refresh: string, user: AuthUser) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -150,6 +152,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   }, []);
 
+  // ── Set session (for social login callback) ──────────────────────────
+
+  const setSession = useCallback((token: string, refresh: string, authUser: AuthUser) => {
+    storeRefreshToken(refresh);
+    setAccessToken(token);
+    setUser(authUser);
+  }, []);
+
   // ── Memoised context value ───────────────────────────────────────────
 
   const isAdmin = user?.roles?.includes("admin") ?? false;
@@ -173,8 +183,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       logout,
+      setSession,
     }),
-    [user, accessToken, isLoading, isAdmin, hasRole, hasPermission, login, register, logout],
+    [
+      user,
+      accessToken,
+      isLoading,
+      isAdmin,
+      hasRole,
+      hasPermission,
+      login,
+      register,
+      logout,
+      setSession,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -116,6 +116,72 @@ class AuthenticationService:
             refresh_token=self._tokens.create_refresh_token(user.id),
         )
 
+    async def social_login(self, provider: str, access_token: str) -> AuthResult:
+        """Sign in or register via Supabase social login (Google, GitHub)."""
+        if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_KEY:
+            raise InvalidCredentialsError("Social login is not configured")
+
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{settings.SUPABASE_URL}/auth/v1/user",
+                headers={
+                    "apikey": settings.SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {access_token}",
+                },
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                raise InvalidCredentialsError("Invalid social login token")
+
+            user_data = resp.json()
+            email = (user_data.get("email") or "").lower()
+            if not email:
+                raise InvalidCredentialsError("Email not provided by provider")
+
+            display_name = (
+                user_data.get("user_metadata", {}).get("full_name")
+                or user_data.get("user_metadata", {}).get("name")
+                or email.split("@")[0]
+            )
+
+        existing = await self._repository.find_by_email(email)
+        if existing is not None:
+            if not existing.is_active:
+                raise UserNotActiveError("Account is disabled")
+            roles, permissions = _user_roles(email)
+            return AuthResult(
+                user=existing,
+                access_token=self._tokens.create_access_token(existing.id, roles=roles, permissions=permissions),
+                refresh_token=self._tokens.create_refresh_token(existing.id),
+            )
+
+        # Create new user
+        import secrets
+
+        username = email.split("@")[0][:50]
+        while await self._repository.exists(username=username):
+            username = f"{email.split('@')[0][:45]}_{secrets.token_hex(2)}"
+
+        from passlib.hash import bcrypt
+
+        user = await self._repository.create_user(
+            UserCreate(
+                email=email,
+                username=username,
+                display_name=display_name[:100],
+                password_hash=bcrypt.hash(secrets.token_urlsafe(32)),
+            )
+        )
+
+        roles, permissions = _user_roles(email)
+        return AuthResult(
+            user=user,
+            access_token=self._tokens.create_access_token(user.id, roles=roles, permissions=permissions),
+            refresh_token=self._tokens.create_refresh_token(user.id),
+        )
+
     async def refresh(self, refresh_token: str) -> AuthResult:
         payload = await self._tokens.verify(refresh_token, "refresh")
 

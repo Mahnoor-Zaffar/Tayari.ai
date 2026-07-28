@@ -35,6 +35,11 @@ class VerifyEmailRequest(BaseModel):
     token: str
 
 
+class SocialLoginRequest(BaseModel):
+    provider: str = Field(..., pattern=r"^(google|github)$")
+    access_token: str
+
+
 # ── Response ────────────────────────────────────────────────────────────────
 
 

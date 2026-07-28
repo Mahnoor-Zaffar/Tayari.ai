@@ -48,6 +48,11 @@ export interface VerifyEmailInput {
   token: string;
 }
 
+export interface SocialLoginInput {
+  provider: "google" | "github";
+  access_token: string;
+}
+
 // ── API calls ──────────────────────────────────────────────────────────────
 
 export const authApi = {
@@ -62,6 +67,8 @@ export const authApi = {
   resetPassword: (data: ResetPasswordInput) => api.post<void>("/auth/reset-password", data),
 
   verifyEmail: (data: VerifyEmailInput) => api.post<void>("/auth/verify-email", data),
+
+  socialLogin: (data: SocialLoginInput) => api.post<AuthResponse>("/auth/social", data),
 
   me: () => api.get<AuthUser>("/users/me"),
 

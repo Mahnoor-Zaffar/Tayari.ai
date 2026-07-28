@@ -10,6 +10,7 @@ import {
   Mic,
   Settings,
   Shield,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,13 +26,14 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string;
-  flag?: "interviews" | "reports" | "billing" | "settings";
+  flag?: "interviews" | "reports" | "billing" | "settings" | "analytics";
   adminOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/interview/new", label: "New Interview", icon: Mic },
+  { href: "/dashboard/analytics", label: "Analytics", icon: TrendingUp, flag: "analytics" },
   { href: "/dashboard/reports", label: "Reports", icon: BarChart3 },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard, flag: "billing" },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, flag: "settings" },
@@ -50,6 +52,7 @@ export const Sidebar = memo(function Sidebar({ className, onNavClick }: SidebarP
   const showReports = useFeatureFlag("reports");
   const showBilling = useFeatureFlag("billing");
   const showSettings = useFeatureFlag("settings");
+  const showAnalytics = useFeatureFlag("analytics");
 
   return (
     <aside
@@ -74,6 +77,7 @@ export const Sidebar = memo(function Sidebar({ className, onNavClick }: SidebarP
             reports: showReports,
             billing: showBilling,
             settings: showSettings,
+            analytics: showAnalytics,
           };
           return flagMap[item.flag];
         }).map((item) => {
