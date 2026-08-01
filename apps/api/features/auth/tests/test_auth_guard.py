@@ -3,9 +3,12 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from fastapi import Depends
+from fastapi import Depends, FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 
+from core.errors import AppError, ErrorCode, success_response
 from features.auth.dependencies import get_token_service
 from features.auth.domain.user import User
 from features.auth.guard import (
@@ -17,7 +20,6 @@ from features.auth.guard import (
 )
 from features.auth.jwt.models import TokenPayload
 from features.auth.repositories import UserRepository
-from main import app
 
 
 def _make_user() -> User:
@@ -53,10 +55,40 @@ def _make_payload(
     )
 
 
-@pytest.fixture(autouse=True)
-def _clear_overrides():
-    yield
-    app.dependency_overrides.clear()
+def _make_app() -> FastAPI:
+    app = FastAPI()
+
+    @app.get("/health")
+    async def _health():
+        return success_response({})
+
+    @app.exception_handler(AppError)
+    async def _app_error_handler(request, exc: AppError):
+        return JSONResponse(status_code=exc.status_code, content=exc.detail)
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_handler(request, exc):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "success": False,
+                "error": {"code": ErrorCode.VALIDATION_ERROR, "message": "Request validation failed"},
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def _global_handler(request, exc):
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": {"code": ErrorCode.INTERNAL_ERROR, "message": str(exc)}},
+        )
+
+    return app
+
+
+@pytest.fixture(scope="class")
+def app():
+    return _make_app()
 
 
 @pytest.fixture
@@ -74,17 +106,17 @@ def mock_user_repo() -> MagicMock:
 
 
 @pytest.fixture
-def override_deps(
-    mock_token_service: MagicMock,
-    mock_user_repo: MagicMock,
-) -> None:
+def override_deps(app: FastAPI, mock_token_service: MagicMock, mock_user_repo: MagicMock) -> None:
     app.dependency_overrides[get_token_service] = lambda: mock_token_service
     app.dependency_overrides[get_user_repo] = lambda: mock_user_repo
+    yield
+    app.dependency_overrides.clear()
 
 
 class TestGetCurrentUser:
     async def test_returns_user_on_valid_token(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
@@ -115,6 +147,7 @@ class TestGetCurrentUser:
 
     async def test_raises_401_on_missing_header(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
     ) -> None:
@@ -132,6 +165,7 @@ class TestGetCurrentUser:
 
     async def test_raises_401_on_non_bearer_header(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
     ) -> None:
@@ -147,6 +181,7 @@ class TestGetCurrentUser:
 
     async def test_raises_401_on_invalid_token(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
     ) -> None:
@@ -168,6 +203,7 @@ class TestGetCurrentUser:
 
     async def test_raises_401_on_deleted_user(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
@@ -190,6 +226,7 @@ class TestGetCurrentUser:
 
     async def test_raises_403_on_inactive_user(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
@@ -216,6 +253,7 @@ class TestGetCurrentUser:
 class TestGetOptionalUser:
     async def test_returns_user_when_authenticated(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
@@ -239,6 +277,7 @@ class TestGetOptionalUser:
 
     async def test_returns_none_without_header(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
     ) -> None:
@@ -255,6 +294,7 @@ class TestGetOptionalUser:
 
     async def test_returns_none_with_invalid_token(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
     ) -> None:
@@ -277,6 +317,7 @@ class TestGetOptionalUser:
 class TestRoleChecker:
     async def test_passes_with_matching_role(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
@@ -299,6 +340,7 @@ class TestRoleChecker:
 
     async def test_raises_403_without_matching_role(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
@@ -322,6 +364,7 @@ class TestRoleChecker:
 
     async def test_passes_with_any_allowed_role(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
@@ -346,6 +389,7 @@ class TestRoleChecker:
 class TestPermissionChecker:
     async def test_passes_with_matching_permission(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
@@ -368,6 +412,7 @@ class TestPermissionChecker:
 
     async def test_raises_403_without_matching_permission(
         self,
+        app: FastAPI,
         override_deps: None,
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,

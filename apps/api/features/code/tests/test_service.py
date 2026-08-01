@@ -8,6 +8,7 @@ import pytest
 
 from features.code.repository import CodeRepository
 from features.code.service import CodeExecutionService
+from judge.queue import ExecutionQueue
 
 
 @pytest.fixture
@@ -22,7 +23,7 @@ def mock_repo():
 
 @pytest.fixture
 def service(mock_repo):
-    return CodeExecutionService(mock_repo)
+    return CodeExecutionService(repo=mock_repo, queue=ExecutionQueue(max_concurrent=1))
 
 
 @pytest.mark.asyncio
