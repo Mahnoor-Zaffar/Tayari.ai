@@ -67,12 +67,28 @@ async def voice_stream(websocket: WebSocket) -> None:
                     if message.get("type") == "websocket.disconnect":
                         break
 
-                    if message.get("text"):
-                        data = json.loads(message["text"])
+                    if "text" in message:
+                        try:
+                            data = json.loads(message["text"])
+                        except json.JSONDecodeError:
+                            continue
                         if data.get("type") == "stop":
                             break
                     elif message.get("bytes"):
                         await deepgram.send_audio(message["bytes"])
+
+                    # Notify client if Deepgram connection dropped silently
+                    if deepgram.dropped:
+                        try:
+                            await websocket.send_json(
+                                {
+                                    "type": "error",
+                                    "message": "Voice connection lost. Please restart microphone.",
+                                }
+                            )
+                        except Exception:
+                            pass
+                        break
             except (WebSocketDisconnect, RuntimeError):
                 log.info("Browser disconnected")
             except asyncio.CancelledError:
@@ -84,7 +100,6 @@ async def voice_stream(websocket: WebSocket) -> None:
                 async for event in deepgram.receive():
                     try:
                         if event["speech_final"]:
-                            # End of utterance — auto-submit signal
                             await websocket.send_json(
                                 {
                                     "type": "final",
@@ -92,8 +107,7 @@ async def voice_stream(websocket: WebSocket) -> None:
                                     "speech_final": True,
                                 }
                             )
-                        elif event["is_final"]:
-                            # Confirmed text but not end of utterance
+                        elif event["is_final"] and event["transcript"].strip():
                             await websocket.send_json(
                                 {
                                     "type": "final",
@@ -101,8 +115,7 @@ async def voice_stream(websocket: WebSocket) -> None:
                                     "speech_final": False,
                                 }
                             )
-                        else:
-                            # Interim result
+                        elif event["transcript"].strip():
                             await websocket.send_json(
                                 {
                                     "type": "partial",

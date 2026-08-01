@@ -23,6 +23,7 @@ class DeepgramProxy:
     def __init__(self) -> None:
         self._ws: websockets.asyncio.client.ClientConnection | None = None
         self._connected = False
+        self._dropped = False
 
     async def connect(self, language: str = "en") -> None:
         if not settings.DEEPGRAM_API_KEY:
@@ -55,8 +56,15 @@ class DeepgramProxy:
         log.info("Deepgram connected")
 
     async def send_audio(self, data: bytes) -> None:
-        if self._ws and self._connected:
+        if not self._ws or not self._connected:
+            self._dropped = True
+            return
+        try:
             await self._ws.send(data)
+        except websockets.ConnectionClosed:
+            self._connected = False
+            self._dropped = True
+            log.warning("Deepgram connection dropped during send")
 
     async def receive(self) -> AsyncIterator[dict]:
         """Yield transcript events from Deepgram."""
@@ -113,7 +121,11 @@ class DeepgramProxy:
         if self._ws and self._connected:
             try:
                 await self._ws.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("Deepgram close failed: %s", exc)
             self._connected = False
             log.info("Deepgram connection closed")
+
+    @property
+    def dropped(self) -> bool:
+        return self._dropped

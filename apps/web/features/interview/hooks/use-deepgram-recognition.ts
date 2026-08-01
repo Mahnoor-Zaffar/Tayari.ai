@@ -44,9 +44,12 @@ export function useDeepgramRecognition(
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
   const bufferRef = useRef<string[]>([]);
+  const bufferLengthRef = useRef(0);
   const reconnectAttemptsRef = useRef(0);
   const shouldReconnectRef = useRef(false);
   const startRequestedRef = useRef(false);
+
+  const MAX_BUFFER_ENTRIES = 200;
 
   const isSupported =
     typeof window !== "undefined" &&
@@ -79,6 +82,11 @@ export function useDeepgramRecognition(
             } else if (data.type === "final") {
               if (data.text?.trim()) {
                 bufferRef.current.push(data.text.trim());
+                bufferLengthRef.current += 1;
+                if (bufferLengthRef.current > MAX_BUFFER_ENTRIES) {
+                  bufferRef.current = bufferRef.current.slice(-MAX_BUFFER_ENTRIES / 2);
+                  bufferLengthRef.current = bufferRef.current.length;
+                }
                 setTranscript(bufferRef.current.join(" "));
               }
               setInterimTranscript("");

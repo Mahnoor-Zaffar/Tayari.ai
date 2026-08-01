@@ -67,10 +67,18 @@ class PCMProcessor extends AudioWorkletProcessor {
   }
 
   _float32ToInt16(float32Array) {
+    // Normalize to actual peak before quantizing (avoids hard-clip distortion)
+    let peak = 0;
+    for (let i = 0; i < float32Array.length; i++) {
+      const abs = Math.abs(float32Array[i]);
+      if (abs > peak) peak = abs;
+    }
+    const scale = peak > 0 ? 0.95 / peak : 1; // 5% headroom prevents intersample peaks
     const int16 = new Int16Array(float32Array.length);
     for (let i = 0; i < float32Array.length; i++) {
-      const s = Math.max(-1, Math.min(1, float32Array[i]));
-      int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      const s = float32Array[i] * scale;
+      int16[i] =
+        s < 0 ? Math.round(Math.max(-32768, s * 32768)) : Math.round(Math.min(32767, s * 32767));
     }
     return int16;
   }
