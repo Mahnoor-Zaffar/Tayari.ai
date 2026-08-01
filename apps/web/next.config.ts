@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@tayari/ui", "@tayari/types", "@tayari/config"],
+  transpilePackages: ["@tayari/ui", "@tayari/config"],
+  serverExternalPackages: ["@tayari/types"],
   images: {
     remotePatterns: [
       {
@@ -9,9 +10,6 @@ const nextConfig: NextConfig = {
         hostname: "**",
       },
     ],
-  },
-  experimental: {
-    serverComponentsExternalPackages: ["@tayari/types"],
   },
 };
 

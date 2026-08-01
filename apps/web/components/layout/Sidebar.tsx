@@ -61,9 +61,7 @@ export const Sidebar = memo(function Sidebar({ className, onNavClick }: SidebarP
     >
       {/* Logo */}
       <div className="flex h-14 items-center gap-2 border-b px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-          T
-        </div>
+        <img src="/logo.png" alt="Tayari AI" className="h-8 w-8 rounded-lg object-contain" />
         <span className="text-lg font-semibold">Tayari</span>
       </div>
 

@@ -20,9 +20,7 @@ export function Navbar() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600 text-sm font-bold text-white">
-            T
-          </div>
+          <img src="/logo.png" alt="Tayari AI" className="h-8 w-8 rounded-lg object-contain" />
           <span className="text-lg font-semibold tracking-tight">Tayari</span>
         </Link>
 

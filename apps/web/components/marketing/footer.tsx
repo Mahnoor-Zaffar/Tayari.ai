@@ -33,9 +33,7 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600 text-sm font-bold text-white">
-                T
-              </div>
+              <img src="/logo.png" alt="Tayari AI" className="h-8 w-8 rounded-lg object-contain" />
               <span className="text-lg font-semibold tracking-tight">Tayari</span>
             </Link>
             <p className="text-sm leading-relaxed text-muted-foreground">
