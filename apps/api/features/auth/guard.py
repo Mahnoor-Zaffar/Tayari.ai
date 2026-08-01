@@ -12,6 +12,10 @@ from features.auth.jwt.service import TokenService
 from features.auth.repositories import UserRepository
 
 
+async def get_user_repo(db: AsyncSession = Depends(get_db)) -> UserRepository:
+    return UserRepository(db)
+
+
 class CurrentUser(BaseModel):
     """Authenticated user combined from the database record and JWT claims.
 
@@ -36,7 +40,7 @@ class CurrentUser(BaseModel):
 async def get_current_user(
     request: Request,
     token_service: TokenService = Depends(get_token_service),
-    db: AsyncSession = Depends(get_db),
+    repo: UserRepository = Depends(get_user_repo),
 ) -> CurrentUser:
     """Extract and validate the ``Authorization: Bearer <access_token>``
     header, look up the user in the database, and return a ``CurrentUser``.
@@ -57,7 +61,6 @@ async def get_current_user(
     except InvalidTokenError:
         raise TokenError("Invalid or expired access token")
 
-    repo = UserRepository(db)
     user = await repo.find_by_id(UUID(payload.sub))
 
     if user is None:
@@ -84,7 +87,7 @@ async def get_current_user(
 async def get_optional_user(
     request: Request,
     token_service: TokenService = Depends(get_token_service),
-    db: AsyncSession = Depends(get_db),
+    repo: UserRepository = Depends(get_user_repo),
 ) -> CurrentUser | None:
     """Like ``get_current_user`` but returns ``None`` instead of raising
     when no valid token is provided.
@@ -102,7 +105,6 @@ async def get_optional_user(
     except InvalidTokenError:
         return None
 
-    repo = UserRepository(db)
     user = await repo.find_by_id(UUID(payload.sub))
 
     if user is None or not user.is_active:

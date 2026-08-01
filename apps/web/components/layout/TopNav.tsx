@@ -5,6 +5,7 @@ import { Bell, Menu } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownItem, DropdownSeparator } from "@/components/ui/dropdown-menu";
+import { ThemeToggle } from "@/components/marketing/theme-toggle";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,8 @@ export function TopNav({ title, onMenuClick, className }: TopNavProps) {
 
       {/* Right side */}
       <div className="flex items-center gap-2">
+        <ThemeToggle />
+
         {/* Notifications */}
         <button
           type="button"

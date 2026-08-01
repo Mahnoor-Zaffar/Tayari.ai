@@ -50,11 +50,13 @@ def get_session_manager() -> SessionManager:
         heartbeat = get_heartbeat_monitor()
         prompt_builder = PromptBuilder()
         from core.config import settings
+
         if settings.OPENAI_API_KEY:
             ai_provider = OpenAIProvider()
         else:
             ai_provider = MockProvider()
             import logging
+
             logging.getLogger(__name__).warning("No OPENAI_API_KEY set — using MockProvider")
         _session_manager = SessionManager(
             dispatcher=dispatcher,

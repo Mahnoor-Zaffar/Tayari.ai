@@ -31,9 +31,13 @@ class CodingEvaluator(BaseEvaluator):
     ) -> dict[str, Any]:
         prompt = self._prompts.build_prompt(
             interview_type=self.PROMPT_TYPE,
-            company=company, role=role, experience_level=experience_level,
-            transcript=transcript, language=language,
-            code_submission=code_submission, test_results=test_results,
+            company=company,
+            role=role,
+            experience_level=experience_level,
+            transcript=transcript,
+            language=language,
+            code_submission=code_submission,
+            test_results=test_results,
         )
         return await self._call_ai(prompt)
 
@@ -47,6 +51,7 @@ class CodingEvaluator(BaseEvaluator):
             if isinstance(response, dict):
                 return response
             import json
+
             return json.loads(response) if isinstance(response, str) else {}
         except Exception:
             return {}

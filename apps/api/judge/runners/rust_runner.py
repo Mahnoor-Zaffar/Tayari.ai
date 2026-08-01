@@ -16,5 +16,5 @@ class RustRunner(CodeRunner):
     def _ensure_main(self, code: str) -> str:
         if "fn main" not in code:
             code = "use std::io::{self, BufRead};\n\n" + code
-            code += "\n\nfn main() {\n    let stdin = io::stdin();\n    for line in stdin.lock().lines() {\n        if let Ok(l) = line {\n            println!(\"{}\", solve(&l));\n        }\n    }\n}\n"
+            code += '\n\nfn main() {\n    let stdin = io::stdin();\n    for line in stdin.lock().lines() {\n        if let Ok(l) = line {\n            println!("{}", solve(&l));\n        }\n    }\n}\n'
         return code

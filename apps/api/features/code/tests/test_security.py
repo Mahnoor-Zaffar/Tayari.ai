@@ -92,8 +92,11 @@ class TestSandboxSecurity:
 
         async def run(code: str) -> str:
             result = await Sandbox.run(
-                source_code=code, language="python", test_input="",
-                time_limit_s=2, file_extension=".py",
+                source_code=code,
+                language="python",
+                test_input="",
+                time_limit_s=2,
+                file_extension=".py",
                 run_command="python3 /code/solution.py",
             )
             return result.stdout.strip()
@@ -113,8 +116,11 @@ except Exception:
     print('blocked')
 """
         result = await Sandbox.run(
-            source_code=code, language="python", test_input="",
-            time_limit_s=2, file_extension=".py",
+            source_code=code,
+            language="python",
+            test_input="",
+            time_limit_s=2,
+            file_extension=".py",
             run_command="python3 /code/solution.py",
         )
         # Either blocked (in Docker read-only) or written to isolated tmpdir
@@ -131,8 +137,11 @@ except Exception:
     print('blocked')
 """
         result = await Sandbox.run(
-            source_code=code, language="python", test_input="",
-            time_limit_s=3, file_extension=".py",
+            source_code=code,
+            language="python",
+            test_input="",
+            time_limit_s=3,
+            file_extension=".py",
             run_command="python3 /code/solution.py",
         )
         # With Docker --network=none this fails; without Docker it may connect

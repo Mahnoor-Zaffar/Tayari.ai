@@ -74,14 +74,18 @@ async def retry(
                 delay = _calculate_delay(policy, attempt)
                 logger.warning(
                     "Retry %d/%d for %s after %.1fs: %s",
-                    attempt + 1, policy.max_retries, fn.__name__, delay, exc,
+                    attempt + 1,
+                    policy.max_retries,
+                    fn.__name__,
+                    delay,
+                    exc,
                 )
                 await asyncio.sleep(delay)
     raise last_exc  # type: ignore[misc]
 
 
 def _calculate_delay(policy: RetryPolicy, attempt: int) -> float:
-    delay = min(policy.base_delay_s * (2 ** attempt), policy.max_delay_s)
+    delay = min(policy.base_delay_s * (2**attempt), policy.max_delay_s)
     if policy.jitter:
         delay *= 0.75 + random.random() * 0.5
     return delay

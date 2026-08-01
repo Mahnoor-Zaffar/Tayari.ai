@@ -70,14 +70,10 @@ class MetricsCollector:
             lang.timeouts += 1
 
         n = self._global.total_executions
-        self._global.avg_execution_ms = (
-            (self._global.avg_execution_ms * (n - 1) + execution_ms) / n
-        )
+        self._global.avg_execution_ms = (self._global.avg_execution_ms * (n - 1) + execution_ms) / n
         total_tests = sum(l.total_tests for l in self._global.by_language.values())
         total_passed = sum(l.passed_tests for l in self._global.by_language.values())
-        self._global.overall_pass_rate = (
-            (total_passed / total_tests * 100) if total_tests > 0 else 0.0
-        )
+        self._global.overall_pass_rate = (total_passed / total_tests * 100) if total_tests > 0 else 0.0
 
     def snapshot(self) -> GlobalMetrics:
         """Return a snapshot of current metrics."""

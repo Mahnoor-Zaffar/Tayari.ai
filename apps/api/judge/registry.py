@@ -135,6 +135,5 @@ def get_language(lang_id: str) -> LanguageConfig | None:
 def get_supported_languages() -> list[dict]:
     """Return a list of supported languages for the API."""
     return [
-        {"id": cfg.id, "name": cfg.display_name, "extension": cfg.file_extension}
-        for cfg in LANGUAGE_REGISTRY.values()
+        {"id": cfg.id, "name": cfg.display_name, "extension": cfg.file_extension} for cfg in LANGUAGE_REGISTRY.values()
     ]

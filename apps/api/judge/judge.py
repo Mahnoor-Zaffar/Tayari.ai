@@ -67,12 +67,14 @@ def judge_test_cases(
 
         passed = judge_output(actual, expected)
 
-        results.append({
-            "test_case_id": tc_id,
-            "passed": passed,
-            "is_hidden": is_hidden,
-            "actual_output": actual if not is_hidden else None,
-        })
+        results.append(
+            {
+                "test_case_id": tc_id,
+                "passed": passed,
+                "is_hidden": is_hidden,
+                "actual_output": actual if not is_hidden else None,
+            }
+        )
 
         if is_hidden:
             hidden_total += 1

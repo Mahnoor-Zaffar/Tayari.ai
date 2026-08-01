@@ -77,7 +77,13 @@ class TranscriptAnalyzer:
 
     def _empty_result(self) -> dict[str, Any]:
         return {
-            "total_turns": 0, "ai_turns": 0, "user_turns": 0,
-            "ai_word_count": 0, "user_word_count": 0, "total_words": 0,
-            "total_pause_ms": 0, "avg_response_ms": 0, "turns": [],
+            "total_turns": 0,
+            "ai_turns": 0,
+            "user_turns": 0,
+            "ai_word_count": 0,
+            "user_word_count": 0,
+            "total_words": 0,
+            "total_pause_ms": 0,
+            "avg_response_ms": 0,
+            "turns": [],
         }

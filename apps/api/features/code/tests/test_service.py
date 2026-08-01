@@ -57,7 +57,7 @@ class TestCodeExecutionService:
             interview_id="00000000-0000-0000-0000-000000000001",
             user_id="00000000-0000-0000-0000-000000000002",
             language="python",
-            source_code='print(int(input()) + int(input()))',
+            source_code="print(int(input()) + int(input()))",
             test_inputs=["2\n3", "10\n20", "100\n200"],
         )
         assert result["status"] == "completed"

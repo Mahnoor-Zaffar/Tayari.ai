@@ -2,6 +2,7 @@ from fastapi import HTTPException
 
 # ── Error codes ─────────────────────────────────────────────────────────────
 
+
 class ErrorCode:
     # Validation
     VALIDATION_ERROR = "VALIDATION_ERROR"

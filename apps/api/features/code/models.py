@@ -25,9 +25,7 @@ class Submission(Base):
     interview_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("interviews.id"), nullable=False, index=True
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     language: Mapped[str] = mapped_column(String(20), nullable=False)
     source_code: Mapped[str] = mapped_column(Text, nullable=False)
 

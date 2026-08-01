@@ -37,7 +37,9 @@ def upgrade() -> None:
         sa.Column("compiler_output", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(["interview_id"], ["interviews.id"], name=op.f("fk_submissions_interview_id_interviews")),
+        sa.ForeignKeyConstraint(
+            ["interview_id"], ["interviews.id"], name=op.f("fk_submissions_interview_id_interviews")
+        ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], name=op.f("fk_submissions_user_id_users")),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_submissions")),
     )
@@ -60,8 +62,12 @@ def upgrade() -> None:
         sa.Column("model_used", sa.String(50), nullable=True),
         sa.Column("status", sa.String(20), nullable=False, server_default="pending"),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.ForeignKeyConstraint(["submission_id"], ["submissions.id"], name=op.f("fk_code_reviews_submission_id_submissions")),
-        sa.ForeignKeyConstraint(["interview_id"], ["interviews.id"], name=op.f("fk_code_reviews_interview_id_interviews")),
+        sa.ForeignKeyConstraint(
+            ["submission_id"], ["submissions.id"], name=op.f("fk_code_reviews_submission_id_submissions")
+        ),
+        sa.ForeignKeyConstraint(
+            ["interview_id"], ["interviews.id"], name=op.f("fk_code_reviews_interview_id_interviews")
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_code_reviews")),
         sa.UniqueConstraint("submission_id", name=op.f("uq_code_reviews_submission_id")),
     )

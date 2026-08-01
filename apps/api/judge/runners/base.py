@@ -76,18 +76,27 @@ class CodeRunner(ABC):
                 compiler_output = compile_result.stderr
                 if compile_result.exit_code != 0:
                     return RunResult(
-                        results=[ExecutionResult(
-                            stdout="", stderr=compile_result.stderr,
-                            exit_code=compile_result.exit_code, execution_ms=0,
-                            compiler_output=compile_result.stderr,
-                        )],
-                        total_ms=0, passed_count=0, total_count=len(test_inputs),
+                        results=[
+                            ExecutionResult(
+                                stdout="",
+                                stderr=compile_result.stderr,
+                                exit_code=compile_result.exit_code,
+                                execution_ms=0,
+                                compiler_output=compile_result.stderr,
+                            )
+                        ],
+                        total_ms=0,
+                        passed_count=0,
+                        total_count=len(test_inputs),
                         compiler_output=compile_result.stderr,
                     )
 
             for test_input in test_inputs:
                 result = self._execute(
-                    workdir, test_input, time_limit_s, memory_limit_mb,
+                    workdir,
+                    test_input,
+                    time_limit_s,
+                    memory_limit_mb,
                 )
                 results.append(result)
 
@@ -95,8 +104,10 @@ class CodeRunner(ABC):
         passed = sum(1 for r in results if r.exit_code == 0)
 
         return RunResult(
-            results=results, total_ms=total_ms,
-            passed_count=passed, total_count=len(test_inputs),
+            results=results,
+            total_ms=total_ms,
+            passed_count=passed,
+            total_count=len(test_inputs),
             compiler_output=compiler_output,
         )
 
@@ -120,36 +131,53 @@ class CodeRunner(ABC):
         cmd = self._config.compile_command.replace("/code", str(workdir))
         start = time.time()
         proc = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=self._config.timeout_s,
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=self._config.timeout_s,
             cwd=str(workdir),
         )
         elapsed = int((time.time() - start) * 1000)
         return ExecutionResult(
-            stdout=proc.stdout, stderr=proc.stderr,
-            exit_code=proc.returncode, execution_ms=elapsed,
+            stdout=proc.stdout,
+            stderr=proc.stderr,
+            exit_code=proc.returncode,
+            execution_ms=elapsed,
         )
 
     def _execute(
-        self, workdir: Path, test_input: str,
-        time_limit_s: int, memory_limit_mb: int,
+        self,
+        workdir: Path,
+        test_input: str,
+        time_limit_s: int,
+        memory_limit_mb: int,
     ) -> ExecutionResult:
         """Execute the compiled/interpreted code with the given input."""
         cmd = self._config.run_command.replace("/code", str(workdir))
         start = time.time()
         try:
             proc = subprocess.run(
-                cmd, shell=True, input=test_input, capture_output=True,
-                text=True, timeout=time_limit_s,
+                cmd,
+                shell=True,
+                input=test_input,
+                capture_output=True,
+                text=True,
+                timeout=time_limit_s,
                 cwd=str(workdir),
             )
             elapsed = int((time.time() - start) * 1000)
             return ExecutionResult(
-                stdout=proc.stdout, stderr=proc.stderr,
-                exit_code=proc.returncode, execution_ms=elapsed,
+                stdout=proc.stdout,
+                stderr=proc.stderr,
+                exit_code=proc.returncode,
+                execution_ms=elapsed,
             )
         except subprocess.TimeoutExpired:
             return ExecutionResult(
-                stdout="", stderr="Execution timed out",
-                exit_code=-1, execution_ms=time_limit_s * 1000,
+                stdout="",
+                stderr="Execution timed out",
+                exit_code=-1,
+                execution_ms=time_limit_s * 1000,
                 timed_out=True,
             )

@@ -151,9 +151,7 @@ class TestCreateSpecialTokens:
 
 
 class TestVerify:
-    async def test_returns_token_payload_for_valid_access_token(
-        self, service: TokenService, user_id: UUID
-    ) -> None:
+    async def test_returns_token_payload_for_valid_access_token(self, service: TokenService, user_id: UUID) -> None:
         token = service.create_access_token(user_id)
         payload = await service.verify(token, "access")
 
@@ -163,9 +161,7 @@ class TestVerify:
         assert payload.roles == []
         assert payload.permissions == []
 
-    async def test_returns_token_payload_for_valid_refresh_token(
-        self, service: TokenService, user_id: UUID
-    ) -> None:
+    async def test_returns_token_payload_for_valid_refresh_token(self, service: TokenService, user_id: UUID) -> None:
         token = service.create_refresh_token(user_id)
         payload = await service.verify(token, "refresh")
 
@@ -213,9 +209,7 @@ class TestVerify:
     async def test_raises_if_audience_mismatch(self, service: TokenService, user_id: UUID) -> None:
         token = service.create_access_token(user_id)
 
-        wrong_config = JWTConfig(
-            SECRET_KEY="test-secret-key-that-is-long-enough-for-hs256", AUDIENCE="wrong-audience"
-        )
+        wrong_config = JWTConfig(SECRET_KEY="test-secret-key-that-is-long-enough-for-hs256", AUDIENCE="wrong-audience")
         wrong_svc = TokenService(wrong_config)
 
         with pytest.raises(InvalidTokenError, match="audience"):
@@ -251,9 +245,7 @@ class TestVerify:
 
 
 class TestVerifyWithBlacklist:
-    async def test_passes_for_not_revoked_token(
-        self, service_with_blacklist: TokenService, user_id: UUID
-    ) -> None:
+    async def test_passes_for_not_revoked_token(self, service_with_blacklist: TokenService, user_id: UUID) -> None:
         token = service_with_blacklist.create_access_token(user_id)
         payload = await service_with_blacklist.verify(token, "access")
 
@@ -300,9 +292,7 @@ class TestRevokeFamily:
     async def test_without_blacklist_is_noop(self, service: TokenService) -> None:
         await service.revoke_family("some-family", datetime.now(UTC))
 
-    async def test_adds_family_prefix(
-        self, service_with_blacklist: TokenService, blacklist: InMemoryBlacklist
-    ) -> None:
+    async def test_adds_family_prefix(self, service_with_blacklist: TokenService, blacklist: InMemoryBlacklist) -> None:
         await service_with_blacklist.revoke_family("fam-1", datetime.now(UTC) + timedelta(hours=1))
 
         assert await blacklist.is_blacklisted("family:fam-1")

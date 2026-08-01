@@ -31,7 +31,9 @@ class BehavioralEvaluator(BaseEvaluator):
     ) -> dict[str, Any]:
         prompt = self._prompts.build_prompt(
             interview_type=self.PROMPT_TYPE,
-            company=company, role=role, experience_level=experience_level,
+            company=company,
+            role=role,
+            experience_level=experience_level,
             transcript=transcript,
         )
         try:

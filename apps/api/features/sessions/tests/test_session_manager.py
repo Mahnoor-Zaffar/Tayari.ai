@@ -81,10 +81,11 @@ class TestSessionManager:
         assert session.user_id == "user-1"
 
     async def test_create_and_initialize(self, manager: SessionManager):
-        config = {"type": "coding", "company": "Google", "role": "SWE",
-                  "experience_level": "mid-senior"}
+        config = {"type": "coding", "company": "Google", "role": "SWE", "experience_level": "mid-senior"}
         session = await manager.create_session(
-            interview_id="i-1", user_id="u-1", config=config,
+            interview_id="i-1",
+            user_id="u-1",
+            config=config,
         )
         session = await manager.prepare_session(session.session_id)
         assert session.state == SessionState.PREPARING
@@ -93,10 +94,17 @@ class TestSessionManager:
         assert session.transcript is not None
 
     async def test_full_lifecycle(self, manager: SessionManager):
-        config = {"type": "coding", "company": "Google", "role": "SWE",
-                  "experience_level": "mid-senior", "duration_minutes": 30}
+        config = {
+            "type": "coding",
+            "company": "Google",
+            "role": "SWE",
+            "experience_level": "mid-senior",
+            "duration_minutes": 30,
+        }
         session = await manager.create_session(
-            interview_id="i-1", user_id="u-1", config=config,
+            interview_id="i-1",
+            user_id="u-1",
+            config=config,
         )
         session = await manager.prepare_session(session.session_id)
         session = await manager.start_session(session.session_id)
@@ -143,7 +151,8 @@ class TestSessionManager:
 
     async def test_snapshot_includes_state(self, manager: SessionManager):
         session = await manager.create_session(
-            interview_id="i-1", user_id="u-1",
+            interview_id="i-1",
+            user_id="u-1",
             config={"duration_minutes": 30},
         )
         snap = manager.snapshot(session.session_id)

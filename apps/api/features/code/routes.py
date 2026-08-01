@@ -35,6 +35,7 @@ def _check_rate_limit(key: str, max_per_window: int) -> None:
     _rate_limits[key] = [t for t in timestamps if t > window_start]
     if len(_rate_limits[key]) >= max_per_window:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Please slow down.")
     _rate_limits[key].append(now)
 
@@ -52,6 +53,7 @@ async def run_code(
         return success_response(result.model_dump())
     except ValueError as exc:
         from core.errors import ValidationError
+
         raise ValidationError(str(exc))
 
 
@@ -81,6 +83,7 @@ async def get_submission_result(
     result = await service.get_submission_result(submission_id, current_user.id)
     if result is None:
         from core.errors import NotFoundError
+
         raise NotFoundError("Submission not found")
     return success_response(result)
 

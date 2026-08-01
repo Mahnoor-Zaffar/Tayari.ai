@@ -71,5 +71,5 @@ class CodeAnalysisService:
         for i, r in enumerate(results):
             status = "PASS" if r.get("passed") else "FAIL"
             hidden = " (hidden)" if r.get("is_hidden") else ""
-            lines.append(f"  Test {i+1}: {status}{hidden}")
+            lines.append(f"  Test {i + 1}: {status}{hidden}")
         return "\n".join(lines)

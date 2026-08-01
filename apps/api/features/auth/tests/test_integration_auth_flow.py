@@ -51,6 +51,7 @@ class _InMemoryBlacklist(TokenBlacklistProtocol):
     async def is_blacklisted(self, jti: str) -> bool:
         return jti in self._store
 
+
 # ── Fixtures ────────────────────────────────────────────────────────────────
 
 

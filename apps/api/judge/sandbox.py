@@ -33,7 +33,9 @@ def _docker_available() -> bool:
     try:
         proc = subprocess.run(
             ["docker", "info"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         return proc.returncode == 0
     except (subprocess.SubprocessError, FileNotFoundError):
@@ -92,13 +94,23 @@ class Sandbox:
         """
         if cls.USE_DOCKER:
             return await cls._run_docker(
-                source_code, language, test_input,
-                time_limit_s, memory_limit_mb,
-                file_extension, run_command, compile_command,
+                source_code,
+                language,
+                test_input,
+                time_limit_s,
+                memory_limit_mb,
+                file_extension,
+                run_command,
+                compile_command,
             )
         return await cls._run_subprocess(
-            source_code, test_input, time_limit_s, memory_limit_mb,
-            file_extension, run_command, compile_command,
+            source_code,
+            test_input,
+            time_limit_s,
+            memory_limit_mb,
+            file_extension,
+            run_command,
+            compile_command,
         )
 
     @classmethod
@@ -124,35 +136,50 @@ class Sandbox:
 
             image = f"tayari-runner-{language}"
             cmd = [
-                "docker", "run", "--rm",
-                "--network", "none",
+                "docker",
+                "run",
+                "--rm",
+                "--network",
+                "none",
                 "--read-only",
                 "--cap-drop=ALL",
-                "--security-opt", "no-new-privileges",
-                "--pids-limit", "50",
-                "-m", f"{memory_limit_mb}m",
-                "--memory-swap", f"{memory_limit_mb}m",
-                "-v", f"{workdir}:/code:ro",
+                "--security-opt",
+                "no-new-privileges",
+                "--pids-limit",
+                "50",
+                "-m",
+                f"{memory_limit_mb}m",
+                "--memory-swap",
+                f"{memory_limit_mb}m",
+                "-v",
+                f"{workdir}:/code:ro",
                 image,
-                "sh", "-c",
+                "sh",
+                "-c",
                 f"{compile_command + ' && ' if compile_command else ''}{run_command}",
             ]
 
             start = time.time()
             try:
                 proc = subprocess.run(
-                    cmd, input=test_input, capture_output=True,
-                    text=True, timeout=time_limit_s,
+                    cmd,
+                    input=test_input,
+                    capture_output=True,
+                    text=True,
+                    timeout=time_limit_s,
                 )
                 elapsed = int((time.time() - start) * 1000)
                 return SandboxResult(
-                    stdout=proc.stdout, stderr=proc.stderr,
-                    exit_code=proc.returncode, execution_ms=elapsed,
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                    exit_code=proc.returncode,
+                    execution_ms=elapsed,
                 )
             except subprocess.TimeoutExpired:
                 return SandboxResult(
                     stderr="Execution timed out",
-                    exit_code=-1, timed_out=True,
+                    exit_code=-1,
+                    timed_out=True,
                     execution_ms=time_limit_s * 1000,
                 )
 
@@ -181,42 +208,58 @@ class Sandbox:
 
             if compile_command:
                 compile_parts = cls._safe_command(
-                    compile_command, workdir, outdir,
+                    compile_command,
+                    workdir,
+                    outdir,
                 )
                 start = time.time()
                 try:
                     proc = subprocess.run(
-                        compile_parts, capture_output=True, text=True,
-                        timeout=time_limit_s, cwd=str(workdir),
+                        compile_parts,
+                        capture_output=True,
+                        text=True,
+                        timeout=time_limit_s,
+                        cwd=str(workdir),
                     )
                 except subprocess.TimeoutExpired:
                     return SandboxResult(
                         stderr="Compilation timed out",
-                        exit_code=-1, timed_out=True,
+                        exit_code=-1,
+                        timed_out=True,
                     )
                 if proc.returncode != 0:
                     return SandboxResult(
-                        stderr=proc.stderr, exit_code=proc.returncode,
+                        stderr=proc.stderr,
+                        exit_code=proc.returncode,
                     )
 
             run_parts = cls._safe_command(
-                run_command, workdir, outdir,
+                run_command,
+                workdir,
+                outdir,
             )
             start = time.time()
             try:
                 proc = subprocess.run(
-                    run_parts, input=test_input, capture_output=True,
-                    text=True, timeout=time_limit_s, cwd=str(workdir),
+                    run_parts,
+                    input=test_input,
+                    capture_output=True,
+                    text=True,
+                    timeout=time_limit_s,
+                    cwd=str(workdir),
                 )
                 elapsed = int((time.time() - start) * 1000)
                 return SandboxResult(
-                    stdout=proc.stdout, stderr=proc.stderr,
-                    exit_code=proc.returncode, execution_ms=elapsed,
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                    exit_code=proc.returncode,
+                    execution_ms=elapsed,
                 )
             except subprocess.TimeoutExpired:
                 return SandboxResult(
                     stderr="Execution timed out",
-                    exit_code=-1, timed_out=True,
+                    exit_code=-1,
+                    timed_out=True,
                     execution_ms=time_limit_s * 1000,
                 )
 

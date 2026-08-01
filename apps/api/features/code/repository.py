@@ -33,9 +33,7 @@ class CodeRepository:
         return result.scalar_one_or_none()
 
     async def update_submission(self, submission_id: UUID, data: dict) -> bool:
-        result = await self._session.execute(
-            select(Submission).where(Submission.id == submission_id)
-        )
+        result = await self._session.execute(select(Submission).where(Submission.id == submission_id))
         submission = result.scalar_one_or_none()
         if submission is None:
             return False
@@ -52,7 +50,5 @@ class CodeRepository:
         return review
 
     async def get_code_review(self, submission_id: UUID) -> CodeReview | None:
-        result = await self._session.execute(
-            select(CodeReview).where(CodeReview.submission_id == submission_id)
-        )
+        result = await self._session.execute(select(CodeReview).where(CodeReview.submission_id == submission_id))
         return result.scalar_one_or_none()

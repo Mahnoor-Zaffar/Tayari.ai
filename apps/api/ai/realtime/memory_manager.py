@@ -86,10 +86,7 @@ class ConversationMemory:
 
     def get_transcript(self) -> list[dict]:
         """Return only the turn-based transcript for persistence."""
-        return [
-            {"role": m.role, "content": m.content, "timestamp_ms": m.timestamp_ms}
-            for m in self._turns
-        ]
+        return [{"role": m.role, "content": m.content, "timestamp_ms": m.timestamp_ms} for m in self._turns]
 
     def snapshot(self) -> MemorySnapshot:
         """Return a serializable snapshot for pause/reconnect."""

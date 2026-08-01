@@ -42,5 +42,6 @@ async def get_evaluation(
     result = await service.get_evaluation(interview_id)
     if result is None:
         from core.errors import NotFoundError
+
         raise NotFoundError("Evaluation not found")
     return success_response(result)

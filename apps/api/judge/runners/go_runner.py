@@ -17,7 +17,9 @@ class GoRunner(CodeRunner):
         if "package main" not in code:
             code = "package main\n\n" + code
         if "func main" not in code and "func main()" not in code:
-            code += "\n\nfunc main() {\n    var input string\n    fmt.Scanln(&input)\n    fmt.Println(solve(input))\n}\n"
+            code += (
+                "\n\nfunc main() {\n    var input string\n    fmt.Scanln(&input)\n    fmt.Println(solve(input))\n}\n"
+            )
         if "import" not in code and ("fmt" in code or "os" in code):
-            code = code.replace("package main\n", "package main\n\nimport \"fmt\"\n")
+            code = code.replace("package main\n", 'package main\n\nimport "fmt"\n')
         return code

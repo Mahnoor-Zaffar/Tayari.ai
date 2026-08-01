@@ -29,7 +29,9 @@ class OpenAIProvider(AIProvider):
             usage={
                 "prompt_tokens": response.usage.prompt_tokens,
                 "completion_tokens": response.usage.completion_tokens,
-            } if response.usage else None,
+            }
+            if response.usage
+            else None,
         )
 
     async def chat_stream(self, messages, system_prompt=None):

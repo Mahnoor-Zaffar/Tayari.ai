@@ -84,6 +84,3 @@ class TestStateMachine:
         err = InvalidTransitionError(SessionState.IDLE, SessionState.ACTIVE)
         assert "idle" in str(err)
         assert "active" in str(err)
-
-
-
