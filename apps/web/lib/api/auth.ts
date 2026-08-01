@@ -53,6 +53,10 @@ export interface SocialLoginInput {
   access_token: string;
 }
 
+export interface UpdateProfileInput {
+  display_name?: string;
+}
+
 // ── API calls ──────────────────────────────────────────────────────────────
 
 export const authApi = {
@@ -71,6 +75,8 @@ export const authApi = {
   socialLogin: (data: SocialLoginInput) => api.post<AuthResponse>("/auth/social", data),
 
   me: () => api.get<AuthUser>("/users/me"),
+
+  updateProfile: (data: UpdateProfileInput) => api.patch<AuthUser>("/users/me", data),
 
   /** Refresh tokens — uses raw fetch to bypass the API client's 401 interceptor,
    *  avoiding infinite retry when the refresh token itself is expired. */
