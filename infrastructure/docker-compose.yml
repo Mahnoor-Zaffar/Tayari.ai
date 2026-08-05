@@ -1,5 +1,3 @@
-version: "3.9"
-
 name: tayari
 
 services:
@@ -79,8 +77,8 @@ services:
 
   web:
     build:
-      context: ../apps/web
-      dockerfile: Dockerfile.dev
+      context: ..
+      dockerfile: apps/web/Dockerfile.dev
     ports:
       - "3000:3000"
     environment:
@@ -89,10 +87,10 @@ services:
     depends_on:
       - api
     volumes:
-      - ../apps/web:/app
+      - ../apps/web:/app/apps/web
       - /app/node_modules
-      - /app/.next
-    command: pnpm dev
+      - /app/apps/web/.next
+    command: pnpm --filter @tayari/web dev
 
 volumes:
   pgdata:

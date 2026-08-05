@@ -1,14 +1,7 @@
 [build]
   base = "apps/web"
   command = "pnpm install --frozen-lockfile && pnpm --filter @tayari/web build"
-  publish = "apps/web/.next"
+  publish = ".next"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# SPA fallback for client-side routes
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  conditions = {Path = ["/dashboard/*", "/auth/*"]}

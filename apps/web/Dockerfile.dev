@@ -4,10 +4,13 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
-COPY package.json pnpm-lock.yaml ./
-COPY . .
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/package.json
+COPY packages/ packages/
 
 RUN pnpm install --frozen-lockfile --filter @tayari/web
 
+COPY apps/web apps/web
+
 EXPOSE 3000
-CMD ["pnpm", "dev"]
+CMD ["pnpm", "--filter", "@tayari/web", "dev"]
