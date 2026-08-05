@@ -2,15 +2,25 @@
 
 import { memo, useCallback, useRef, useState, useEffect } from "react";
 import {
-  MousePointer2, Square, Circle, Minus, Type, Trash2, Undo2,
-  Download, Palette,
+  MousePointer2,
+  Square,
+  Circle,
+  Minus,
+  Type,
+  Trash2,
+  Undo2,
+  Download,
+  Palette,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type Tool = "select" | "rect" | "circle" | "line" | "text";
 
-interface Point { x: number; y: number }
+interface Point {
+  x: number;
+  y: number;
+}
 
 interface Shape {
   id: string;
@@ -43,7 +53,7 @@ export const Whiteboard = memo(function Whiteboard({ className, onExport }: Whit
   const shapeIdRef = useRef(0);
   const canvasElRef = useRef<HTMLCanvasElement>(null);
 
-  const getPos = useCallback((e: React.MouseEvent<HTMLCanvasElement>): Point => {
+  const getPos = useCallback((e: React.PointerEvent<HTMLCanvasElement>): Point => {
     const canvas = canvasElRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -116,120 +126,147 @@ export const Whiteboard = memo(function Whiteboard({ className, onExport }: Whit
         ctx.setLineDash([]);
       }
     }
-
-    // Draw in-progress shape
-    if (drawing && startPos) {
-      const current = { x: 0, y: 0 }; // will be updated in mousemove
-    }
-  }, [shapes, selectedId, drawing, startPos]);
+  }, [shapes, selectedId]);
 
   useEffect(() => {
     drawShapes();
   }, [drawShapes]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = getPos(e);
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      const pos = getPos(e);
 
-    if (tool === "select") {
-      // Find clicked shape (reverse order)
-      const clicked = [...shapes].reverse().find((s) => {
-        if (s.tool === "text") {
-          return Math.abs(pos.x - s.start.x) < 50 && Math.abs(pos.y - s.start.y) < 15;
-        }
-        const x = Math.min(s.start.x, s.end.x);
-        const y = Math.min(s.start.y, s.end.y);
-        const w = Math.abs(s.end.x - s.start.x);
-        const h = Math.abs(s.end.y - s.start.y);
-        return pos.x >= x && pos.x <= x + w && pos.y >= y && pos.y <= y + h;
-      });
-      setSelectedId(clicked?.id ?? null);
-      return;
-    }
-
-    if (tool === "text") {
-      const id = `shape-${shapeIdRef.current++}`;
-      const newShape: Shape = { id, tool, start: pos, end: pos, color, width };
-      setShapes((prev) => [...prev, newShape]);
-      setSelectedId(id);
-      setTextInput({ pos, value: "" });
-      return;
-    }
-
-    setDrawing(true);
-    setStartPos(pos);
-  }, [tool, getPos, shapes, color, width]);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!drawing || !startPos) return;
-    const pos = getPos(e);
-    const canvas = canvasElRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Redraw with preview
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Grid
-    ctx.fillStyle = "#e5e7eb";
-    for (let x = 0; x < canvas.width; x += 30) {
-      for (let y = 0; y < canvas.height; y += 30) {
-        ctx.beginPath();
-        ctx.arc(x, y, 1, 0, Math.PI * 2);
-        ctx.fill();
+      if (tool === "select") {
+        // Find clicked shape (reverse order)
+        const clicked = [...shapes].reverse().find((s) => {
+          if (s.tool === "text") {
+            return Math.abs(pos.x - s.start.x) < 50 && Math.abs(pos.y - s.start.y) < 15;
+          }
+          const x = Math.min(s.start.x, s.end.x);
+          const y = Math.min(s.start.y, s.end.y);
+          const w = Math.abs(s.end.x - s.start.x);
+          const h = Math.abs(s.end.y - s.start.y);
+          return pos.x >= x && pos.x <= x + w && pos.y >= y && pos.y <= y + h;
+        });
+        setSelectedId(clicked?.id ?? null);
+        return;
       }
-    }
 
-    // Draw all shapes
-    for (const shape of shapes) {
-      ctx.strokeStyle = shape.color;
-      ctx.lineWidth = shape.width;
-      ctx.fillStyle = shape.color + "15";
-      const x = Math.min(shape.start.x, shape.end.x);
-      const y = Math.min(shape.start.y, shape.end.y);
-      const w = Math.abs(shape.end.x - shape.start.x);
-      const h = Math.abs(shape.end.y - shape.start.y);
-      switch (shape.tool) {
-        case "rect": ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h); break;
+      if (tool === "text") {
+        const id = `shape-${shapeIdRef.current++}`;
+        const newShape: Shape = { id, tool, start: pos, end: pos, color, width };
+        setShapes((prev) => [...prev, newShape]);
+        setSelectedId(id);
+        setTextInput({ pos, value: "" });
+        return;
+      }
+
+      setDrawing(true);
+      setStartPos(pos);
+    },
+    [tool, getPos, shapes, color, width],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
+      if (!drawing || !startPos) return;
+      const pos = getPos(e);
+      const canvas = canvasElRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Redraw with preview
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Grid
+      ctx.fillStyle = "#e5e7eb";
+      for (let x = 0; x < canvas.width; x += 30) {
+        for (let y = 0; y < canvas.height; y += 30) {
+          ctx.beginPath();
+          ctx.arc(x, y, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Draw all shapes
+      for (const shape of shapes) {
+        ctx.strokeStyle = shape.color;
+        ctx.lineWidth = shape.width;
+        ctx.fillStyle = shape.color + "15";
+        const x = Math.min(shape.start.x, shape.end.x);
+        const y = Math.min(shape.start.y, shape.end.y);
+        const w = Math.abs(shape.end.x - shape.start.x);
+        const h = Math.abs(shape.end.y - shape.start.y);
+        switch (shape.tool) {
+          case "rect":
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+            break;
+          case "circle": {
+            const cx = (shape.start.x + shape.end.x) / 2;
+            const cy = (shape.start.y + shape.end.y) / 2;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            break;
+          }
+          case "line":
+            ctx.beginPath();
+            ctx.moveTo(shape.start.x, shape.start.y);
+            ctx.lineTo(shape.end.x, shape.end.y);
+            ctx.stroke();
+            break;
+        }
+      }
+
+      // Draw preview
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.fillStyle = color + "15";
+      const x = Math.min(startPos.x, pos.x);
+      const y = Math.min(startPos.y, pos.y);
+      const w = Math.abs(pos.x - startPos.x);
+      const h = Math.abs(pos.y - startPos.y);
+      switch (tool) {
+        case "rect":
+          ctx.fillRect(x, y, w, h);
+          ctx.strokeRect(x, y, w, h);
+          break;
         case "circle": {
-          const cx = (shape.start.x + shape.end.x) / 2;
-          const cy = (shape.start.y + shape.end.y) / 2;
-          ctx.beginPath(); ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          const cx = (startPos.x + pos.x) / 2;
+          const cy = (startPos.y + pos.y) / 2;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
           break;
         }
-        case "line": ctx.beginPath(); ctx.moveTo(shape.start.x, shape.start.y); ctx.lineTo(shape.end.x, shape.end.y); ctx.stroke(); break;
+        case "line":
+          ctx.beginPath();
+          ctx.moveTo(startPos.x, startPos.y);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.stroke();
+          break;
       }
-    }
+    },
+    [drawing, startPos, getPos, shapes, color, width, tool],
+  );
 
-    // Draw preview
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.fillStyle = color + "15";
-    const x = Math.min(startPos.x, pos.x);
-    const y = Math.min(startPos.y, pos.y);
-    const w = Math.abs(pos.x - startPos.x);
-    const h = Math.abs(pos.y - startPos.y);
-    switch (tool) {
-      case "rect": ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h); break;
-      case "circle": {
-        const cx = (startPos.x + pos.x) / 2;
-        const cy = (startPos.y + pos.y) / 2;
-        ctx.beginPath(); ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        break;
-      }
-      case "line": ctx.beginPath(); ctx.moveTo(startPos.x, startPos.y); ctx.lineTo(pos.x, pos.y); ctx.stroke(); break;
-    }
-  }, [drawing, startPos, getPos, shapes, color, width, tool]);
-
-  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!drawing || !startPos) return;
-    const pos = getPos(e);
-    const id = `shape-${shapeIdRef.current++}`;
-    const newShape: Shape = { id, tool: tool as Tool, start: startPos, end: pos, color, width };
-    setShapes((prev) => [...prev, newShape]);
-    setDrawing(false);
-    setStartPos(null);
-  }, [drawing, startPos, getPos, tool, color, width]);
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
+      if (!drawing || !startPos) return;
+      const pos = getPos(e);
+      const id = `shape-${shapeIdRef.current++}`;
+      const newShape: Shape = { id, tool: tool as Tool, start: startPos, end: pos, color, width };
+      setShapes((prev) => [...prev, newShape]);
+      setDrawing(false);
+      setStartPos(null);
+    },
+    [drawing, startPos, getPos, tool, color, width],
+  );
 
   const handleDelete = useCallback(() => {
     if (!selectedId) return;
@@ -264,22 +301,50 @@ export const Whiteboard = memo(function Whiteboard({ className, onExport }: Whit
       return;
     }
     setShapes((prev) =>
-      prev.map((s) =>
-        s.id === selectedId ? { ...s, text: textInput.value } : s
-      )
+      prev.map((s) => (s.id === selectedId ? { ...s, text: textInput.value } : s)),
     );
     setTextInput(null);
   }, [textInput, selectedId]);
 
   return (
-    <div className={cn("flex flex-col overflow-hidden rounded-lg border border-border bg-card", className)}>
+    <div
+      className={cn(
+        "flex flex-col overflow-hidden rounded-lg border border-border bg-card",
+        className,
+      )}
+    >
       {/* Toolbar */}
       <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
-        <ToolButton icon={MousePointer2} active={tool === "select"} onClick={() => setTool("select")} label="Select" />
-        <ToolButton icon={Square} active={tool === "rect"} onClick={() => setTool("rect")} label="Rectangle" />
-        <ToolButton icon={Circle} active={tool === "circle"} onClick={() => setTool("circle")} label="Circle" />
-        <ToolButton icon={Minus} active={tool === "line"} onClick={() => setTool("line")} label="Line" />
-        <ToolButton icon={Type} active={tool === "text"} onClick={() => setTool("text")} label="Text" />
+        <ToolButton
+          icon={MousePointer2}
+          active={tool === "select"}
+          onClick={() => setTool("select")}
+          label="Select"
+        />
+        <ToolButton
+          icon={Square}
+          active={tool === "rect"}
+          onClick={() => setTool("rect")}
+          label="Rectangle"
+        />
+        <ToolButton
+          icon={Circle}
+          active={tool === "circle"}
+          onClick={() => setTool("circle")}
+          label="Circle"
+        />
+        <ToolButton
+          icon={Minus}
+          active={tool === "line"}
+          onClick={() => setTool("line")}
+          label="Line"
+        />
+        <ToolButton
+          icon={Type}
+          active={tool === "text"}
+          onClick={() => setTool("text")}
+          label="Text"
+        />
         <div className="mx-1 h-5 w-px bg-border" />
         <div className="flex items-center gap-0.5">
           {COLORS.map((c) => (
@@ -287,7 +352,10 @@ export const Whiteboard = memo(function Whiteboard({ className, onExport }: Whit
               key={c}
               type="button"
               onClick={() => setColor(c)}
-              className={cn("h-5 w-5 rounded-full border-2", color === c ? "border-foreground" : "border-transparent")}
+              className={cn(
+                "h-5 w-5 rounded-full border-2",
+                color === c ? "border-foreground" : "border-transparent",
+              )}
               style={{ backgroundColor: c }}
               aria-label={`Color ${c}`}
             />
@@ -295,23 +363,55 @@ export const Whiteboard = memo(function Whiteboard({ className, onExport }: Whit
         </div>
         <div className="mx-1 h-5 w-px bg-border" />
         <input
-          type="range" min={1} max={8} value={width}
+          type="range"
+          min={1}
+          max={8}
+          value={width}
           onChange={(e) => setWidth(Number(e.target.value))}
-          className="h-1 w-16" aria-label="Stroke width"
+          className="h-1 w-16"
+          aria-label="Stroke width"
         />
         <div className="ml-auto flex items-center gap-1">
           {selectedId && (
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={handleDelete} aria-label="Delete">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleDelete}
+              aria-label="Delete"
+            >
               <Trash2 className="h-3.5 w-3.5 text-destructive" />
             </Button>
           )}
-          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={handleUndo} aria-label="Undo">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={handleUndo}
+            aria-label="Undo"
+          >
             <Undo2 className="h-3.5 w-3.5" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={handleClear} aria-label="Clear">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={handleClear}
+            aria-label="Clear"
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={handleExport} aria-label="Export PNG">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={handleExport}
+            aria-label="Export PNG"
+          >
             <Download className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -323,18 +423,15 @@ export const Whiteboard = memo(function Whiteboard({ className, onExport }: Whit
           ref={canvasElRef}
           width={800}
           height={600}
-          className="h-full w-full cursor-crosshair"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
+          className="h-full w-full cursor-crosshair touch-none"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
         />
 
         {/* Text input overlay */}
         {textInput && (
-          <div
-            className="absolute"
-            style={{ left: textInput.pos.x, top: textInput.pos.y - 20 }}
-          >
+          <div className="absolute" style={{ left: textInput.pos.x, top: textInput.pos.y - 20 }}>
             <input
               autoFocus
               type="text"
@@ -356,7 +453,12 @@ export const Whiteboard = memo(function Whiteboard({ className, onExport }: Whit
   );
 });
 
-function ToolButton({ icon: Icon, active, onClick, label }: {
+function ToolButton({
+  icon: Icon,
+  active,
+  onClick,
+  label,
+}: {
   icon: React.ComponentType<{ className?: string }>;
   active: boolean;
   onClick: () => void;

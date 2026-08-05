@@ -22,12 +22,10 @@ describe("SubscriptionStatus", () => {
     expect(screen.getByText("Pro")).toBeInTheDocument();
     expect(screen.getByText("active")).toBeInTheDocument();
     expect(screen.getByText(/Renews/)).toBeInTheDocument();
-    expect(screen.getByText("Manage Plan")).toBeInTheDocument();
   });
 
   it("renders free plan fallback", () => {
     render(<SubscriptionStatus subscription={null} isLoading={false} />);
     expect(screen.getByText("No active subscription")).toBeInTheDocument();
-    expect(screen.getByText("Upgrade to Pro")).toBeInTheDocument();
   });
 });

@@ -2,7 +2,7 @@
 
 import { memo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, BookOpen, Mic, Target } from "lucide-react";
+import { BarChart3, Mic } from "lucide-react";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ActionButton } from "@/components/shared/ActionButton";
@@ -16,16 +16,22 @@ export const QuickActions = memo(function QuickActions({ className }: QuickActio
   const router = useRouter();
 
   const actions = [
-    { icon: Mic, label: "New Interview", onClick: useCallback(() => router.push("/dashboard/interview/new"), [router]) },
-    { icon: BarChart3, label: "View Reports", onClick: useCallback(() => router.push("/dashboard/reports"), [router]) },
-    { icon: BookOpen, label: "Practice", onClick: useCallback(() => {}, []) },
-    { icon: Target, label: "Set Goal", onClick: useCallback(() => {}, []) },
+    {
+      icon: Mic,
+      label: "New Interview",
+      onClick: useCallback(() => router.push("/dashboard/interview/new"), [router]),
+    },
+    {
+      icon: BarChart3,
+      label: "View Reports",
+      onClick: useCallback(() => router.push("/dashboard/reports"), [router]),
+    },
   ];
 
   return (
     <section className={cn("space-y-3", className)}>
       <SectionHeader title="Quick Actions" />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3">
         {actions.map((action) => (
           <ActionButton
             key={action.label}

@@ -603,6 +603,35 @@ class TestResetPasswordIntegration:
         assert completed[0]["outcome"] == "success"
 
 
+# ── Account deletion ────────────────────────────────────────────────────────
+
+
+class TestSelfAccountDeletion:
+    REGISTER_BODY = {
+        "email": "delete-me@example.com",
+        "username": "deleteme",
+        "display_name": "Delete Me",
+        "password": "strong-password-123",
+    }
+
+    async def test_delete_account_revokes_access(self, client: AsyncClient) -> None:
+        signup = await client.post("/auth/signup", json=self.REGISTER_BODY)
+        assert signup.status_code == 201
+        token = signup.json()["data"]["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.delete("/users/me", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["success"] is True
+
+        me = await client.get("/users/me", headers=headers)
+        assert me.status_code == 401
+
+    async def test_delete_account_requires_auth(self, client: AsyncClient) -> None:
+        resp = await client.delete("/users/me")
+        assert resp.status_code == 401
+
+
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 

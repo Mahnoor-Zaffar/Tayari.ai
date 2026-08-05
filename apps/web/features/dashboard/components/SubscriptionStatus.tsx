@@ -5,7 +5,6 @@ import { CreditCard } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { SkeletonWidgetCard } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import type { SubscriptionInfo } from "@/features/dashboard/types";
 import { cn } from "@/lib/utils";
 
@@ -70,16 +69,10 @@ export const SubscriptionStatus = memo(function SubscriptionStatus({
               Renews {formatDate(subscription.current_period_end)}
             </p>
           )}
-          <Button variant="outline" size="sm" className="w-full">
-            Manage Plan
-          </Button>
         </div>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">No active subscription</p>
-          <Button variant="default" size="sm" className="w-full">
-            Upgrade to Pro
-          </Button>
         </div>
       )}
     </div>

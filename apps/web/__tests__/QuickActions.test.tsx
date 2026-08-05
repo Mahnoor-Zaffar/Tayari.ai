@@ -12,8 +12,6 @@ describe("QuickActions", () => {
     render(<QuickActions />);
     expect(screen.getByText("New Interview")).toBeInTheDocument();
     expect(screen.getByText("View Reports")).toBeInTheDocument();
-    expect(screen.getByText("Practice")).toBeInTheDocument();
-    expect(screen.getByText("Set Goal")).toBeInTheDocument();
   });
 
   it("renders section header", () => {

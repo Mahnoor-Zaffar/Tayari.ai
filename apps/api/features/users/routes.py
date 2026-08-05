@@ -41,6 +41,15 @@ async def update_current_user(
     return success_response(result)
 
 
+@router.delete("/users/me", summary="Soft-delete the current user's account")
+async def delete_current_user(
+    current_user: CurrentUser = Depends(RoleChecker("user", "admin")),
+    service: UserService = Depends(get_user_service),
+) -> dict:
+    await service.delete_user(current_user.id)
+    return success_response({"deleted": True})
+
+
 # ── Admin: user management ──────────────────────────────────────────────────
 
 

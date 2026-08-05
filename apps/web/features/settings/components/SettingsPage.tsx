@@ -50,6 +50,7 @@ function Section({
 export const SettingsPage = memo(function SettingsPage() {
   const { user, logout } = useAuth();
   const [saved, setSaved] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -63,6 +64,11 @@ export const SettingsPage = memo(function SettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => authApi.deleteAccount(),
+    onSuccess: () => logout(),
   });
 
   if (!user) return null;
@@ -133,9 +139,48 @@ export const SettingsPage = memo(function SettingsPage() {
           This action cannot be undone. All your interviews, evaluations, and data will be
           permanently deleted.
         </p>
-        <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10">
-          Delete Account
-        </Button>
+        {confirmDelete ? (
+          <div className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+            <p className="text-sm font-medium">
+              Are you sure? This permanently deletes your account.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate()}
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Yes, delete my account"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={deleteMutation.isPending}
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+            {deleteMutation.isError && (
+              <p className="text-sm text-destructive">
+                {deleteMutation.error instanceof Error
+                  ? deleteMutation.error.message
+                  : "Failed to delete account. Please try again."}
+              </p>
+            )}
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:bg-destructive/10"
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete Account
+          </Button>
+        )}
       </Section>
     </div>
   );

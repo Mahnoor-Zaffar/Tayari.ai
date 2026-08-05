@@ -78,6 +78,8 @@ export const authApi = {
 
   updateProfile: (data: UpdateProfileInput) => api.patch<AuthUser>("/users/me", data),
 
+  deleteAccount: () => api.delete<void>("/users/me"),
+
   /** Refresh tokens — uses raw fetch to bypass the API client's 401 interceptor,
    *  avoiding infinite retry when the refresh token itself is expired. */
   refresh: async (refreshToken: string): Promise<AuthResponse> => {
