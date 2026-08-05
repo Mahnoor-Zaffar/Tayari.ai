@@ -64,7 +64,7 @@ export function useDeepgramRecognition(
         ws.binaryType = "arraybuffer";
 
         ws.onopen = () => {
-          ws.send(JSON.stringify({ type: "start", language }));
+          ws.send(JSON.stringify({ type: "start", language, token: accessToken ?? "" }));
           wsRef.current = ws;
           reconnectAttemptsRef.current = 0;
           setIsReconnecting(false);

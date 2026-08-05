@@ -8,11 +8,13 @@ from core.errors import (
     AuthorizationError,
     ConflictError,
     NotFoundError,
+    RateLimitedError,
     TokenError,
     success_response,
 )
 from core.logging import get_logger
-from features.auth.dependencies import get_auth_service, get_token_service
+from core.rate_limit import InMemoryRateLimiter, RedisRateLimiter
+from features.auth.dependencies import get_auth_service, get_rate_limiter, get_token_service
 from features.auth.exceptions import (
     EmailAlreadyExistsError,
     InvalidCredentialsError,
@@ -36,6 +38,23 @@ from features.auth.services import AuthenticationService, AuthResult, Registrati
 
 router = APIRouter(tags=["auth"])
 log = get_logger("auth")
+
+# Login brute-force thresholds: per-IP and per-email sliding windows.  The
+# per-email budget is intentionally small so targeted credential stuffing on
+# a single account stalls after a handful of attempts.
+_LOGIN_IP_MAX = 20
+_LOGIN_EMAIL_MAX = 5
+_LOGIN_WINDOW_SECONDS = 900  # 15 minutes
+
+
+def _client_ip(request: Request) -> str:
+    """Best-effort client IP, honouring the leftmost X-Forwarded-For hop."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client is not None:
+        return request.client.host
+    return "unknown"
 
 
 def _format_auth_result(result: AuthResult) -> dict:
@@ -102,7 +121,38 @@ async def login(
     body: LoginRequest,
     request: Request,
     auth_service: AuthenticationService = Depends(get_auth_service),
+    rate_limiter: RedisRateLimiter | InMemoryRateLimiter = Depends(get_rate_limiter),
 ) -> dict:
+    client_ip = _client_ip(request)
+    if not await rate_limiter.check(
+        f"login:ip:{client_ip}",
+        max_requests=_LOGIN_IP_MAX,
+        window_seconds=_LOGIN_WINDOW_SECONDS,
+    ):
+        request.state.audit.log(
+            AuditEvent(
+                AuthEvent.LOGIN_FAILED,
+                email=body.email,
+                outcome="failure",
+                failure_reason="ip_rate_limited",
+                metadata={"client_ip": client_ip},
+            )
+        )
+        raise RateLimitedError("Too many login attempts. Try again later.")
+    if not await rate_limiter.check(
+        f"login:email:{body.email.lower()}",
+        max_requests=_LOGIN_EMAIL_MAX,
+        window_seconds=_LOGIN_WINDOW_SECONDS,
+    ):
+        request.state.audit.log(
+            AuditEvent(
+                AuthEvent.LOGIN_FAILED,
+                email=body.email,
+                outcome="failure",
+                failure_reason="account_rate_limited",
+            )
+        )
+        raise RateLimitedError("Too many login attempts for this account. Try again later.")
     try:
         result = await auth_service.login(body.email, body.password)
     except InvalidCredentialsError:

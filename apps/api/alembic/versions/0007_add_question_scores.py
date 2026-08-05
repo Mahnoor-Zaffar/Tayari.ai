@@ -1,7 +1,7 @@
 """Add question_scores column to evaluations.
 
 Revision ID: 0007
-Revises: 0006
+Revises: 0006b
 Create Date: 2026-07-22 12:00:00.000000
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0007"
-down_revision: str | None = "0006"
+down_revision: str | None = "0006b"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

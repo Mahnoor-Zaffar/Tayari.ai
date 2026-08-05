@@ -17,6 +17,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -35,6 +36,18 @@ from features.interview.schemas import (
 from features.interview.service import InterviewService
 
 router = APIRouter(tags=["interviews"])
+
+_CRLF_RE = re.compile(r"[\r\n\0\x00-\x1f]")
+_DISPOSITION_NAME_RE = re.compile(r'["\\;]')
+
+
+def _safe_disposition_filename(filename: str) -> str:
+    """Strip CRLF / control chars / quotes from a filename used in a header.
+
+    Prevents header injection (CRLF) and malformed ``Content-Disposition``
+    values when the original filename is attacker-controlled.
+    """
+    return _CRLF_RE.sub("", _DISPOSITION_NAME_RE.sub("", filename or "download"))
 
 
 # ── Create ──────────────────────────────────────────────────────────────────
@@ -169,7 +182,7 @@ async def download_resume_file(
     return Response(
         content=content,
         media_type=mime_type,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{_safe_disposition_filename(filename)}"'},
     )
 
 
@@ -226,7 +239,7 @@ async def download_jd_file(
     return Response(
         content=content,
         media_type=mime_type,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{_safe_disposition_filename(filename)}"'},
     )
 
 

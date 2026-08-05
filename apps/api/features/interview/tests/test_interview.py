@@ -23,6 +23,9 @@ from features.interview.schemas import (
     CreateInterviewRequest,
     DeviceCheckRequest,
     InterviewResponse,
+    UploadJobDescriptionRequest,
+    UploadResumeRequest,
+    validate_file_hash,
 )
 from features.interview.service import InterviewService
 from main import app
@@ -602,3 +605,46 @@ class TestInterviewAPI:
         unauth_client = AsyncClient(transport=transport, base_url="http://test/api/v1")
         response = await unauth_client.get("/interviews/options")
         assert response.status_code == 401
+
+
+# ── Schema hardening ─────────────────────────────────────────────────────────
+
+
+class TestFileHashValidation:
+    def test_accepts_valid_sha256_hex(self) -> None:
+        assert validate_file_hash("a" * 64) == "a" * 64
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "../../../etc/passwd",
+            "..",
+            "abc",
+            "A" * 64,
+            ("a" * 63) + "/",
+            "a" * 65,
+            "a" * 64 + "\x00",
+        ],
+    )
+    def test_rejects_traversal_and_non_hex(self, bad: str) -> None:
+        with pytest.raises(ValueError):
+            validate_file_hash(bad)
+
+    def test_upload_resume_rejects_traversal_hash(self) -> None:
+        with pytest.raises(Exception):
+            UploadResumeRequest(
+                original_filename="resume.pdf",
+                mime_type="application/pdf",
+                file_size=100,
+                file_hash="../../etc/passwd",
+            )
+
+    def test_upload_jd_rejects_traversal_hash(self) -> None:
+        with pytest.raises(Exception):
+            UploadJobDescriptionRequest(
+                source="file",
+                original_filename="jd.pdf",
+                mime_type="application/pdf",
+                file_size=100,
+                file_hash="../../etc/passwd",
+            )

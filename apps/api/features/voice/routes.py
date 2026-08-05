@@ -5,9 +5,12 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from core.logging import get_logger
+from features.auth.dependencies import get_token_service
+from features.auth.jwt.service import TokenService
+from features.auth.ws import verify_ws_token
 
 from .deepgram_service import DeepgramProxy
 
@@ -16,18 +19,24 @@ log = get_logger("voice")
 
 
 @router.websocket("/voice/stream")
-async def voice_stream(websocket: WebSocket) -> None:
+async def voice_stream(
+    websocket: WebSocket,
+    token_service: TokenService = Depends(get_token_service),
+) -> None:
     """Real-time speech-to-text via Deepgram streaming API.
 
     Protocol:
     1. Client connects
-    2. Client sends JSON: {"type": "start", "language": "en"}
+    2. Client sends JSON: {"type": "start", "language": "en", "token": "<access_token>"}
     3. Client sends binary audio chunks (PCM 16-bit mono 16kHz)
     4. Server sends JSON results:
        - {"type": "partial", "text": "..."}                          (interim)
        - {"type": "final", "text": "...", "speech_final": true/false} (finalized)
        - {"type": "error", "message": "..."}
     5. Client sends {"type": "stop"} or closes the WebSocket
+
+    Security: the ``start`` message must include a valid access token; the
+    connection is closed with 4401 otherwise.
     """
     await websocket.accept()
     log.info("Voice stream connected")
@@ -47,6 +56,12 @@ async def voice_stream(websocket: WebSocket) -> None:
         if config.get("type") != "start":
             await websocket.send_json({"type": "error", "message": "Expected start message"})
             await websocket.close()
+            return
+
+        token = config.get("token", "")
+        if await verify_ws_token(token_service, token) is None:
+            await websocket.send_json({"type": "error", "message": "Unauthorized"})
+            await websocket.close(code=4401)
             return
 
         language = config.get("language", "en")

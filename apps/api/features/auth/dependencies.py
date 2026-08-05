@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from core.database import get_db
+from core.rate_limit import InMemoryRateLimiter, RedisRateLimiter, rate_limiter
 from features.auth.jwt.config import JWTConfig
 from features.auth.jwt.jti_blacklist import MemoryBlacklist
 from features.auth.jwt.redis_blacklist import RedisBlacklist
@@ -42,3 +43,8 @@ async def get_auth_service(
 
 async def get_token_service() -> TokenService:
     return _token_service
+
+
+def get_rate_limiter() -> RedisRateLimiter | InMemoryRateLimiter:
+    """Return the shared login rate limiter (Redis-backed in production)."""
+    return rate_limiter

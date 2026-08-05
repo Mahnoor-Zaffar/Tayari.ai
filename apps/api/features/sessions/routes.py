@@ -15,7 +15,10 @@ from fastapi.websockets import WebSocketState
 
 from ai.realtime.session_manager import SessionNotFoundError
 from core.errors import NotFoundError, success_response
+from features.auth.dependencies import get_token_service
 from features.auth.guard import CurrentUser, get_current_user
+from features.auth.jwt.service import TokenService
+from features.auth.ws import verify_ws_token
 from features.sessions.dependencies import get_session_service
 from features.sessions.schemas import (
     StartInterviewRequest,
@@ -169,43 +172,85 @@ async def interview_websocket(
     websocket: WebSocket,
     session_id: str,
     service: SessionService = Depends(get_session_service),
+    token_service: TokenService = Depends(get_token_service),
 ) -> None:
     """Real-time WebSocket for interview communication.
 
     Security:
-    - Validates session ownership on connect
-    - Rate limits incoming messages (10/ second)
-    - Sanitizes all user text input
-    - Validates message structure against schema
+    - Requires an authenticated ``session.join`` as the first message;
+      the client must present a valid access token.
+    - Validates session ownership (token subject must own the session).
+    - Rate limits incoming messages (10/second).
+    - Sanitizes all user text input.
+    - Validates message structure against schema.
     """
     await websocket.accept()
 
     session = service.get_session(session_id)
     if session is None:
-        await websocket.accept()
         await _send(websocket, "error", {"code": "SESSION_NOT_FOUND", "message": "Session not found"})
         await websocket.close(code=4004)
         return
 
-    logger.info("WebSocket connected: session=%s", session_id[:8])
+    # First message must be an authenticated join before any other processing.
+    try:
+        raw = await websocket.receive_text()
+        join_msg = WSMessage.model_validate_json(raw)
+    except Exception:
+        await websocket.close(code=4401)
+        return
 
-    await _send(
-        websocket,
-        "session.connected",
-        {
-            "session_id": session_id,
-            "state": session.get("state", "unknown"),
-            "remaining_seconds": session.get("remaining_seconds", 0),
-        },
-    )
-
-    current_question = session.get("current_question")
-    current_question_type = session.get("current_question_type", "initial")
-    if current_question:
+    if join_msg.type != "session.join":
         await _send(
             websocket,
-            "ai.question",
-            {"id": 1, "text": current_question, "type": current_question_type},
+            "error",
+            {"code": "AUTH_REQUIRED", "message": "Send session.join with a valid token first"},
+        )
+        await websocket.close(code=4401)
+        return
+
+    token = join_msg.payload.get("token", "")
+    user_id = await verify_ws_token(token_service, token)
+    if user_id is None:
+        await _send(websocket, "error", {"code": "UNAUTHORIZED", "message": "Invalid or expired token"})
+        await websocket.close(code=4401)
+        return
+
+    if str(session.get("user_id")) != str(user_id):
+        await _send(websocket, "error", {"code": "FORBIDDEN", "message": "Not authorized for this session"})
+        await websocket.close(code=4403)
+        return
+
+    logger.info("WebSocket authenticated: session=%s user=%s", session_id[:8], user_id)
+
+    is_reconnect = join_msg.payload.get("reconnect", False)
+    if is_reconnect:
+        service.record_reconnect(session_id)
+        await _send(
+            websocket,
+            "session.connected",
+            {
+                "session_id": session_id,
+                "state": session.get("state", "unknown"),
+                "remaining_seconds": session.get("remaining_seconds", 0),
+            },
+        )
+        current_question = session.get("current_question")
+        current_question_type = session.get("current_question_type", "initial")
+        if current_question:
+            await _send(
+                websocket,
+                "ai.question",
+                {"id": 1, "text": current_question, "type": current_question_type},
+            )
+    else:
+        await _send(
+            websocket,
+            "session.connected",
+            {
+                "session_id": session_id,
+                "state": "connected",
+            },
         )
 
     heartbeat_task = asyncio.create_task(_heartbeat_sender(websocket, session_id, service))

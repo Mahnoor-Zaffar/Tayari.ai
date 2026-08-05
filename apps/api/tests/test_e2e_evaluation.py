@@ -106,6 +106,11 @@ async def test_full_interview_to_evaluation():
             import websockets
 
             async with websockets.connect(ws_url) as ws:
+                # Authenticate: first message must be session.join with a token
+                join_msg = {"type": "session.join", "payload": {"token": token}}
+                await ws.send(json.dumps(join_msg))
+                messages_sent.append(join_msg)
+
                 # Read initial connection messages
                 for _ in range(3):
                     try:

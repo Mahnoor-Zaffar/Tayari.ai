@@ -57,18 +57,21 @@ class StorageService:
         content_type: str = "application/octet-stream",
     ) -> str:
         """Persist ``content`` at ``key`` and return the storage path."""
+        self._validate_key(key)
         if self._use_s3:
             return await self._store_s3(key, content, content_type)
         return await self._store_local(key, content)
 
     async def retrieve_file(self, key: str) -> bytes | None:
         """Return file content for ``key``, or ``None`` if missing."""
+        self._validate_key(key)
         if self._use_s3:
             return await self._retrieve_s3(key)
         return await self._retrieve_local(key)
 
     async def delete_file(self, key: str) -> None:
         """Remove file at ``key``."""
+        self._validate_key(key)
         if self._use_s3:
             await self._delete_s3(key)
         else:
@@ -100,6 +103,18 @@ class StorageService:
     def build_key(self, user_id: UUID, prefix: str, filename: str) -> str:
         """Build a namespaced object key, e.g. ``users/{user_id}/{prefix}/{filename}``."""
         return f"users/{user_id}/{prefix}/{filename}"
+
+    # ── Key safety ────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _validate_key(key: str) -> None:
+        """Reject keys that could escape the storage root (path traversal).
+
+        Also blocks null bytes and absolute paths so neither the local
+        filesystem nor S3 can be addressed outside the intended namespace.
+        """
+        if not key or key.startswith("/") or "\x00" in key or ".." in key:
+            raise ValueError(f"Invalid storage key: {key!r}")
 
     # ── S3 implementation ─────────────────────────────────────────────────
 

@@ -29,7 +29,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from core.database import Base, get_db
-from features.auth.dependencies import get_auth_service, get_token_service
+from core.rate_limit import InMemoryRateLimiter
+from features.auth.dependencies import get_auth_service, get_rate_limiter, get_token_service
 from features.auth.jwt.config import JWTConfig
 from features.auth.jwt.interfaces import TokenBlacklistProtocol
 from features.auth.jwt.service import TokenService
@@ -117,6 +118,8 @@ async def _override_deps(
     app.dependency_overrides[get_db] = _get_db_override
     app.dependency_overrides[get_auth_service] = lambda: auth_service
     app.dependency_overrides[get_token_service] = lambda: token_service
+    rate_limiter = InMemoryRateLimiter()
+    app.dependency_overrides[get_rate_limiter] = lambda: rate_limiter
     yield
     app.dependency_overrides.clear()
 

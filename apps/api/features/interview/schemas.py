@@ -34,6 +34,22 @@ ALLOWED_MIME_JD = {
 }
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
 
+_SHA256_HEX_RE = r"^[a-f0-9]{64}$"
+
+
+def validate_file_hash(value: str) -> str:
+    """Require a canonical SHA-256 hex digest.
+
+    The hash is used to build filesystem/object keys, so rejecting any value
+    that is not exactly 64 lowercase hex chars also blocks path traversal
+    (``..``, slashes, null bytes) via the hash field.
+    """
+    import re
+
+    if not re.fullmatch(_SHA256_HEX_RE, value):
+        raise ValueError("file_hash must be a 64-character lowercase SHA-256 hex digest")
+    return value
+
 
 # ── Request Models ──────────────────────────────────────────────────────────
 
@@ -79,6 +95,11 @@ class UploadResumeRequest(BaseModel):
             raise ValueError(f"Unsupported file type: {v}. Allowed: PDF, DOCX.")
         return v
 
+    @field_validator("file_hash")
+    @classmethod
+    def validate_hash(cls, v: str) -> str:
+        return validate_file_hash(v)
+
 
 class UploadJobDescriptionRequest(BaseModel):
     """POST /interviews/upload-job-description body.
@@ -92,6 +113,13 @@ class UploadJobDescriptionRequest(BaseModel):
     mime_type: str | None = None
     file_size: int | None = Field(None, ge=1, le=MAX_UPLOAD_SIZE)
     file_hash: str | None = Field(None, min_length=32, max_length=64)
+
+    @field_validator("file_hash")
+    @classmethod
+    def validate_hash(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return validate_file_hash(v)
 
     @model_validator(mode="after")
     def validate_source(self) -> UploadJobDescriptionRequest:

@@ -5,7 +5,8 @@ from uuid import uuid4
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from features.auth.dependencies import get_auth_service
+from core.rate_limit import InMemoryRateLimiter
+from features.auth.dependencies import get_auth_service, get_rate_limiter
 from features.auth.domain.user import User
 from features.auth.exceptions import (
     EmailAlreadyExistsError,
@@ -42,6 +43,8 @@ def client(mock_auth_service: MagicMock, mock_token_service: MagicMock) -> Async
 
     app.dependency_overrides[get_auth_service] = lambda: mock_auth_service
     app.dependency_overrides[get_token_service] = lambda: mock_token_service
+    rate_limiter = InMemoryRateLimiter()
+    app.dependency_overrides[get_rate_limiter] = lambda: rate_limiter
     transport = ASGITransport(app=app)
     client = AsyncClient(transport=transport, base_url="http://test/api/v1")
     yield client
@@ -157,6 +160,11 @@ class TestRegister:
 LOGIN_BODY = {"email": "alice@example.com", "password": "correct-password"}
 
 
+class _BlockedLimiter:
+    async def check(self, key: str, max_requests: int = 10, window_seconds: int = 60) -> bool:
+        return False
+
+
 class TestLogin:
     async def test_returns_200_on_valid_credentials(self, client: AsyncClient, mock_auth_service: MagicMock) -> None:
         user = _make_user()
@@ -213,6 +221,51 @@ class TestLogin:
         resp = await client.post("/auth/login", json={"email": "a@b.com"})
 
         assert resp.status_code == 422
+
+    async def test_returns_429_when_rate_limited(self, client: AsyncClient, mock_auth_service: MagicMock) -> None:
+        app.dependency_overrides[get_rate_limiter] = lambda: _BlockedLimiter()
+
+        resp = await client.post("/auth/login", json=LOGIN_BODY)
+
+        assert resp.status_code == 429
+        body = resp.json()
+        assert body["success"] is False
+        assert body["error"]["code"] == "RATE_LIMITED"
+        mock_auth_service.login.assert_not_awaited()
+
+    async def test_allows_up_to_email_budget_then_blocks(
+        self, client: AsyncClient, mock_auth_service: MagicMock
+    ) -> None:
+        user = _make_user()
+        mock_auth_service.login.return_value = AuthResult(
+            user=user,
+            access_token="access-token",
+            refresh_token="refresh-token",
+        )
+
+        for _ in range(5):
+            resp = await client.post("/auth/login", json=LOGIN_BODY)
+            assert resp.status_code == 200
+
+        resp = await client.post("/auth/login", json=LOGIN_BODY)
+        assert resp.status_code == 429
+        assert resp.json()["error"]["code"] == "RATE_LIMITED"
+
+    async def test_blocks_by_email_independently(self, client: AsyncClient, mock_auth_service: MagicMock) -> None:
+        user = _make_user()
+        mock_auth_service.login.return_value = AuthResult(
+            user=user,
+            access_token="access-token",
+            refresh_token="refresh-token",
+        )
+
+        for _ in range(5):
+            resp = await client.post("/auth/login", json=LOGIN_BODY)
+            assert resp.status_code == 200
+
+        other = {"email": "bob@example.com", "password": "whatever"}
+        resp = await client.post("/auth/login", json=other)
+        assert resp.status_code == 200
 
 
 REFRESH_BODY = {"refresh_token": "valid-refresh-token"}

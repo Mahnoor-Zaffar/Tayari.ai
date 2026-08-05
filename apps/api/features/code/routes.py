@@ -11,7 +11,7 @@ import time
 from collections import defaultdict
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 
 from core.errors import success_response
 from features.auth.guard import CurrentUser, get_current_user
@@ -43,11 +43,10 @@ def _check_rate_limit(key: str, max_per_window: int) -> None:
 @router.post("/run", summary="Execute code once")
 async def run_code(
     request: RunCodeRequest,
-    req: Request,
+    current_user: CurrentUser = Depends(get_current_user),
     service: CodeExecutionService = Depends(get_code_service),
 ) -> dict:
-    client_key = req.client.host if req.client else "unknown"
-    _check_rate_limit(f"run:{client_key}", 10)
+    _check_rate_limit(f"run:{current_user.id}", 10)
     try:
         result = await service.run_code(request.language, request.source_code, request.test_input)
         return success_response(result.model_dump())
