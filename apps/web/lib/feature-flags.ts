@@ -10,14 +10,13 @@
  *
  * Usage (client context):
  *   import { useFeatureFlag, FeatureFlag } from "@/lib/feature-flags"
- *   const show = useFeatureFlag("billing")
+ *   const show = useFeatureFlag("analytics")
  *   <FeatureFlag name="reports"><ReportsPanel /></FeatureFlag>
  */
 
 export interface FeatureFlagMap {
   interviews: boolean;
   reports: boolean;
-  billing: boolean;
   settings: boolean;
   newInterview: boolean;
   analytics: boolean;
@@ -35,7 +34,6 @@ function env(name: string, fallback: boolean): boolean {
 export const featureFlags: FeatureFlagMap = {
   interviews: env("interviews", false),
   reports: env("reports", false),
-  billing: env("billing", false),
   settings: env("settings", false),
   newInterview: env("newInterview", true),
   analytics: env("analytics", true),

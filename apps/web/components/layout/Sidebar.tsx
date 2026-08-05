@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
-  CreditCard,
   LayoutDashboard,
   Mic,
   Settings,
@@ -26,7 +25,7 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string;
-  flag?: "interviews" | "reports" | "billing" | "settings" | "analytics";
+  flag?: "interviews" | "reports" | "settings" | "analytics";
   adminOnly?: boolean;
 }
 
@@ -35,7 +34,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/interview/new", label: "New Interview", icon: Mic },
   { href: "/dashboard/analytics", label: "Analytics", icon: TrendingUp, flag: "analytics" },
   { href: "/dashboard/reports", label: "Reports", icon: BarChart3 },
-  { href: "/dashboard/billing", label: "Billing", icon: CreditCard, flag: "billing" },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, flag: "settings" },
   { href: "/dashboard/admin", label: "Admin", icon: Shield, adminOnly: true },
 ];
@@ -50,7 +48,6 @@ export const Sidebar = memo(function Sidebar({ className, onNavClick }: SidebarP
   const { user, isAdmin } = useAuth();
   const showInterviews = useFeatureFlag("interviews");
   const showReports = useFeatureFlag("reports");
-  const showBilling = useFeatureFlag("billing");
   const showSettings = useFeatureFlag("settings");
   const showAnalytics = useFeatureFlag("analytics");
 
@@ -73,7 +70,6 @@ export const Sidebar = memo(function Sidebar({ className, onNavClick }: SidebarP
           const flagMap = {
             interviews: showInterviews,
             reports: showReports,
-            billing: showBilling,
             settings: showSettings,
             analytics: showAnalytics,
           };

@@ -70,6 +70,11 @@ def _make_mock_service() -> AsyncMock:
         "session_id": "test-session-uuid",
         "state": "active",
     }
+    mock.get_session.return_value = {
+        "session_id": "test-session-uuid",
+        "interview_id": "test-interview-uuid",
+        "user_id": "test-user-uuid",
+    }
     return mock
 
 
@@ -164,3 +169,19 @@ async def test_reconnect_check_returns_status():
     data = response.json()["data"]
     assert "can_reconnect" in data
     assert data["can_reconnect"] is True
+
+
+@pytest.mark.asyncio
+async def test_end_session_schedules_evaluation_with_interview_id():
+    """Regression: ending a session must schedule evaluation with the
+    interview_id (not the session_id), matching schedule_evaluation's signature.
+    """
+    from unittest.mock import patch
+
+    from main import app
+
+    with patch("features.sessions.routes.schedule_evaluation", new=AsyncMock()) as mock_schedule:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post("/api/v1/sessions/test-session-uuid/end", json={})
+    assert response.status_code == 200
+    mock_schedule.assert_awaited_once_with("test-interview-uuid", "00000000-0000-0000-0000-000000000001")

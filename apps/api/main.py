@@ -136,7 +136,6 @@ app.openapi_tags = [
     {"name": "auth", "description": "Registration, login, token refresh, email verification, password reset"},
     {"name": "interviews", "description": "Interview lifecycle: create, configure, upload resume/JD, validate"},
     {"name": "evaluations", "description": "Post-interview evaluation: trigger, list, retrieve scores and verdicts"},
-    {"name": "billing", "description": "Subscription management and Stripe checkout (stubbed)"},
     {"name": "health", "description": "Service health check endpoint"},
 ]
 
@@ -257,7 +256,6 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 from features.analytics.router import router as analytics_router  # noqa: E402
 from features.auth.routes import router as auth_router  # noqa: E402
-from features.billing.routes import router as billing_router  # noqa: E402
 from features.code.routes import router as code_router  # noqa: E402
 from features.dashboard.router import router as dashboard_router  # noqa: E402
 from features.health.routes import router as health_router  # noqa: E402
@@ -270,7 +268,6 @@ from features.voice.routes import router as voice_router  # noqa: E402
 
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
-app.include_router(billing_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(health_router, prefix="")
 app.include_router(interview_router, prefix="/api/v1")
