@@ -2,7 +2,7 @@
 
 Mirrors the pattern from ``features/auth/tests/conftest.py`` and
 ``features/analytics/tests/test_analytics.py``: in-memory SQLite for
-speed, JSONB ( silly patch for SQLite compatibility, and seeded user.
+speed, with a seeded user.
 """
 
 from __future__ import annotations
@@ -11,22 +11,11 @@ import uuid
 from collections.abc import AsyncGenerator
 
 import pytest_asyncio
-from sqlalchemy import JSON, event
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from core.database import Base
 from features.auth.models import User as UserORM
 from features.interview.repository import InterviewRepository
-
-
-@event.listens_for(Base.metadata, "before_create")
-def _compile_jsonb_for_sqlite(target, connection, **kw):
-    if connection.engine.dialect.name == "sqlite":
-        for table in target.tables.values():
-            for column in table.columns:
-                if isinstance(column.type, JSONB):
-                    column.type = JSON()
 
 
 @pytest_asyncio.fixture(name="db_engine")

@@ -6,10 +6,10 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.database import Base
+from core.database import Base, JSONBType
 
 
 def _now() -> datetime:
@@ -32,7 +32,7 @@ class Submission(Base):
     status: Mapped[str] = mapped_column(String(20), default="queued", index=True)
     # queued → compiling → running → judging → completed | error | timeout
 
-    test_results: Mapped[dict] = mapped_column(JSONB, default=list)
+    test_results: Mapped[dict] = mapped_column(JSONBType, default=list)
     passed_count: Mapped[int] = mapped_column(Integer, default=0)
     total_count: Mapped[int] = mapped_column(Integer, default=0)
     execution_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -59,10 +59,10 @@ class CodeReview(Base):
         UUID(as_uuid=True), ForeignKey("interviews.id"), nullable=False, index=True
     )
     overall_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    dimensions: Mapped[dict] = mapped_column(JSONB, default=dict)
-    strengths: Mapped[dict] = mapped_column(JSONB, default=list)
-    improvements: Mapped[dict] = mapped_column(JSONB, default=list)
-    line_comments: Mapped[dict] = mapped_column(JSONB, default=list)
+    dimensions: Mapped[dict] = mapped_column(JSONBType, default=dict)
+    strengths: Mapped[dict] = mapped_column(JSONBType, default=list)
+    improvements: Mapped[dict] = mapped_column(JSONBType, default=list)
+    line_comments: Mapped[dict] = mapped_column(JSONBType, default=list)
     raw_review: Mapped[str | None] = mapped_column(Text, nullable=True)
     model_used: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")

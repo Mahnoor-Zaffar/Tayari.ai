@@ -2,10 +2,10 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.database import Base
+from core.database import Base, JSONBType
 
 
 def _now() -> datetime:
@@ -20,11 +20,11 @@ class Evaluation(Base):
         UUID(as_uuid=True), ForeignKey("interviews.id"), nullable=False, unique=True
     )
     overall_score: Mapped[float] = mapped_column(nullable=True)
-    dimension_scores: Mapped[dict] = mapped_column(JSONB, default=dict)
-    question_scores: Mapped[dict] = mapped_column(JSONB, default=list)
+    dimension_scores: Mapped[dict] = mapped_column(JSONBType, default=dict)
+    question_scores: Mapped[dict] = mapped_column(JSONBType, default=list)
     hire_verdict: Mapped[str] = mapped_column(String(20), nullable=True)
-    strengths: Mapped[dict] = mapped_column(JSONB, default=list)
-    improvements: Mapped[dict] = mapped_column(JSONB, default=list)
+    strengths: Mapped[dict] = mapped_column(JSONBType, default=list)
+    improvements: Mapped[dict] = mapped_column(JSONBType, default=list)
     delta_vs_last: Mapped[float] = mapped_column(nullable=True)
     raw_evaluation: Mapped[str] = mapped_column(Text, nullable=True)
     model_used: Mapped[str] = mapped_column(String(50), nullable=True)

@@ -17,8 +17,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import JSON, event
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from core.database import Base
@@ -37,19 +35,6 @@ from features.dashboard.service import DashboardService
 from main import app
 
 # Note: time-series analytics tests moved to ``features/analytics/tests/test_analytics.py``
-
-# ── SQLite JSONB compatibility ──────────────────────────────────────────────
-
-
-@event.listens_for(Base.metadata, "before_create")
-def _compile_jsonb_for_sqlite(target, connection, **kw):
-    """Swap PostgreSQL JSONB for generic JSON when running against SQLite."""
-    if connection.engine.dialect.name == "sqlite":
-        for table in target.tables.values():
-            for column in table.columns:
-                if isinstance(column.type, JSONB):
-                    column.type = JSON()
-
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 

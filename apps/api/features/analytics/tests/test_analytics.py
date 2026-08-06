@@ -16,8 +16,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import JSON, event
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from core.database import Base
@@ -27,15 +25,6 @@ from features.analytics.schemas import AnalyticsResponse
 from features.analytics.service import AnalyticsService
 from features.auth.guard import CurrentUser, get_current_user
 from main import app
-
-
-@event.listens_for(Base.metadata, "before_create")
-def _compile_jsonb_for_sqlite(target, connection, **kw):
-    if connection.engine.dialect.name == "sqlite":
-        for table in target.tables.values():
-            for column in table.columns:
-                if isinstance(column.type, JSONB):
-                    column.type = JSON()
 
 
 def _ts(days_ago: int, **kwargs) -> datetime:

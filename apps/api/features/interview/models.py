@@ -14,10 +14,10 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.database import Base
+from core.database import Base, JSONBType
 
 
 def _now() -> datetime:
@@ -59,8 +59,8 @@ class Interview(Base):
     )
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     timer_remaining: Mapped[int] = mapped_column(Integer, default=1800)
-    transcript: Mapped[list] = mapped_column(JSONB, default=list)
-    ai_messages: Mapped[list] = mapped_column(JSONB, default=list)
+    transcript: Mapped[list] = mapped_column(JSONBType, default=list)
+    ai_messages: Mapped[list] = mapped_column(JSONBType, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -99,7 +99,7 @@ class InterviewConfiguration(Base):
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     custom_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     system_design_problem: Mapped[str | None] = mapped_column(Text, nullable=True)
-    device_checks: Mapped[dict] = mapped_column(JSONB, default=dict)
+    device_checks: Mapped[dict] = mapped_column(JSONBType, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     interview = relationship("Interview", back_populates="configuration", foreign_keys=[Interview.configuration_id])
