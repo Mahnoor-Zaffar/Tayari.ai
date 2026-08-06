@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from features.code.models import CodeReview, Submission
+from features.code.models import CodeReview, Problem, Submission
 
 
 class CodeRepository:
@@ -15,6 +15,14 @@ class CodeRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def list_problems(self) -> list[Problem]:
+        result = await self._session.execute(select(Problem).order_by(Problem.created_at))
+        return list(result.scalars().all())
+
+    async def get_problem(self, problem_id: UUID) -> Problem | None:
+        result = await self._session.execute(select(Problem).where(Problem.id == problem_id))
+        return result.scalar_one_or_none()
 
     async def create_submission(self, data: dict) -> Submission:
         submission = Submission(**data)

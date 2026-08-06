@@ -33,6 +33,7 @@ class SubmitCodeRequest(BaseModel):
     language: str = Field(min_length=1, max_length=20)
     source_code: str = Field(min_length=1, max_length=50000)
     test_inputs: list[str] = Field(default_factory=list)
+    problem_id: UUID | None = None
 
 
 class SubmitCodeResponse(BaseModel):
@@ -73,3 +74,44 @@ class LanguageInfo(BaseModel):
     id: str
     name: str
     extension: str
+
+
+class ProblemSummary(BaseModel):
+    """Lightweight problem info for listing."""
+
+    id: UUID
+    slug: str
+    title: str
+    difficulty: str
+
+
+class Example(BaseModel):
+    input: str
+    output: str
+    explanation: str | None = None
+
+
+class VisibleTestCase(BaseModel):
+    """A non-hidden test case shown to the user (with its expected output)."""
+
+    id: str
+    input: str
+    expected_output: str
+
+
+class ProblemDetail(BaseModel):
+    """Full problem details for the editor panel.
+
+    Hidden test cases are never included — they are only evaluated server-side.
+    """
+
+    id: UUID
+    slug: str
+    title: str
+    difficulty: str
+    description: str
+    examples: list[Example] = []
+    constraints: list[str] = []
+    test_cases: list[VisibleTestCase] = []
+    total_test_count: int = 0
+    hidden_test_count: int = 0

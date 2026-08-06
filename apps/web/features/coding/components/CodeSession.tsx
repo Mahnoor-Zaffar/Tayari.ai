@@ -30,42 +30,77 @@ export function CodeSession({ interviewId, className }: CodeSessionProps) {
   });
   const languages = langsData?.languages ?? [];
 
+  const { data: problemsData } = useQuery({
+    queryKey: ["code", "problems"],
+    queryFn: () => codingApi.listProblems(),
+    staleTime: 300_000,
+  });
+  const problems = problemsData?.problems ?? [];
+  const activeProblemId = problems[0]?.id;
+
+  const { data: problemData } = useQuery({
+    queryKey: ["code", "problem", activeProblemId],
+    queryFn: () =>
+      activeProblemId ? codingApi.getProblem(activeProblemId) : Promise.resolve(null),
+    enabled: Boolean(activeProblemId),
+    staleTime: 300_000,
+  });
+  const problem = problemData ?? null;
+
   const [language, setLanguage] = useState("python");
   const [code, setCodeState] = useState(() => {
-    try { return localStorage.getItem(`${STORAGE_KEY_PREFIX}${interviewId}`) || CODE_TEMPLATES["python"] || ""; }
-    catch { return CODE_TEMPLATES["python"] || ""; }
+    try {
+      return (
+        localStorage.getItem(`${STORAGE_KEY_PREFIX}${interviewId}`) ||
+        CODE_TEMPLATES["python"] ||
+        ""
+      );
+    } catch {
+      return CODE_TEMPLATES["python"] || "";
+    }
   });
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const setCode = useCallback((val: string) => {
-    setCodeState(val);
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      try { localStorage.setItem(`${STORAGE_KEY_PREFIX}${interviewId}`, val); } catch { /* ignore */ }
-    }, 500);
-  }, [interviewId]);
+  const setCode = useCallback(
+    (val: string) => {
+      setCodeState(val);
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}${interviewId}`, val);
+        } catch {
+          /* ignore */
+        }
+      }, 500);
+    },
+    [interviewId],
+  );
 
   const [copied, setCopied] = useState(false);
   const [testInput, setTestInput] = useState("");
   const [useCustomInput, setUseCustomInput] = useState(false);
 
-  const { output, submission, isRunning, isSubmitting, run, submit, clearOutput } = useCodeExecution(interviewId);
+  const { output, submission, isRunning, isSubmitting, run, submit, clearOutput } =
+    useCodeExecution(interviewId);
   const busy = isRunning || isSubmitting;
 
-  const handleLanguageChange = useCallback((newLang: string) => {
-    setLanguage(newLang);
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}${interviewId}-${newLang}`);
-    setCodeState(saved || CODE_TEMPLATES[newLang] || "");
-  }, [interviewId]);
+  const handleLanguageChange = useCallback(
+    (newLang: string) => {
+      setLanguage(newLang);
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}${interviewId}-${newLang}`);
+      setCodeState(saved || CODE_TEMPLATES[newLang] || "");
+    },
+    [interviewId],
+  );
 
   const handleRun = useCallback(() => {
     run(language, code, useCustomInput ? testInput : "");
   }, [run, language, code, useCustomInput, testInput]);
 
   const handleSubmit = useCallback(() => {
-    submit(language, code);
-  }, [submit, language, code]);
+    submit(language, code, activeProblemId);
+  }, [submit, language, code, activeProblemId]);
 
   const handleReset = useCallback(() => {
     setCodeState(CODE_TEMPLATES[language] || "");
@@ -73,25 +108,67 @@ export function CodeSession({ interviewId, className }: CodeSessionProps) {
   }, [language, clearOutput]);
 
   const handleCopy = useCallback(async () => {
-    try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
   }, [code]);
 
   return (
-    <div className={cn("flex h-full flex-col overflow-hidden rounded-xl border border-border bg-background", className)}>
+    <div
+      className={cn(
+        "flex h-full flex-col overflow-hidden rounded-xl border border-border bg-background",
+        className,
+      )}
+    >
       {/* Toolbar */}
       <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
         <div className="flex items-center gap-2">
-          <LanguageSelector value={language} onChange={handleLanguageChange} languages={languages} disabled={busy} />
+          <LanguageSelector
+            value={language}
+            onChange={handleLanguageChange}
+            languages={languages}
+            disabled={busy}
+          />
           <div className="hidden h-4 w-px bg-border sm:block" />
-          <Button type="button" variant="ghost" size="sm" onClick={handleCopy} disabled={busy} aria-label="Copy code">
-            {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleCopy}
+            disabled={busy}
+            aria-label="Copy code"
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-success" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
           </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={handleReset} disabled={busy} aria-label="Reset to template">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            disabled={busy}
+            aria-label="Reset to template"
+          >
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
         </div>
         <ExecutionStatus
-          status={isRunning ? "running" : isSubmitting ? "submitting" : output || submission ? "completed" : "idle"}
+          status={
+            isRunning
+              ? "running"
+              : isSubmitting
+                ? "submitting"
+                : output || submission
+                  ? "completed"
+                  : "idle"
+          }
           passedCount={submission?.passed_count}
           totalCount={submission?.total_count}
           executionMs={output?.execution_ms ?? submission?.execution_ms ?? undefined}
@@ -102,7 +179,7 @@ export function CodeSession({ interviewId, className }: CodeSessionProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* Problem Panel (left sidebar on desktop) */}
         <div className="hidden w-80 flex-shrink-0 overflow-y-auto border-r border-border sm:block">
-          <ProblemPanel />
+          <ProblemPanel problem={problem} />
         </div>
 
         {/* Editor */}
@@ -115,9 +192,20 @@ export function CodeSession({ interviewId, className }: CodeSessionProps) {
 
       {/* Bottom panel: Console + Test cases */}
       <div className="grid grid-cols-1 border-t border-border sm:grid-cols-2">
-        <ConsoleOutput output={output} submission={submission} isRunning={isRunning} isSubmitting={isSubmitting} className="h-48 sm:h-40" />
+        <ConsoleOutput
+          output={output}
+          submission={submission}
+          isRunning={isRunning}
+          isSubmitting={isSubmitting}
+          className="h-48 sm:h-40"
+        />
         <div className="flex flex-col border-t border-border sm:border-t-0 sm:border-l">
-          <TestCasePanel testResults={submission?.test_results} totalCount={submission?.total_count} passedCount={submission?.passed_count} className="px-3 py-2" />
+          <TestCasePanel
+            testResults={submission?.test_results}
+            totalCount={submission?.total_count}
+            passedCount={submission?.passed_count}
+            className="px-3 py-2"
+          />
           <div className="flex-1 border-t border-border p-2">
             <div className="flex items-center gap-2">
               <input
@@ -129,7 +217,12 @@ export function CodeSession({ interviewId, className }: CodeSessionProps) {
                 aria-label="Custom test input"
               />
               <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <input type="checkbox" checked={useCustomInput} onChange={(e) => setUseCustomInput(e.target.checked)} className="rounded" />
+                <input
+                  type="checkbox"
+                  checked={useCustomInput}
+                  onChange={(e) => setUseCustomInput(e.target.checked)}
+                  className="rounded"
+                />
                 Custom
               </label>
             </div>

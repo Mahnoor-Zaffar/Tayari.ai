@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import time
 import uuid
+from datetime import UTC, datetime
 from uuid import UUID
 
 from ai.code_review import get_code_review_service
@@ -64,14 +64,26 @@ class CodeExecutionService:
         language: str,
         source_code: str,
         test_inputs: list[str] | None = None,
+        problem_id: UUID | None = None,
     ) -> dict:
         """Submit code for the full test suite.
 
         Persists the submission, runs each test case, and returns results.
+        When ``problem_id`` is provided, the problem's test cases (including
+        hidden ones) are used instead of ``test_inputs``.
         """
         config = get_language(language)
         if config is None:
             raise ValueError(f"Unsupported language: {language}")
+
+        problem_test_cases: list[dict] | None = None
+        if problem_id is not None:
+            problem = await self._repo.get_problem(problem_id)
+            if problem is None:
+                raise ValueError("Unknown problem")
+            problem_test_cases = problem.test_cases or []
+            if not problem_test_cases:
+                raise ValueError("Problem has no test cases")
 
         submission_id = uuid.uuid4()
         await self._repo.create_submission(
@@ -79,6 +91,7 @@ class CodeExecutionService:
                 "id": submission_id,
                 "interview_id": interview_id,
                 "user_id": user_id,
+                "problem_id": problem_id,
                 "language": language,
                 "source_code": source_code,
                 "status": "running",
@@ -86,7 +99,10 @@ class CodeExecutionService:
         )
 
         log_execution(str(submission_id), language, "started")
-        test_inputs = test_inputs or [""]
+        if problem_test_cases is not None:
+            test_inputs = [tc["input"] for tc in problem_test_cases]
+        else:
+            test_inputs = test_inputs or [""]
 
         results: list[SandboxResult] = []
         compiler_output = ""
@@ -108,10 +124,22 @@ class CodeExecutionService:
                 compiler_output = result.stderr
 
         # Judge test results
-        test_case_dicts = [
-            {"id": str(i), "input": ti, "expected_output": "", "is_hidden": False} for i, ti in enumerate(test_inputs)
-        ]
-        actual_outputs = {str(i): r.stdout for i, r in enumerate(results)}
+        if problem_test_cases is not None:
+            test_case_dicts = [
+                {
+                    "id": tc["id"],
+                    "input": tc["input"],
+                    "expected_output": tc["expected_output"],
+                    "is_hidden": tc.get("is_hidden", False),
+                }
+                for tc in problem_test_cases
+            ]
+        else:
+            test_case_dicts = [
+                {"id": str(i), "input": ti, "expected_output": "", "is_hidden": False}
+                for i, ti in enumerate(test_inputs)
+            ]
+        actual_outputs = {tc["id"]: results[i].stdout for i, tc in enumerate(test_case_dicts)}
 
         judged = judge_test_cases(test_case_dicts, actual_outputs)
 
@@ -130,7 +158,7 @@ class CodeExecutionService:
                 "stdout": "\n".join(r.stdout for r in results if r.stdout).strip(),
                 "stderr": stderr or None,
                 "compiler_output": compiler_output or None,
-                "completed_at": time.time(),
+                "completed_at": datetime.now(UTC),
             },
         )
 
@@ -218,3 +246,33 @@ class CodeExecutionService:
 
     def get_languages(self) -> list[dict]:
         return get_supported_languages()
+
+    async def list_problems(self) -> list[dict]:
+        problems = await self._repo.list_problems()
+        return [{"id": str(p.id), "slug": p.slug, "title": p.title, "difficulty": p.difficulty} for p in problems]
+
+    async def get_problem(self, problem_id: UUID) -> dict | None:
+        problem = await self._repo.get_problem(problem_id)
+        if problem is None:
+            return None
+        test_cases = problem.test_cases or []
+        return {
+            "id": str(problem.id),
+            "slug": problem.slug,
+            "title": problem.title,
+            "difficulty": problem.difficulty,
+            "description": problem.description,
+            "examples": problem.examples or [],
+            "constraints": problem.constraints or [],
+            "test_cases": [
+                {
+                    "id": tc["id"],
+                    "input": tc["input"],
+                    "expected_output": tc["expected_output"],
+                }
+                for tc in test_cases
+                if not tc.get("is_hidden", False)
+            ],
+            "total_test_count": len(test_cases),
+            "hidden_test_count": sum(1 for tc in test_cases if tc.get("is_hidden", False)),
+        }

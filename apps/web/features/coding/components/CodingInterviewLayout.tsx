@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Play, Send, RotateCcw, Copy, Check, PauseIcon, Square } from "lucide-react";
+import { Play, Send, RotateCcw, Copy, Check, PauseIcon, Square, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { codingApi } from "@/features/coding/api/coding";
@@ -10,6 +10,7 @@ import { useCodeExecution } from "@/features/coding/hooks/use-code-execution";
 import { useInterviewSession } from "@/features/interview/hooks/use-interview-session";
 import { CODE_TEMPLATES } from "@/features/coding/lib/code-templates";
 import { CodeEditor } from "./CodeEditor";
+import { ProblemPanel } from "./ProblemPanel";
 import { ConsoleOutput } from "./ConsoleOutput";
 import { ExecutionStatus } from "./ExecutionStatus";
 import { TestCasePanel } from "./TestCasePanel";
@@ -52,6 +53,24 @@ export function CodingInterviewLayout({
     staleTime: 300_000,
   });
   const languages = langsData?.languages ?? [];
+
+  const { data: problemsData } = useQuery({
+    queryKey: ["code", "problems"],
+    queryFn: () => codingApi.listProblems(),
+    staleTime: 300_000,
+  });
+  const problems = problemsData?.problems ?? [];
+  const activeProblemId = problems[0]?.id;
+
+  const { data: problemData } = useQuery({
+    queryKey: ["code", "problem", activeProblemId],
+    queryFn: () =>
+      activeProblemId ? codingApi.getProblem(activeProblemId) : Promise.resolve(null),
+    enabled: Boolean(activeProblemId),
+    staleTime: 300_000,
+  });
+  const problem = problemData ?? null;
+  const [showProblem, setShowProblem] = useState(true);
 
   const initialLanguage =
     wizardLanguage && CODE_TEMPLATES[wizardLanguage] ? wizardLanguage : "python";
@@ -142,8 +161,8 @@ export function CodingInterviewLayout({
   }, [codeExec, language, code, useCustomInput, testInput]);
 
   const handleSubmit = useCallback(() => {
-    codeExec.submit(language, code);
-  }, [codeExec, language, code]);
+    codeExec.submit(language, code, activeProblemId);
+  }, [codeExec, language, code, activeProblemId]);
 
   const handleReset = useCallback(() => {
     setCodeState(CODE_TEMPLATES[language] || "");
@@ -178,6 +197,17 @@ export function CodingInterviewLayout({
             disabled={busy}
           />
           <div className="hidden h-4 w-px bg-border sm:block" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowProblem((v) => !v)}
+            aria-label="Toggle problem statement"
+            aria-pressed={showProblem}
+            className={cn(showProblem && "bg-muted")}
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+          </Button>
           <Button
             type="button"
             variant="ghost"
@@ -251,8 +281,13 @@ export function CodingInterviewLayout({
         </div>
       </header>
 
-      {/* Main: Chat sidebar + Editor */}
+      {/* Main: Problem + Chat sidebar + Editor */}
       <div className="flex flex-1 overflow-hidden">
+        {showProblem && (
+          <div className="w-80 flex-shrink-0 overflow-hidden border-r border-border hidden md:block">
+            <ProblemPanel problem={problem} className="h-full" />
+          </div>
+        )}
         <div className="w-72 flex-shrink-0 hidden sm:block">
           <CodingChatPanel entries={chatEntries} isAiThinking={session.state.isAiThinking} />
         </div>

@@ -63,13 +63,19 @@ async def submit_code(
     service: CodeExecutionService = Depends(get_code_service),
 ) -> dict:
     _check_rate_limit(f"submit:{current_user.id}", 5)
-    result = await service.submit_code(
-        interview_id=request.interview_id,
-        user_id=current_user.id,
-        language=request.language,
-        source_code=request.source_code,
-        test_inputs=request.test_inputs,
-    )
+    try:
+        result = await service.submit_code(
+            interview_id=request.interview_id,
+            user_id=current_user.id,
+            language=request.language,
+            source_code=request.source_code,
+            test_inputs=request.test_inputs,
+            problem_id=request.problem_id,
+        )
+    except ValueError as exc:
+        from core.errors import ValidationError
+
+        raise ValidationError(str(exc))
     return success_response(result)
 
 
@@ -92,3 +98,24 @@ async def list_languages(
     service: CodeExecutionService = Depends(get_code_service),
 ) -> dict:
     return success_response({"languages": service.get_languages()})
+
+
+@router.get("/problems", summary="List coding problems")
+async def list_problems(
+    service: CodeExecutionService = Depends(get_code_service),
+) -> dict:
+    problems = await service.list_problems()
+    return success_response({"problems": problems})
+
+
+@router.get("/problems/{problem_id}", summary="Get coding problem details")
+async def get_problem(
+    problem_id: UUID,
+    service: CodeExecutionService = Depends(get_code_service),
+) -> dict:
+    problem = await service.get_problem(problem_id)
+    if problem is None:
+        from core.errors import NotFoundError
+
+        raise NotFoundError("Problem not found")
+    return success_response(problem)

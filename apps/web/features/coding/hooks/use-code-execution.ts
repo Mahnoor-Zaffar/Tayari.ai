@@ -15,32 +15,55 @@ export function useCodeExecution(interviewId: string) {
       codingApi.run(data),
     onMutate: () => setIsRunning(true),
     onSuccess: (data) => setOutput(data),
-    onError: (err) => setOutput({ stdout: "", stderr: String(err), exit_code: 1, execution_ms: 0, timed_out: false }),
+    onError: (err) =>
+      setOutput({
+        stdout: "",
+        stderr: String(err),
+        exit_code: 1,
+        execution_ms: 0,
+        timed_out: false,
+      }),
     onSettled: () => setIsRunning(false),
   });
 
   const submitMutation = useMutation({
-    mutationFn: (data: { language: string; source_code: string }) =>
+    mutationFn: (data: { language: string; source_code: string; problem_id?: string }) =>
       codingApi.submit({ interview_id: interviewId, ...data }),
     onMutate: () => setIsSubmitting(true),
     onSuccess: (data) => setSubmission(data),
-    onError: (err) => setSubmission({
-      submission_id: "", status: "error", language: "", passed_count: 0, total_count: 0,
-      execution_ms: null, test_results: [], compiler_output: null, stdout: null, stderr: String(err),
-      created_at: null, completed_at: null,
-    }),
+    onError: (err) =>
+      setSubmission({
+        submission_id: "",
+        status: "error",
+        language: "",
+        passed_count: 0,
+        total_count: 0,
+        execution_ms: null,
+        test_results: [],
+        compiler_output: null,
+        stdout: null,
+        stderr: String(err),
+        created_at: null,
+        completed_at: null,
+      }),
     onSettled: () => setIsSubmitting(false),
   });
 
-  const run = useCallback((language: string, source_code: string, test_input?: string) => {
-    setOutput(null);
-    runMutation.mutate({ language, source_code, test_input });
-  }, [runMutation]);
+  const run = useCallback(
+    (language: string, source_code: string, test_input?: string) => {
+      setOutput(null);
+      runMutation.mutate({ language, source_code, test_input });
+    },
+    [runMutation],
+  );
 
-  const submit = useCallback((language: string, source_code: string) => {
-    setSubmission(null);
-    submitMutation.mutate({ language, source_code });
-  }, [submitMutation]);
+  const submit = useCallback(
+    (language: string, source_code: string, problem_id?: string) => {
+      setSubmission(null);
+      submitMutation.mutate({ language, source_code, problem_id });
+    },
+    [submitMutation],
+  );
 
   const clearOutput = useCallback(() => setOutput(null), []);
 

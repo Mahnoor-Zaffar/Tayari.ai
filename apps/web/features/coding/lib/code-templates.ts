@@ -1,106 +1,111 @@
 export const CODE_TEMPLATES: Record<string, string> = {
-  python: `def solve():
-    # Read input and return output
-    pass
+  python: `import sys
+
+def solve(data: str) -> str:
+    # \`data\` is the raw input (all of stdin).
+    # Implement your solution and return the output string.
+    return ""
 
 if __name__ == "__main__":
-    result = solve()
-    print(result)
+    sys.stdout.write(solve(sys.stdin.read()))
 `,
-  javascript: `function solve(input) {
-    // Your code here
-    return input;
+  javascript: `function solve(data) {
+    // \`data\` is the raw input (all of stdin).
+    // Implement your solution and return the output string.
+    return "";
 }
 
-const readline = require('readline');
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-rl.on('line', (line) => {
-    console.log(solve(line));
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", () => {
+    process.stdout.write(solve(input));
 });
 `,
-  typescript: `function solve(input: string): string {
-    // Your code here
-    return input;
+  typescript: `function solve(data: string): string {
+    // \`data\` is the raw input (all of stdin).
+    // Implement your solution and return the output string.
+    return "";
 }
 
-const readline = require('readline');
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-rl.on('line', (line: string) => {
-    console.log(solve(line));
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk: string) => { input += chunk; });
+process.stdin.on("end", () => {
+    process.stdout.write(solve(input));
 });
 `,
-  java: `public class Solution {
+  java: `import java.util.Scanner;
+
+public class Solution {
     public static void main(String[] args) {
-        java.util.Scanner sc = new java.util.Scanner(System.in);
+        Scanner sc = new Scanner(System.in);
+        StringBuilder sb = new StringBuilder();
         while (sc.hasNextLine()) {
-            String line = sc.nextLine();
-            System.out.println(solve(line));
+            if (sb.length() > 0) sb.append("\\n");
+            sb.append(sc.nextLine());
         }
+        System.out.print(solve(sb.toString()));
     }
-    
-    public static String solve(String input) {
-        // Your code here
-        return input;
+
+    public static String solve(String data) {
+        // \`data\` is the raw input (all of stdin).
+        // Implement your solution and return the output string.
+        return "";
     }
 }
 `,
   cpp: `#include <iostream>
 #include <string>
+
 using namespace std;
 
-string solve(string input) {
-    // Your code here
-    return input;
+string solve(string data) {
+    // \`data\` is the raw input (all of stdin).
+    // Implement your solution and return the output string.
+    return "";
 }
 
 int main() {
-    string line;
+    string data, line;
     while (getline(cin, line)) {
-        cout << solve(line) << endl;
+        data += line + "\\n";
     }
+    cout << solve(data);
     return 0;
 }
 `,
   go: `package main
 
 import (
-    "bufio"
     "fmt"
+    "io"
     "os"
 )
 
-func solve(input string) string {
-    // Your code here
-    return input
+func solve(data string) string {
+    // \`data\` is the raw input (all of stdin).
+    // Implement your solution and return the output string.
+    return ""
 }
 
 func main() {
-    scanner := bufio.NewScanner(os.Stdin)
-    for scanner.Scan() {
-        fmt.Println(solve(scanner.Text()))
-    }
+    b, _ := io.ReadAll(os.Stdin)
+    fmt.Print(solve(string(b)))
 }
 `,
-  rust: `use std::io::{self, BufRead};
+  rust: `use std::io::{self, Read};
 
-fn solve(input: &str) -> String {
-    // Your code here
-    input.to_string()
+fn solve(data: &str) -> String {
+    // \`data\` is the raw input (all of stdin).
+    // Implement your solution and return the output string.
+    String::new()
 }
 
 fn main() {
-    let stdin = io::stdin();
-    for line in stdin.lock().lines() {
-        if let Ok(l) = line {
-            println!("{}", solve(&l));
-        }
-    }
+    let mut data = String::new();
+    io::stdin().read_to_string(&mut data).unwrap();
+    print!("{}", solve(&data));
 }
 `,
 };
