@@ -10,6 +10,7 @@ on:
       - "infrastructure/**"
       - "Dockerfile*"
       - ".dockerignore"
+      - ".npmrc"
   pull_request:
     branches: [main]
     paths:
@@ -19,6 +20,7 @@ on:
       - "infrastructure/**"
       - "Dockerfile*"
       - ".dockerignore"
+      - ".npmrc"
 
 concurrency:
   group: docker-${{ github.ref }}
@@ -109,6 +111,7 @@ jobs:
           context: apps/api
           file: apps/api/Dockerfile
           push: ${{ github.event_name == 'push' }}
+          load: true
           tags: |
             ghcr.io/${{ steps.image.outputs.name }}-api:latest
             ghcr.io/${{ steps.image.outputs.name }}-api:${{ github.sha }}
@@ -121,9 +124,81 @@ jobs:
           context: .
           file: apps/web/Dockerfile
           push: ${{ github.event_name == 'push' }}
+          load: true
           build-args-file: /tmp/web-build-args
           tags: |
             ghcr.io/${{ steps.image.outputs.name }}-web:latest
             ghcr.io/${{ steps.image.outputs.name }}-web:${{ github.sha }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Smoke test — migrate, boot, and health-check the stack
+        shell: bash
+        env:
+          API_IMAGE: ghcr.io/${{ steps.image.outputs.name }}-api:latest
+          WEB_IMAGE: ghcr.io/${{ steps.image.outputs.name }}-web:latest
+        run: |
+          set -euo pipefail
+          NET=tayari-smoke
+          cleanup() {
+            docker rm -f smoke-api smoke-web smoke-db smoke-redis >/dev/null 2>&1 || true
+            docker network rm "$NET" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker network create "$NET"
+          docker run -d --rm --network "$NET" --name smoke-db \
+            -e POSTGRES_USER=tayari -e POSTGRES_PASSWORD=tayari_dev -e POSTGRES_DB=tayari \
+            postgres:17-alpine
+          docker run -d --rm --network "$NET" --name smoke-redis redis:7-alpine
+
+          # Wait for postgres to accept connections
+          for _ in $(seq 1 30); do
+            if docker exec smoke-db pg_isready -U tayari >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          docker exec smoke-db pg_isready -U tayari >/dev/null
+
+          # Apply migrations against a fresh database
+          docker run --rm --network "$NET" \
+            -e DATABASE_URL=postgresql+asyncpg://tayari:tayari_dev@smoke-db:5432/tayari \
+            "$API_IMAGE" uv run alembic upgrade head
+
+          # Confirm migrations actually created tables
+          table_count="$(docker exec smoke-db psql -U tayari -d tayari -Atc \
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")"
+          echo "public tables after migrate: $table_count"
+          [ "$table_count" -gt 0 ]
+
+          # Boot the API image (production startup path — needs a valid JWT secret)
+          docker run -d --rm --network "$NET" --name smoke-api \
+            -e DATABASE_URL=postgresql+asyncpg://tayari:tayari_dev@smoke-db:5432/tayari \
+            -e REDIS_URL=redis://smoke-redis:6379/0 \
+            -e ENVIRONMENT=production \
+            -e JWT_SECRET_KEY=smoke_test_SECRET_KEY_0123456789abcdefgh \
+            -p 8000:8000 \
+            "$API_IMAGE"
+
+          # Readiness probe: status ok + database ok
+          ready=""
+          for _ in $(seq 1 40); do
+            ready="$(curl -sf http://localhost:8000/ready 2>/dev/null || true)"
+            [ -n "$ready" ] && echo "$ready" | grep -q '"status": *"ok"' && break
+            sleep 2
+          done
+          echo "API /ready: $ready"
+          [ -n "$ready" ]
+          echo "$ready" | grep -q '"status": *"ok"'
+          echo "$ready" | grep -q '"database": *"ok"'
+
+          # Boot the Web image and confirm it serves the landing page
+          docker run -d --rm --name smoke-web -p 3000:3000 "$WEB_IMAGE"
+          web_ok=""
+          for _ in $(seq 1 40); do
+            web_ok="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000 2>/dev/null || true)"
+            [ "$web_ok" = "200" ] && break
+            sleep 2
+          done
+          echo "Web HTTP status: $web_ok"
+          [ "$web_ok" = "200" ]
+

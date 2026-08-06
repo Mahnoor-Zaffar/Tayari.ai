@@ -6,7 +6,7 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 
 # NEXT_PUBLIC_* values are inlined into the client bundle at build time, so
 # they must be baked in here. Pass them via --build-arg; unset args fall back
-# to the app's defaults (see apps/web/env.ts and lib/feature-flags.ts).
+# to the app's defaults (see lib/feature-flags.ts and lib/api/client.ts).
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_WS_URL
 ARG NEXT_PUBLIC_SUPABASE_URL
@@ -19,7 +19,7 @@ ARG NEXT_PUBLIC_FF_SETTINGS
 ARG NEXT_PUBLIC_FF_NEW_INTERVIEW
 ARG NEXT_PUBLIC_FF_ANALYTICS
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/ packages/
 
