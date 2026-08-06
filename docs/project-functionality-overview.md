@@ -266,9 +266,18 @@ ownership check (docstring claims otherwise). Also note the double
   pids-limit 50, 256MB, 30s timeout), else subprocess with resource limits.
 - `submit_code()` triggers a background AI **code review** via
   `ai/code_review.py` (imported from `ai.openai_provider`).
-- **Problem statement is a hardcoded dummy**: `ProblemPanel.tsx` renders
-  default props ("Write a function…", example `5\n3 → 8`). No problem data is
-  fetched from the backend; the live coding room has no problem panel at all.
+- Problems come from the backend: `GET /code/problems`,
+  `GET /code/problems/{id}` return real problems (Two Sum, Reverse String,
+  Fizz Buzz seeded via `features/code/seed_data.py` + migration 0011). The
+  detail endpoint returns visible test cases plus total/hidden counts only —
+  hidden cases are never serialized. `POST /code/submit` accepts a
+  `problem_id`; the judge runs every test case (visible + hidden) and strips
+  `actual_output` from hidden results. `ProblemPanel.tsx`, `CodeSession.tsx`,
+  and `CodingInterviewLayout.tsx` fetch and render the API problem.
+- **Runner images must be prebuilt**: Docker mode runs
+  `tayari-runner-{lang}` images. Nothing in this repo builds them; without
+  them, execution fails with a "missing sandbox image" error (subprocess
+  fallback is used only when Docker is unavailable).
 
 ### 3.5 Evaluation pipeline
 

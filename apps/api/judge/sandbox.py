@@ -142,6 +142,8 @@ class Sandbox:
                 "--network",
                 "none",
                 "--read-only",
+                "--tmpfs",
+                "/tmp:rw,size=32m",
                 "--cap-drop=ALL",
                 "--security-opt",
                 "no-new-privileges",
@@ -153,6 +155,8 @@ class Sandbox:
                 f"{memory_limit_mb}m",
                 "-v",
                 f"{workdir}:/code:ro",
+                "-v",
+                f"{outdir}:/code/out:rw",
                 image,
                 "sh",
                 "-c",
@@ -169,9 +173,15 @@ class Sandbox:
                     timeout=time_limit_s,
                 )
                 elapsed = int((time.time() - start) * 1000)
+                stderr = proc.stderr
+                if proc.returncode != 0 and "pull access denied" in stderr:
+                    stderr = (
+                        f"Code execution unavailable: missing sandbox image '{image}'. "
+                        "The judge requires a prebuilt runner image for this language."
+                    )
                 return SandboxResult(
                     stdout=proc.stdout,
-                    stderr=proc.stderr,
+                    stderr=stderr,
                     exit_code=proc.returncode,
                     execution_ms=elapsed,
                 )
@@ -267,8 +277,9 @@ class Sandbox:
     def _safe_command(cmd: str, workdir: Path, outdir: Path) -> list[str]:
         """Convert a shell command string to a safe list of args.
 
-        Replaces /code and /code/out path placeholders, then splits
-        using shlex to preserve quoted paths.
+        Replaces /code/out before /code so the output-dir placeholder is not
+        swallowed by the source-dir replacement, then splits using shlex to
+        preserve quoted paths.
         """
-        cmd = cmd.replace("/code", str(workdir)).replace("/code/out", str(outdir))
+        cmd = cmd.replace("/code/out", str(outdir)).replace("/code", str(workdir))
         return shlex.split(cmd)
