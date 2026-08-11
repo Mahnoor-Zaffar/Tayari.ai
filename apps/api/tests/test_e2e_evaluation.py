@@ -290,12 +290,12 @@ async def test_auth_flow():
 
         # Test protected endpoint
         headers = auth_header(token)
-        resp = await client.get("/auth/me", headers=headers)
-        print(f"  /auth/me: {resp.status_code}")
+        resp = await client.get("/users/me", headers=headers)
+        print(f"  /users/me: {resp.status_code}")
 
         # Test without auth
-        resp = await client.get("/auth/me")
-        print(f"  /auth/me (no token): {resp.status_code} (expected 401)")
+        resp = await client.get("/users/me")
+        print(f"  /users/me (no token): {resp.status_code} (expected 401)")
 
         print("  ✓ Auth flow works")
 

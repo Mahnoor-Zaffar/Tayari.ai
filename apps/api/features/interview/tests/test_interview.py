@@ -453,6 +453,13 @@ def mock_service() -> MagicMock:
         )
     )
     svc.list_interviews = AsyncMock(return_value=[])
+    svc.validate_config = AsyncMock(
+        return_value=MagicMock(
+            model_dump=MagicMock(
+                return_value={"valid": True, "warnings": [], "readiness_score": 100},
+            )
+        )
+    )
     svc.get_interview = AsyncMock(
         return_value=InterviewResponse(
             id=uuid.uuid4(),
@@ -604,6 +611,29 @@ class TestInterviewAPI:
         transport = ASGITransport(app=app)
         unauth_client = AsyncClient(transport=transport, base_url="http://test/api/v1")
         response = await unauth_client.get("/interviews/options")
+        assert response.status_code == 401
+
+    _VALIDATE_BODY = {
+        "type": "coding",
+        "company": "Google",
+        "role": "Engineer",
+        "experience_level": "mid-senior",
+        "language": "python",
+        "difficulty": "medium",
+        "duration_minutes": 30,
+    }
+
+    async def test_validate_config_returns_200_when_authenticated(self, client: AsyncClient) -> None:
+        response = await client.post("/interviews/validate", json=self._VALIDATE_BODY)
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    async def test_validate_config_requires_auth(self, mock_service: MagicMock) -> None:
+        app.dependency_overrides[get_interview_service] = lambda: mock_service
+        app.dependency_overrides.pop(get_current_user, None)
+        transport = ASGITransport(app=app)
+        unauth_client = AsyncClient(transport=transport, base_url="http://test/api/v1")
+        response = await unauth_client.post("/interviews/validate", json=self._VALIDATE_BODY)
         assert response.status_code == 401
 
 

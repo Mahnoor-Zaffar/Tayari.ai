@@ -1,12 +1,16 @@
 """Execution sandbox — runs code in isolated Docker containers.
 
-Falls back to subprocess when Docker is unavailable (development/test).
+Falls back to a plain subprocess when Docker is unavailable. That fallback is a
+development/test convenience ONLY and provides **no isolation** (no memory cap,
+no CPU cap, no filesystem or network confinement beyond a temp working dir), so
+in production the sandbox refuses to run when Docker is absent.
 
 Security:
     - Never uses ``shell=True`` (prevents command injection)
     - Code written to temp file, executed via explicit path
-    - Docker: read-only FS, no network, no privileges, PID limit
-    - Subprocess: resource limits via ``resource`` module
+    - Docker: read-only FS, no network, no privileges, PID limit, memory cap
+    - Subprocess fallback (dev/test only): NOT isolated — the process runs with
+      the API's own privileges and ``memory_limit_mb`` is not enforced
     - Output truncated to prevent memory exhaustion
 """
 
@@ -19,6 +23,9 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
+
+from core.config import settings
+from core.errors import InternalError
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +66,10 @@ class SandboxResult:
 class Sandbox:
     """Isolated execution environment for untrusted code.
 
-    Uses Docker when available, falls back to subprocess with ``ulimit``
-    for development environments.
+    Uses Docker when available. When Docker is unavailable it falls back to a
+    plain subprocess **with no isolation** — permitted in development/test only.
+    In production a missing Docker daemon is a hard failure rather than a silent
+    downgrade to unsandboxed execution.
     """
 
     USE_DOCKER = _docker_available()
@@ -91,6 +100,10 @@ class Sandbox:
 
         Returns:
             SandboxResult with stdout, stderr, exit code, timing.
+
+        Raises:
+            InternalError: in production when Docker is unavailable, so untrusted
+                code is never executed through the unisolated subprocess path.
         """
         if cls.USE_DOCKER:
             return await cls._run_docker(
@@ -103,6 +116,15 @@ class Sandbox:
                 run_command,
                 compile_command,
             )
+
+        if settings.is_production:
+            logger.error(
+                "Refusing to execute code: Docker sandbox unavailable in production "
+                "(language=%s). The unisolated subprocess fallback is disabled outside dev/test.",
+                language,
+            )
+            raise InternalError("Code execution is temporarily unavailable")
+
         return await cls._run_subprocess(
             source_code,
             test_input,
@@ -204,9 +226,12 @@ class Sandbox:
         run_command: str,
         compile_command: str | None,
     ) -> SandboxResult:
-        """Execute code using subprocess with resource limits.
+        """Execute code using a plain subprocess (dev/test fallback only).
 
-        Uses explicit command paths — never ``shell=True``.
+        Provides **no isolation**: ``memory_limit_mb`` is not enforced, the
+        process shares the API's privileges, and only a wall-clock timeout and a
+        temp working directory bound it. Guarded by ``run()`` so it never
+        executes in production. Uses explicit command paths — never ``shell=True``.
         """
         with tempfile.TemporaryDirectory(prefix="tayari-code-") as tmpdir:
             workdir = Path(tmpdir)

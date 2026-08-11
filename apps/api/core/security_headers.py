@@ -26,7 +26,8 @@ async def security_headers_middleware(
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "0"  # deprecated but still scanned by scanners
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    # Voice interviews need the microphone; camera and geolocation stay disabled.
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
     response.headers["Content-Security-Policy"] = csp_directives
 
     if settings.ENVIRONMENT == "production":
@@ -38,13 +39,23 @@ async def security_headers_middleware(
 def _build_csp(origin: str) -> str:
     """Build a restrictive CSP.
 
-    In development the frontend origin is allowed as a connect-src
-    and frame-ancestor so the Swagger UI / dev tools work.
+    The API origin is taken from ``settings.PUBLIC_API_URL`` (defaults to
+    ``http://localhost:8000`` for local dev, set to the public https URL in
+    production) so ``connect-src`` matches the real backend and no ``localhost``
+    leaks into production headers. The WebSocket origin is derived from it
+    (http→ws, https→wss). In non-production a localhost request origin is also
+    allowed so Swagger UI / dev tools work.
     """
-    dev_src = origin if "localhost" in origin or "127.0.0.1" in origin else ""
+    is_prod = settings.is_production
+    dev_src = "" if is_prod else (origin if "localhost" in origin or "127.0.0.1" in origin else "")
 
-    api_origin = "http://localhost:8000"  # Backend API origin
-    ws_origin = api_origin.replace("http://", "ws://")  # ws://localhost:8000
+    api_origin = settings.PUBLIC_API_URL.rstrip("/")  # Backend API origin
+    if api_origin.startswith("https://"):
+        ws_origin = "wss://" + api_origin[len("https://") :]
+    elif api_origin.startswith("http://"):
+        ws_origin = "ws://" + api_origin[len("http://") :]
+    else:
+        ws_origin = api_origin
 
     directives = {
         "default-src": ["'self'"],

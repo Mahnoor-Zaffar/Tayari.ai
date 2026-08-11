@@ -21,12 +21,23 @@ _jwt_config = JWTConfig(
     EMAIL_VERIFY_TTL=settings.jwt_email_verify_ttl,
     PASSWORD_RESET_TTL=settings.jwt_password_reset_ttl,
 )
-# Use Redis-backed blacklist in production/dev when Redis is available,
-# fall back to in-memory for testing / local environments without Redis.
-if settings.REDIS_URL and not settings.REDIS_URL.startswith("redis://localhost"):
-    _blacklist = RedisBlacklist()
-else:
-    _blacklist = MemoryBlacklist()
+
+
+# Blacklist backend selection:
+#   - Production: always Redis-backed (revocation must survive process restarts
+#     and be shared across workers) — a local hostname is not a reason to
+#     downgrade to per-process memory.
+#   - Non-production: Redis when a non-local Redis is configured, otherwise the
+#     in-memory blacklist for tests / local dev without a Redis instance.
+def _select_blacklist() -> RedisBlacklist | MemoryBlacklist:
+    if settings.is_production:
+        return RedisBlacklist()
+    if settings.REDIS_URL and not settings.REDIS_URL.startswith("redis://localhost"):
+        return RedisBlacklist()
+    return MemoryBlacklist()
+
+
+_blacklist = _select_blacklist()
 _token_service = TokenService(config=_jwt_config, blacklist=_blacklist)
 
 

@@ -307,6 +307,7 @@ async def difficulty_estimate(
 )
 async def validate_config(
     request: CreateInterviewRequest,
+    current_user: CurrentUser = Depends(get_current_user),
     service: InterviewService = Depends(get_interview_service),
 ) -> dict:
     result = await service.validate_config(

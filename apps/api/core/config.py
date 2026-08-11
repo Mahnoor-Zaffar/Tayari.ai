@@ -15,6 +15,16 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     ENVIRONMENT: str = "development"
 
+    @property
+    def is_production(self) -> bool:
+        """True when running in the production environment."""
+        return self.ENVIRONMENT == "production"
+
+    @property
+    def is_development(self) -> bool:
+        """True for local development and the test suite."""
+        return self.ENVIRONMENT in ("development", "test")
+
     DATABASE_URL: str = "postgresql+asyncpg://tayari:tayari_dev@localhost:5432/tayari"
     REDIS_URL: str = "redis://localhost:6379/0"
 
@@ -53,6 +63,11 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3030", "http://localhost:3001"]
     FRONTEND_URL: str = "http://localhost:3000"
+
+    # Public base URL of this API as seen by browsers (used to build the CSP
+    # connect-src for HTTP + WebSocket).  Override in production, e.g.
+    # https://api.tayari.ai
+    PUBLIC_API_URL: str = "http://localhost:8000"
 
     AI_INTERVIEWER_MODEL: str = "gpt-4o-mini"
     AI_EVALUATOR_MODEL: str = "gpt-4o"

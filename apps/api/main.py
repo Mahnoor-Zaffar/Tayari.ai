@@ -42,8 +42,12 @@ async def lifespan(app: FastAPI):
         log.info("Sentry initialized for environment=%s", settings.ENVIRONMENT)
 
     validate_prod_settings()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Schema management is owned by Alembic. In production the schema must be
+    # migrated explicitly (`alembic upgrade head`); create_all is a dev/test
+    # convenience only, so it never silently diverges from the migration chain.
+    if settings.is_development:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
     scheduler.start()
     log.info("APScheduler started with PostgreSQL job store")
 

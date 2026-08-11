@@ -84,8 +84,18 @@ class EvaluationRepository:
         await self._session.refresh(evaluation)
         return evaluation
 
-    async def get_evaluation(self, interview_id: UUID) -> Evaluation | None:
-        result = await self._session.execute(select(Evaluation).where(Evaluation.interview_id == interview_id))
+    async def get_evaluation(self, interview_id: UUID, user_id: UUID) -> Evaluation | None:
+        from features.interview.models import Interview
+
+        result = await self._session.execute(
+            select(Evaluation)
+            .join(Interview, Evaluation.interview_id == Interview.id)
+            .where(
+                Evaluation.interview_id == interview_id,
+                Interview.user_id == user_id,
+                Evaluation.deleted_at.is_(None),
+            )
+        )
         return result.scalar_one_or_none()
 
     async def get_user_evaluations(self, user_id: UUID, limit: int = 20) -> list[Evaluation]:

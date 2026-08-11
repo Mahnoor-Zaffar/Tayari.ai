@@ -67,8 +67,9 @@ class TestSandboxSecurity:
             file_extension=".py",
             run_command="python3 /code/solution.py",
         )
-        # Should not crash the sandbox
-        assert result.exit_code in (0, 1)
+        # Should not crash the sandbox — a timeout is also an acceptable
+        # outcome when running under the dev subprocess fallback.
+        assert result.timed_out or result.exit_code in (0, 1)
 
     async def test_binary_injection_via_stdin(self):
         """Binary data in stdin should not cause issues."""

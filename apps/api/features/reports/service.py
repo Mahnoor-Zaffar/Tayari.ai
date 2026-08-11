@@ -85,8 +85,8 @@ class EvaluationService:
         """List all evaluations for a user, with aggregated stats."""
         return await self._eval_repo.list_user_evaluations(user_id)
 
-    async def get_evaluation(self, interview_id: UUID) -> dict | None:
-        evaluation = await self._eval_repo.get_evaluation(interview_id)
+    async def get_evaluation(self, interview_id: UUID, user_id: UUID) -> dict | None:
+        evaluation = await self._eval_repo.get_evaluation(interview_id, user_id)
         if evaluation is None:
             return None
         return {

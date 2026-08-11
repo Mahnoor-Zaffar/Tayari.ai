@@ -9,6 +9,7 @@ import asyncio
 import logging
 import re
 import time
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
@@ -81,7 +82,7 @@ async def get_session_status(
     service: SessionService = Depends(get_session_service),
 ) -> dict:
     try:
-        result = await service.get_status(session_id)
+        result = await service.get_status(session_id, user_id=current_user.id)
     except SessionNotFoundError:
         raise NotFoundError("Session not found")
     return success_response(result)
@@ -98,7 +99,7 @@ async def pause_session(
     service: SessionService = Depends(get_session_service),
 ) -> dict:
     try:
-        result = await service.pause_session(session_id)
+        result = await service.pause_session(session_id, user_id=current_user.id)
     except SessionNotFoundError:
         raise NotFoundError("Session not found")
     return success_response(result)
@@ -115,7 +116,7 @@ async def resume_session(
     service: SessionService = Depends(get_session_service),
 ) -> dict:
     try:
-        result = await service.resume_session(session_id)
+        result = await service.resume_session(session_id, user_id=current_user.id)
     except SessionNotFoundError:
         raise NotFoundError("Session not found")
     return success_response(result)
@@ -132,12 +133,12 @@ async def end_session(
     service: SessionService = Depends(get_session_service),
 ) -> dict:
     try:
-        result = await service.end_session(session_id)
+        result = await service.end_session(session_id, user_id=current_user.id)
     except SessionNotFoundError:
         raise NotFoundError("Session not found")
     session_snapshot = service.get_session(session_id)
     if session_snapshot:
-        await schedule_evaluation(session_snapshot["interview_id"], str(current_user.id))
+        await schedule_evaluation(session_snapshot["interview_id"], session_snapshot["user_id"])
     return success_response(result)
 
 
@@ -152,8 +153,8 @@ async def can_reconnect(
     service: SessionService = Depends(get_session_service),
 ) -> dict:
     try:
-        can_reconnect = await service.can_reconnect(session_id)
-        state = await service.get_session_state(session_id)
+        can_reconnect = await service.can_reconnect(session_id, user_id=current_user.id)
+        state = await service.get_session_state(session_id, user_id=current_user.id)
     except SessionNotFoundError:
         raise NotFoundError("Session not found")
     return success_response(
@@ -278,7 +279,7 @@ async def interview_websocket(
                 await _send(websocket, "error", {"code": "INVALID_MESSAGE", "message": str(exc)})
                 continue
 
-            await _handle_message(websocket, msg, session_id, service)
+            await _handle_message(websocket, msg, session_id, service, user_id)
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected: session=%s", session_id[:8])
@@ -318,8 +319,13 @@ async def _handle_message(
     msg: WSMessage,
     session_id: str,
     service: SessionService,
+    user_id: UUID,
 ) -> None:
     """Route incoming WebSocket messages to the appropriate handler.
+
+    ``user_id`` is the authenticated session owner (verified at join); it is
+    passed to ownership-guarded service calls so authorization is enforced
+    uniformly across REST and WebSocket paths.
 
     All user text is sanitized before processing.
     """
@@ -379,17 +385,17 @@ async def _handle_message(
             else:
                 service.set_current_question(session_id, "", "wrap_up")
                 await _send(websocket, "session.completing", {})
-                await service.end_session(session_id)
+                await service.end_session(session_id, user_id=user_id)
+                session_snapshot = service.get_session(session_id)
                 await _send(
                     websocket,
                     "session.completed",
                     {
-                        "interview_id": session_id,
+                        "interview_id": (session_snapshot["interview_id"] if session_snapshot else session_id),
                         "redirect_url": f"/dashboard/interview/{session_id}",
                     },
                 )
                 # Trigger evaluation in background
-                session_snapshot = service.get_session(session_id)
                 if session_snapshot:
                     await schedule_evaluation(session_snapshot["interview_id"], session_snapshot["user_id"])
 
@@ -408,11 +414,11 @@ async def _handle_message(
         )
 
     elif msg.type == "session.pause":
-        result = await service.pause_session(session_id)
+        result = await service.pause_session(session_id, user_id=user_id)
         await _send(websocket, "session.paused", result)
 
     elif msg.type == "session.resume":
-        result = await service.resume_session(session_id)
+        result = await service.resume_session(session_id, user_id=user_id)
         await _send(websocket, "session.resumed", result)
 
     elif msg.type == "session.request_hint":
@@ -433,16 +439,16 @@ async def _handle_message(
 
     elif msg.type == "session.end":
         await _send(websocket, "session.completing", {})
-        await service.end_session(session_id)
+        await service.end_session(session_id, user_id=user_id)
+        session_snapshot = service.get_session(session_id)
         await _send(
             websocket,
             "session.completed",
             {
-                "interview_id": session_id,
+                "interview_id": session_snapshot["interview_id"] if session_snapshot else session_id,
                 "redirect_url": f"/dashboard/interview/{session_id}",
             },
         )
-        session_snapshot = service.get_session(session_id)
         if session_snapshot:
             await schedule_evaluation(session_snapshot["interview_id"], session_snapshot["user_id"])
 

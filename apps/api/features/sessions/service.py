@@ -20,6 +20,7 @@ from ai.realtime.event_dispatcher import (
     EventDispatcher,
 )
 from ai.realtime.session_manager import SessionManager, SessionNotFoundError
+from core.errors import AuthorizationError
 from features.interview.repository import InterviewRepository
 from features.sessions.repository import SessionRepository
 
@@ -55,6 +56,20 @@ class SessionService:
         self._dispatcher.subscribe(EVENT_SESSION_COMPLETING, self._on_event)
         self._dispatcher.subscribe(EVENT_SESSION_COMPLETED, self._on_event)
         self._dispatcher.subscribe(EVENT_SESSION_FAILED, self._on_event)
+
+    # ── Ownership Guard ────────────────────────────────────────────────────
+
+    def _verify_ownership(self, session_id: str, user_id: UUID) -> None:
+        """Raise 403 if *user_id* does not own *session_id*.
+
+        Enforced at the service boundary so every caller — REST, WebSocket,
+        background — gets the same check.
+        """
+        session = self._manager.get_session(session_id)
+        if session is None:
+            raise SessionNotFoundError(session_id)
+        if str(session.user_id) != str(user_id):
+            raise AuthorizationError("Not authorized for this session")
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -115,7 +130,8 @@ class SessionService:
             "initial_question": session.metadata.get("first_question", ""),
         }
 
-    async def get_status(self, session_id: str) -> dict:
+    async def get_status(self, session_id: str, user_id: UUID) -> dict:
+        self._verify_ownership(session_id, user_id)
         session = self._manager.get_session(session_id)
         if session is None:
             raise SessionNotFoundError(session_id)
@@ -134,7 +150,8 @@ class SessionService:
             "completed_at": session.completed_at,
         }
 
-    async def pause_session(self, session_id: str) -> dict:
+    async def pause_session(self, session_id: str, user_id: UUID) -> dict:
+        self._verify_ownership(session_id, user_id)
         session = await self._manager.pause_session(session_id)
         return {
             "session_id": session.session_id,
@@ -142,7 +159,8 @@ class SessionService:
             "remaining_seconds": session.remaining_seconds,
         }
 
-    async def resume_session(self, session_id: str) -> dict:
+    async def resume_session(self, session_id: str, user_id: UUID) -> dict:
+        self._verify_ownership(session_id, user_id)
         session = await self._manager.resume_session(session_id)
         return {
             "session_id": session.session_id,
@@ -150,7 +168,8 @@ class SessionService:
             "remaining_seconds": session.remaining_seconds,
         }
 
-    async def end_session(self, session_id: str) -> dict:
+    async def end_session(self, session_id: str, user_id: UUID) -> dict:
+        self._verify_ownership(session_id, user_id)
         session = self._manager.get_session(session_id)
         if session is None:
             raise SessionNotFoundError(session_id)
@@ -185,10 +204,12 @@ class SessionService:
             "elapsed_seconds": session.elapsed_seconds,
         }
 
-    async def get_session_state(self, session_id: str) -> dict | None:
+    async def get_session_state(self, session_id: str, user_id: UUID) -> dict | None:
+        self._verify_ownership(session_id, user_id)
         return self._manager.snapshot(session_id)
 
-    async def can_reconnect(self, session_id: str) -> bool:
+    async def can_reconnect(self, session_id: str, user_id: UUID) -> bool:
+        self._verify_ownership(session_id, user_id)
         return self._manager.can_reconnect(session_id)
 
     async def process_answer(self, session_id: str, text: str) -> str | None:

@@ -39,7 +39,7 @@ async def get_evaluation(
     current_user: CurrentUser = Depends(get_current_user),
     service: EvaluationService = Depends(get_evaluation_service),
 ) -> dict:
-    result = await service.get_evaluation(interview_id)
+    result = await service.get_evaluation(interview_id, current_user.id)
     if result is None:
         from core.errors import NotFoundError
 

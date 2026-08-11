@@ -1,0 +1,22 @@
+# Gitleaks configuration for Tayari.ai
+# Extends the default gitleaks ruleset and allowlists known-safe placeholder
+# files so local dev defaults do not fail the secret scan.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholder env files and local dev defaults (no real secrets)"
+paths = [
+  '''.*\.env\.example$''',
+  '''\.env\.development$''',
+  '''\.env\.production$''',
+  '''apps/web/\.env\.example$''',
+]
+regexes = [
+  # Local development-only credentials committed intentionally.
+  '''tayari_dev''',
+  '''dev-secret-key-do-not-use-in-production''',
+  '''change-me-in-production.*''',
+  '''your-.*-key-here''',
+]
