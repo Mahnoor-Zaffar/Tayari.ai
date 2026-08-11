@@ -1,20 +1,114 @@
-"""Voice routes — real-time streaming transcription via Deepgram."""
+"""Voice routes — real-time streaming transcription (Deepgram) + TTS bridge.
+
+The TTS endpoints let the interview client speak each AI question aloud.
+They go through the shared audio gateway so provider selection (OpenAI TTS,
+mock fallback) and usage telemetry stay centralized.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import json
+import re
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Response, WebSocket, WebSocketDisconnect
 
 from ai.audio.deepgram_provider import DeepgramTranscriptionProvider as DeepgramProxy
+from ai.audio.gateway import PROVIDER_MOCK, get_audio_gateway
+from core.errors import RateLimitedError, ValidationError, success_response
 from core.logging import get_logger
-from features.auth.dependencies import get_token_service
+from core.rate_limit import InMemoryRateLimiter, RedisRateLimiter
+from features.auth.dependencies import get_rate_limiter, get_token_service
+from features.auth.guard import CurrentUser, get_current_user
 from features.auth.jwt.service import TokenService
 from features.auth.ws import verify_ws_token
+from features.voice.schemas import TTSRequest
 
 router = APIRouter(tags=["voice"])
 log = get_logger("voice")
+
+
+# ── TTS bridge ───────────────────────────────────────────────────────────────
+
+
+def _audio_media_type(audio: bytes) -> str:
+    """Detect the audio format from content so the browser plays it correctly.
+
+    The mock provider emits a WAV; the real provider (OpenAI) returns MP3.
+    Sniffing the bytes keeps the mapping independent of provider choice.
+    """
+    if audio[:4] == b"RIFF" and audio[8:12] == b"WAVE":
+        return "audio/wav"
+    return "audio/mpeg"
+
+
+@router.get(
+    "/voice/tts/status",
+    summary="Check TTS availability",
+    description="Report whether real speech synthesis (not the silent mock) is configured.",
+)
+async def tts_status(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict:
+    gateway = get_audio_gateway()
+    provider = gateway.speech_provider_name
+    return success_response({"available": provider != PROVIDER_MOCK, "provider": provider})
+
+
+@router.post(
+    "/voice/tts",
+    summary="Synthesize speech",
+    description="Convert text into audio (MP3 for OpenAI, WAV for the mock provider).",
+    responses={
+        200: {"content": {"audio/mpeg": {}, "audio/wav": {}}, "description": "Synthesized audio"},
+    },
+)
+async def synthesize_speech(
+    body: TTSRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    rate_limiter: RedisRateLimiter | InMemoryRateLimiter = Depends(get_rate_limiter),
+) -> Response:
+    if not await rate_limiter.check(
+        f"tts:user:{current_user.id}",
+        max_requests=TTS_RATE_MAX,
+        window_seconds=TTS_RATE_WINDOW_SECONDS,
+    ):
+        raise RateLimitedError("Too many speech requests. Try again later.")
+
+    text = _sanitize_text(body.text).strip()
+    if not text:
+        raise ValidationError("text must not be empty")
+
+    gateway = get_audio_gateway()
+    audio = await gateway.synthesize(
+        text,
+        voice=body.voice,
+        session_id=body.session_id,
+        interview_id=body.interview_id,
+    )
+    log.info(
+        "TTS synthesized user=%s chars=%d sample_bytes=%d",
+        current_user.id,
+        len(text),
+        len(audio),
+    )
+    return Response(content=audio, media_type=_audio_media_type(audio))
+
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+
+MAX_TTS_TEXT_LENGTH = 5000
+TTS_RATE_MAX = 30  # synthesized clips per window
+TTS_RATE_WINDOW_SECONDS = 60
+
+# ── Sanitization ─────────────────────────────────────────────────────────────
+
+_INPUT_CLEAN_RE = re.compile(r"[\0-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def _sanitize_text(text: str) -> str:
+    """Strip control characters so they cannot reach the TTS provider."""
+    return _INPUT_CLEAN_RE.sub("", text)[:MAX_TTS_TEXT_LENGTH]
 
 
 @router.websocket("/voice/stream")

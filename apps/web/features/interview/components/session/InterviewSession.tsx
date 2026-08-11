@@ -14,6 +14,7 @@ import { ProgressIndicator } from "./ProgressIndicator";
 import { FullscreenToggle } from "./FullscreenToggle";
 import { VoiceControls } from "./VoiceControls";
 import { useDeepgramRecognition } from "@/features/interview/hooks/use-deepgram-recognition";
+import { useQuestionTts } from "@/features/interview/hooks/use-question-tts";
 import { PauseOverlay } from "./PauseOverlay";
 import { ReconnectOverlay } from "./ReconnectOverlay";
 import { EndInterviewDialog } from "./EndInterviewDialog";
@@ -70,6 +71,19 @@ export function InterviewSession({
   const userStoppedMicRef = useRef(false);
   const questionCountRef = useRef(0);
 
+  // Speak each AI question aloud (server TTS bridge) with barge-in support.
+  const handleQuestionSpoken = useCallback(() => {
+    if (!userStoppedMicRef.current && !speech.isListening && speech.isSupported) {
+      speech.start();
+    }
+  }, [speech]);
+
+  const tts = useQuestionTts({
+    token,
+    currentQuestion: state.currentQuestion,
+    onQuestionEnd: handleQuestionSpoken,
+  });
+
   // Auto-submit answer when Deepgram signals end-of-utterance
   useEffect(() => {
     if (speech.autoSubmitTrigger === 0) return;
@@ -80,17 +94,38 @@ export function InterviewSession({
     }
   }, [speech.autoSubmitTrigger, speech.transcript, sendAnswer]);
 
-  // Auto-start mic when a new question arrives
+  // Auto-start mic when a new question arrives.
+  // When real TTS is available, the TTS hook starts the mic after the question
+  // has been spoken (handleQuestionSpoken); otherwise start listening now so
+  // the text-based flow is unchanged.
   useEffect(() => {
     const questionCount = state.questions.length;
     if (questionCount > questionCountRef.current && state.state === "active") {
       questionCountRef.current = questionCount;
-      // Auto-start mic if user hasn't manually stopped it
-      if (!userStoppedMicRef.current && !speech.isListening && speech.isSupported) {
+      if (
+        !tts.supported &&
+        !userStoppedMicRef.current &&
+        !speech.isListening &&
+        speech.isSupported
+      ) {
         speech.start();
       }
     }
-  }, [state.questions.length, state.state, speech]);
+  }, [state.questions.length, state.state, speech, tts.supported]);
+
+  // Barge-in: cut the question audio off the moment the user starts speaking.
+  useEffect(() => {
+    if (tts.isPlaying && speech.interimTranscript.trim()) {
+      tts.stop();
+    }
+  }, [tts.isPlaying, speech.interimTranscript, tts.stop]);
+
+  // Stop question audio when the session is paused or ending.
+  useEffect(() => {
+    if (state.state !== "active") {
+      tts.stop();
+    }
+  }, [state.state, tts.stop]);
 
   // Track if user manually stops the mic
   const handleMicToggle = useCallback(() => {
@@ -98,9 +133,11 @@ export function InterviewSession({
       userStoppedMicRef.current = true;
     } else {
       userStoppedMicRef.current = false;
+      // Turning the mic on manually is an implicit barge-in
+      if (tts.isPlaying) tts.stop();
     }
     speech.toggle();
-  }, [speech]);
+  }, [speech, tts]);
 
   // Cancel current utterance (stop mic + clear interim)
   const handleMicCancel = useCallback(() => {
