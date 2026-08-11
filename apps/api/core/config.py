@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     AI_MAX_TOKENS_PER_INTERVIEW: int = 10000
     AI_COST_CAP_DOLLARS: float = 0.30
 
+    # Free-tier interview cap. 0 (or negative) = unlimited. Admins always bypass it.
+    FREE_TIER_INTERVIEW_LIMIT: int = 0
+
     INTERVIEW_DURATION_MINUTES: int = 30
     GRACE_PERIOD_MINUTES: int = 10
 
