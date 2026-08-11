@@ -17,6 +17,7 @@ class AIProvider(ABC):
         messages: list[dict],
         system_prompt: str | None = None,
         max_tokens: int = 1000,
+        model: str | None = None,
     ) -> AIResponse:
         pass
 
@@ -25,6 +26,7 @@ class AIProvider(ABC):
         self,
         messages: list[dict],
         system_prompt: str | None = None,
+        model: str | None = None,
     ):
         pass
 
@@ -34,5 +36,6 @@ class AIProvider(ABC):
         messages: list[dict],
         response_model: type,
         system_prompt: str | None = None,
+        model: str | None = None,
     ) -> dict:
         pass

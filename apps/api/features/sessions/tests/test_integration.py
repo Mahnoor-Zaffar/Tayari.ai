@@ -174,7 +174,8 @@ async def test_reconnect_check_returns_status():
 @pytest.mark.asyncio
 async def test_end_session_schedules_evaluation_with_interview_id():
     """Regression: ending a session must schedule evaluation with the
-    interview_id (not the session_id), matching schedule_evaluation's signature.
+    interview_id (not the session_id) and the session owner's user_id,
+    matching schedule_evaluation's signature.
     """
     from unittest.mock import patch
 
@@ -184,4 +185,4 @@ async def test_end_session_schedules_evaluation_with_interview_id():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/api/v1/sessions/test-session-uuid/end", json={})
     assert response.status_code == 200
-    mock_schedule.assert_awaited_once_with("test-interview-uuid", "00000000-0000-0000-0000-000000000001")
+    mock_schedule.assert_awaited_once_with("test-interview-uuid", "test-user-uuid")

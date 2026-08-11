@@ -64,7 +64,8 @@ export const authApi = {
 
   signup: (data: RegisterInput) => api.post<AuthResponse>("/auth/signup", data),
 
-  logout: () => api.post<void>("/auth/logout"),
+  logout: (refreshToken?: string) =>
+    api.post<void>("/auth/logout", refreshToken ? { refresh_token: refreshToken } : undefined),
 
   forgotPassword: (data: ForgotPasswordInput) => api.post<void>("/auth/forgot-password", data),
 

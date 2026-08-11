@@ -263,13 +263,88 @@ class TestInterviewService:
         mock_repo.create_configuration.assert_called_once()
         mock_repo.create_interview.assert_called_once()
 
+    async def test_create_interview_unlimited_by_default(self, service: InterviewService, mock_repo: MagicMock) -> None:
+        from core.config import settings
+
+        old_limit = settings.FREE_TIER_INTERVIEW_LIMIT
+        settings.FREE_TIER_INTERVIEW_LIMIT = 0
+        try:
+            mock_repo.count_user_interviews.return_value = 10
+            mock_repo.create_configuration.return_value = MagicMock(id=uuid.uuid4())
+            mock_repo.create_interview.return_value = MagicMock(
+                id=uuid.uuid4(),
+                type="coding",
+                company="Google",
+                role="Engineer",
+                experience_level="mid-senior",
+                language="python",
+                framework=None,
+                difficulty="medium",
+                duration_minutes=30,
+                custom_instructions=None,
+                spoken_language="en",
+                system_design_problem=None,
+                status="pending",
+                timer_remaining=1800,
+                resume_id=None,
+                job_description_id=None,
+                template_id=None,
+                created_at=datetime.now(UTC),
+            )
+            result = await service.create_interview(uuid.uuid4(), _make_create_request())
+            assert isinstance(result, InterviewResponse)
+            mock_repo.count_user_interviews.assert_not_called()
+        finally:
+            settings.FREE_TIER_INTERVIEW_LIMIT = old_limit
+
     async def test_create_interview_free_tier_limit(self, service: InterviewService, mock_repo: MagicMock) -> None:
-        mock_repo.count_user_interviews.return_value = 10
+        from core.config import settings
 
-        from core.errors import ConflictError
+        old_limit = settings.FREE_TIER_INTERVIEW_LIMIT
+        settings.FREE_TIER_INTERVIEW_LIMIT = 10
+        try:
+            mock_repo.count_user_interviews.return_value = 10
 
-        with pytest.raises(ConflictError):
-            await service.create_interview(uuid.uuid4(), _make_create_request())
+            from core.errors import ConflictError
+
+            with pytest.raises(ConflictError):
+                await service.create_interview(uuid.uuid4(), _make_create_request())
+        finally:
+            settings.FREE_TIER_INTERVIEW_LIMIT = old_limit
+
+    async def test_create_interview_admin_bypasses_limit(self, service: InterviewService, mock_repo: MagicMock) -> None:
+        from core.config import settings
+
+        old_limit = settings.FREE_TIER_INTERVIEW_LIMIT
+        settings.FREE_TIER_INTERVIEW_LIMIT = 10
+        try:
+            mock_repo.count_user_interviews.return_value = 100
+            mock_repo.create_configuration.return_value = MagicMock(id=uuid.uuid4())
+            mock_repo.create_interview.return_value = MagicMock(
+                id=uuid.uuid4(),
+                type="coding",
+                company="Google",
+                role="Engineer",
+                experience_level="mid-senior",
+                language="python",
+                framework=None,
+                difficulty="medium",
+                duration_minutes=30,
+                custom_instructions=None,
+                spoken_language="en",
+                system_design_problem=None,
+                status="pending",
+                timer_remaining=1800,
+                resume_id=None,
+                job_description_id=None,
+                template_id=None,
+                created_at=datetime.now(UTC),
+            )
+            result = await service.create_interview(uuid.uuid4(), _make_create_request(), is_admin=True)
+            assert isinstance(result, InterviewResponse)
+            mock_repo.count_user_interviews.assert_not_called()
+        finally:
+            settings.FREE_TIER_INTERVIEW_LIMIT = old_limit
 
     async def test_create_interview_coding_requires_language(
         self, service: InterviewService, mock_repo: MagicMock
@@ -453,6 +528,13 @@ def mock_service() -> MagicMock:
         )
     )
     svc.list_interviews = AsyncMock(return_value=[])
+    svc.validate_config = AsyncMock(
+        return_value=MagicMock(
+            model_dump=MagicMock(
+                return_value={"valid": True, "warnings": [], "readiness_score": 100},
+            )
+        )
+    )
     svc.get_interview = AsyncMock(
         return_value=InterviewResponse(
             id=uuid.uuid4(),
@@ -604,6 +686,29 @@ class TestInterviewAPI:
         transport = ASGITransport(app=app)
         unauth_client = AsyncClient(transport=transport, base_url="http://test/api/v1")
         response = await unauth_client.get("/interviews/options")
+        assert response.status_code == 401
+
+    _VALIDATE_BODY = {
+        "type": "coding",
+        "company": "Google",
+        "role": "Engineer",
+        "experience_level": "mid-senior",
+        "language": "python",
+        "difficulty": "medium",
+        "duration_minutes": 30,
+    }
+
+    async def test_validate_config_returns_200_when_authenticated(self, client: AsyncClient) -> None:
+        response = await client.post("/interviews/validate", json=self._VALIDATE_BODY)
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    async def test_validate_config_requires_auth(self, mock_service: MagicMock) -> None:
+        app.dependency_overrides[get_interview_service] = lambda: mock_service
+        app.dependency_overrides.pop(get_current_user, None)
+        transport = ASGITransport(app=app)
+        unauth_client = AsyncClient(transport=transport, base_url="http://test/api/v1")
+        response = await unauth_client.post("/interviews/validate", json=self._VALIDATE_BODY)
         assert response.status_code == 401
 
 

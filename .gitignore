@@ -1,8 +1,12 @@
-node_modules/
-.next/
+# Secrets — never track .env files
 .env
 .env.local
 .env*.local
+**/.env
+apps/api/.env
+
+node_modules/
+.next/
 *.log
 .DS_Store
 dist/

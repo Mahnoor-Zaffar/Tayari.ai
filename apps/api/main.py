@@ -1,11 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from core.audit import auth_audit_middleware
@@ -42,10 +45,20 @@ async def lifespan(app: FastAPI):
         log.info("Sentry initialized for environment=%s", settings.ENVIRONMENT)
 
     validate_prod_settings()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Schema management is owned by Alembic. In production the schema must be
+    # migrated explicitly (`alembic upgrade head`); create_all is a dev/test
+    # convenience only, so it never silently diverges from the migration chain.
+    if settings.is_development:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
     scheduler.start()
     log.info("APScheduler started with PostgreSQL job store")
+
+    from ai.usage.recorder import get_usage_recorder
+
+    usage_recorder = get_usage_recorder()
+    await usage_recorder.start_flush_loop()
+    log.info("AI usage flush loop started")
 
     # Restore active sessions from DB (survives server restarts)
     try:
@@ -64,6 +77,12 @@ async def lifespan(app: FastAPI):
     yield
     scheduler.shutdown(wait=False)
     log.info("APScheduler shut down")
+
+    from ai.usage.recorder import get_usage_recorder
+
+    await get_usage_recorder().stop()
+    log.info("AI usage recorder stopped")
+
     await engine.dispose()
 
 
@@ -78,8 +97,8 @@ app = FastAPI(
     terms_of_service="https://tayari.ai/terms",
     contact={"name": "Tayari AI", "email": "support@tayari.ai", "url": "https://tayari.ai"},
     license_info={"name": "MIT", "identifier": "MIT"},
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None,
+    redoc_url=None,
 )
 
 app.add_middleware(
@@ -254,6 +273,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 # ── Route imports (late to avoid circular imports) ─────────────────────────
 
 
+from features.ai_usage.routes import router as ai_usage_router  # noqa: E402
 from features.analytics.router import router as analytics_router  # noqa: E402
 from features.auth.routes import router as auth_router  # noqa: E402
 from features.code.routes import router as code_router  # noqa: E402
@@ -266,6 +286,7 @@ from features.users.routes import router as users_router  # noqa: E402
 from features.voice.routes import router as voice_router  # noqa: E402
 
 app.include_router(analytics_router, prefix="/api/v1")
+app.include_router(ai_usage_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(health_router, prefix="")
@@ -276,7 +297,90 @@ app.include_router(sessions_router, prefix="/api/v1")
 app.include_router(code_router, prefix="/api/v1")
 app.include_router(evaluations_router, prefix="/api/v1")
 
+STATIC_ROOT = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=STATIC_ROOT), name="static")
+
+
+@app.get("/docs", include_in_schema=False)
+async def swagger_docs():
+    return get_swagger_ui_html(
+        openapi_url="/openapi.json",
+        title=f"{settings.PROJECT_NAME} - Swagger UI",
+        swagger_js_url="/static/swagger-ui/swagger-ui-bundle.js",
+        swagger_css_url="/static/swagger-ui/swagger-ui.css",
+    )
+
+
+@app.get("/redirect", include_in_schema=False)
+async def swagger_oauth2_redirect():
+    return HTMLResponse("")
+
+
+@app.get("/redoc", include_in_schema=False)
+async def redoc_docs():
+    return get_redoc_html(
+        openapi_url="/openapi.json",
+        title=f"{settings.PROJECT_NAME} - ReDoc",
+        redoc_js_url="/static/redoc/redoc.standalone.js",
+    )
+
+
+@app.get("/")
+async def root(request: Request):
+    if "text/html" in request.headers.get("accept", ""):
+        return HTMLResponse(
+            f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{settings.PROJECT_NAME} API</title>
+  <style>
+    body {{ font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 640px;
+           margin: 80px auto; padding: 0 24px; color: #1f2937; }}
+    h1 {{ font-size: 24px; }} a {{ color: #2563eb; }} .tag {{ color: #6b7280; font-size: 14px; }}
+  </style>
+</head>
+<body>
+  <h1>{settings.PROJECT_NAME}</h1>
+  <p class="tag">API v{settings.VERSION} · running</p>
+  <p>Interactive docs: <a href="/docs">/docs</a></p>
+  <p>Health check: <a href="/health">/health</a></p>
+  <p>API base: <code>/api/v1</code></p>
+</body>
+</html>""",
+            status_code=200,
+        )
+    return {
+        "name": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
 
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": settings.VERSION}
+
+
+@app.get("/api/v1")
+async def api_v1_root():
+    return {
+        "name": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "status": "ok",
+        "docs": "/docs",
+        "endpoints": [
+            "/api/v1/auth",
+            "/api/v1/interviews",
+            "/api/v1/sessions",
+            "/api/v1/evaluations",
+            "/api/v1/code",
+            "/api/v1/users",
+            "/api/v1/dashboard",
+            "/api/v1/admin/ai-usage",
+            "/api/v1/analytics",
+            "/api/v1/voice",
+        ],
+    }

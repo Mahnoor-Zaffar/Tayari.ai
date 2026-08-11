@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -9,14 +11,21 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from core.database import Base, get_db
 from features.auth.guard import CurrentUser, get_current_user
+from features.auth.models import User as UserORM
 from features.code.seed_data import seed_problems
+from features.interview.models import Interview
 from main import app
+
+# Non-numeric UUIDs: SQLite gives numeric affinity to all-numeric UUID strings
+# (storing them as ints), so fixtures must use hex values that contain letters.
+TEST_USER_ID = "123e4567-e89b-12d3-a456-426614174000"
+TEST_INTERVIEW_ID = "0b8f2c4e-8d1a-4f3b-9e5c-7d6a1b2c3d4e"
 
 
 @pytest.fixture(autouse=True)
 def _auth_override():
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-        id="00000000-0000-0000-0000-000000000001",
+        id=uuid.UUID(TEST_USER_ID),
         email="test@test.com",
         username="testuser",
         display_name="Test User",
@@ -107,12 +116,35 @@ async def test_run_code_syntax_error():
 
 @pytest_asyncio.fixture
 async def problem_db_override():
-    """In-memory SQLite DB seeded with coding problems, wired into get_db."""
+    """In-memory SQLite DB seeded with an owner user, their interview, and
+    coding problems, wired into get_db."""
     engine = create_async_engine("sqlite+aiosqlite://")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as session:
+        session.add(
+            UserORM(
+                id=uuid.UUID(TEST_USER_ID),
+                email="test@test.com",
+                username="testuser",
+                display_name="Test User",
+                password_hash="$2b$12$placeholder",
+            )
+        )
+        session.add(
+            Interview(
+                id=uuid.UUID(TEST_INTERVIEW_ID),
+                user_id=uuid.UUID(TEST_USER_ID),
+                type="coding",
+                company="TestCo",
+                role="Engineer",
+                experience_level="mid-senior",
+                language="python",
+                difficulty="medium",
+                duration_minutes=30,
+            )
+        )
         await seed_problems(session)
         await session.commit()
 
@@ -183,7 +215,7 @@ async def test_submit_with_problem_id(problem_db_override):
         response = await client.post(
             "/api/v1/code/submit",
             json={
-                "interview_id": "00000000-0000-0000-0000-000000000001",
+                "interview_id": TEST_INTERVIEW_ID,
                 "language": "python",
                 "source_code": source,
                 "problem_id": problem_id,

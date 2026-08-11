@@ -119,12 +119,19 @@ jobs:
           cache-dependency-glob: apps/api/pyproject.toml
       - name: Install Python deps
         run: uv sync --directory apps/api --all-extras
-      - name: Run API tests
-        run: uv run --directory apps/api python -m pytest tests/ --ignore=tests/test_e2e_evaluation.py -x --quiet
+      - name: Apply migrations (Alembic is the source of truth)
+        run: uv run --directory apps/api alembic upgrade head
         env:
           DATABASE_URL: postgresql+asyncpg://tayari:tayari_dev@localhost:5432/tayari
           REDIS_URL: redis://localhost:6379/0
-          JWT_SECRET_KEY: test-secret-key
+          JWT_SECRET_KEY: test-secret-key-at-least-32-characters-long
+          ENVIRONMENT: test
+      - name: Run API tests
+        run: uv run --directory apps/api python -m pytest --ignore=tests/test_e2e_evaluation.py -x --quiet
+        env:
+          DATABASE_URL: postgresql+asyncpg://tayari:tayari_dev@localhost:5432/tayari
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET_KEY: test-secret-key-at-least-32-characters-long
           ENVIRONMENT: test
 
   build:
@@ -152,6 +159,19 @@ jobs:
       - run: pnpm build
       - name: Check performance budget
         run: node apps/web/scripts/performance-budget.mjs
+
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
 
   deploy:
     name: Deploy

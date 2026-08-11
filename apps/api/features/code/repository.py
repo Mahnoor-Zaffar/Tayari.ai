@@ -24,6 +24,18 @@ class CodeRepository:
         result = await self._session.execute(select(Problem).where(Problem.id == problem_id))
         return result.scalar_one_or_none()
 
+    async def interview_belongs_to(self, interview_id: UUID, user_id: UUID) -> bool:
+        """Return True if the interview exists and belongs to *user_id*."""
+        from features.interview.models import Interview
+
+        result = await self._session.execute(
+            select(Interview.id).where(
+                Interview.id == interview_id,
+                Interview.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none() is not None
+
     async def create_submission(self, data: dict) -> Submission:
         submission = Submission(**data)
         self._session.add(submission)

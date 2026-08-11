@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from core.errors import NotFoundError
 from features.code.repository import CodeRepository
 from features.code.seed_data import SEED_PROBLEMS
 from features.code.service import CodeExecutionService
@@ -20,6 +21,7 @@ def mock_repo():
     repo.get_submission = AsyncMock()
     repo.update_submission = AsyncMock()
     repo.get_problem = AsyncMock()
+    repo.interview_belongs_to = AsyncMock(return_value=True)
     return repo
 
 
@@ -75,6 +77,27 @@ class TestCodeExecutionService:
                 language="python",
                 source_code="print(1)",
                 problem_id="00000000-0000-0000-0000-000000000009",
+            )
+
+    async def test_submit_rejects_interview_not_owned(self, service: CodeExecutionService, mock_repo):
+        mock_repo.interview_belongs_to.return_value = False
+        with pytest.raises(NotFoundError):
+            await service.submit_code(
+                interview_id="00000000-0000-0000-0000-000000000001",
+                user_id="00000000-0000-0000-0000-000000000002",
+                language="python",
+                source_code="print(1)",
+            )
+        mock_repo.create_submission.assert_not_called()
+
+    async def test_submit_rejects_missing_interview(self, service: CodeExecutionService, mock_repo):
+        mock_repo.interview_belongs_to.return_value = False
+        with pytest.raises(NotFoundError):
+            await service.submit_code(
+                interview_id="00000000-0000-0000-0000-000000000001",
+                user_id="00000000-0000-0000-0000-000000000002",
+                language="python",
+                source_code="print(1)",
             )
 
     async def test_submit_with_problem_runs_hidden_tests(self, service: CodeExecutionService, mock_repo):

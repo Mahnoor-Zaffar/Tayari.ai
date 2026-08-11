@@ -77,3 +77,18 @@ class TestConversationMemory:
         transcript = memory.get_transcript()
         assert all("system" not in seg["role"] for seg in transcript)
         assert len(transcript) == 2
+
+    def test_restore_tolerates_null_content(self):
+        snapshot = MemorySnapshot(
+            messages=[
+                {"role": "system", "content": "System"},
+                {"role": "assistant", "content": None},
+                {"role": "user", "content": "Answer"},
+            ],
+            turn_count=2,
+            token_estimate=0,
+        )
+        memory = ConversationMemory()
+        memory.restore(snapshot)
+        assert memory._estimate_tokens() > 0
+        assert memory.get_all_messages()[1]["content"] == ""

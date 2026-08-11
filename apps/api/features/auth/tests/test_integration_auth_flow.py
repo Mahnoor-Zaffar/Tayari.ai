@@ -247,6 +247,20 @@ class TestLoginIntegration:
         resp = await client.post("/auth/login", json={"email": "alice@example.com"})
         assert resp.status_code == 422
 
+    async def test_rate_limited_after_repeated_failures(self, client: AsyncClient) -> None:
+        """The per-email budget (5 / window) trips to 429 on the 6th attempt."""
+        creds = {"email": "alice@example.com", "password": "wrong-password"}
+        statuses = [(await client.post("/auth/login", json=creds)).status_code for _ in range(6)]
+
+        # First five attempts are rejected as bad credentials (401); the sixth
+        # is blocked by the rate limiter before credentials are checked.
+        assert statuses[:5] == [401, 401, 401, 401, 401]
+        assert statuses[5] == 429
+
+        blocked = await client.post("/auth/login", json=creds)
+        assert blocked.status_code == 429
+        assert blocked.json()["error"]["code"] == "RATE_LIMITED"
+
         resp = await client.post("/auth/login", json={"password": "strong-password-123"})
         assert resp.status_code == 422
 

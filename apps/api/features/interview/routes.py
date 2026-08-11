@@ -64,7 +64,11 @@ async def create_interview(
     current_user: CurrentUser = Depends(get_current_user),
     service: InterviewService = Depends(get_interview_service),
 ) -> dict:
-    result = await service.create_interview(current_user.id, request)
+    result = await service.create_interview(
+        current_user.id,
+        request,
+        is_admin="admin" in current_user.roles,
+    )
     return success_response(result.model_dump(mode="json"))
 
 
@@ -307,6 +311,7 @@ async def difficulty_estimate(
 )
 async def validate_config(
     request: CreateInterviewRequest,
+    current_user: CurrentUser = Depends(get_current_user),
     service: InterviewService = Depends(get_interview_service),
 ) -> dict:
     result = await service.validate_config(

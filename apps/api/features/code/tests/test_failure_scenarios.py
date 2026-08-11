@@ -53,8 +53,9 @@ class TestFailureScenarios:
             file_extension=".py",
             run_command="python3 /code/solution.py",
         )
-        # Should either hit the memory limit or handle it gracefully
-        assert result.exit_code in (0, -9)
+        # Should either hit the memory limit, be OOM-killed, or time out —
+        # never crash the host process.
+        assert result.timed_out or result.oom_killed or result.exit_code in (0, -9)
 
     async def test_judge_floating_point(self):
         assert judge_output("0.3", "0.3", tolerance=1e-9) is True

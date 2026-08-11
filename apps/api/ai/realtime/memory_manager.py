@@ -104,20 +104,21 @@ class ConversationMemory:
         self._turn_count = snapshot.turn_count
 
         for msg in snapshot.messages:
+            content = msg.get("content") or ""
             if msg["role"] == "system":
-                self._system_prompt = msg["content"]
+                self._system_prompt = content
             elif msg["role"] == "user" or msg["role"] == "assistant":
-                self._turns.append(Message(role=msg["role"], content=msg["content"]))
+                self._turns.append(Message(role=msg["role"], content=content))
             else:
-                self._context.append(Message(role=msg["role"], content=msg["content"]))
+                self._context.append(Message(role=msg["role"], content=content))
 
     def _estimate_tokens(self) -> int:
         """Rough token estimate (4 chars ≈ 1 token)."""
         total_chars = len(self._system_prompt)
         for msg in self._context:
-            total_chars += len(msg.content)
+            total_chars += len(msg.content or "")
         for msg in self._turns:
-            total_chars += len(msg.content)
+            total_chars += len(msg.content or "")
         return total_chars // 4
 
     @property

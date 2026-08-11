@@ -15,6 +15,16 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     ENVIRONMENT: str = "development"
 
+    @property
+    def is_production(self) -> bool:
+        """True when running in the production environment."""
+        return self.ENVIRONMENT == "production"
+
+    @property
+    def is_development(self) -> bool:
+        """True for local development and the test suite."""
+        return self.ENVIRONMENT in ("development", "test")
+
     DATABASE_URL: str = "postgresql+asyncpg://tayari:tayari_dev@localhost:5432/tayari"
     REDIS_URL: str = "redis://localhost:6379/0"
 
@@ -54,10 +64,27 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3030", "http://localhost:3001"]
     FRONTEND_URL: str = "http://localhost:3000"
 
-    AI_INTERVIEWER_MODEL: str = "gpt-4o-mini"
-    AI_EVALUATOR_MODEL: str = "gpt-4o"
+    # Public base URL of this API as seen by browsers (used to build the CSP
+    # connect-src for HTTP + WebSocket).  Override in production, e.g.
+    # https://api.tayari.ai
+    PUBLIC_API_URL: str = "http://localhost:8000"
+
+    AI_INTERVIEWER_MODEL: str = "openai/gpt-4o-mini"
+    AI_EVALUATOR_MODEL: str = "openai/gpt-4o-mini"
+
+    # Model gateway routing. Empty model overrides mean "use the task default"
+    # (AI_INTERVIEWER_MODEL for chat, AI_EVALUATOR_MODEL for structured output).
+    MODEL_GATEWAY_CHAT_MODEL: str = ""
+    MODEL_GATEWAY_STRUCTURED_MODEL: str = ""
+
+    # Observability — per-call AI usage telemetry persisted to the ai_usage table.
+    AI_USAGE_ENABLED: bool = True
+    AI_USAGE_FLUSH_INTERVAL_S: int = 15
     AI_MAX_TOKENS_PER_INTERVIEW: int = 10000
     AI_COST_CAP_DOLLARS: float = 0.30
+
+    # Free-tier interview cap. 0 (or negative) = unlimited. Admins always bypass it.
+    FREE_TIER_INTERVIEW_LIMIT: int = 0
 
     INTERVIEW_DURATION_MINUTES: int = 30
     GRACE_PERIOD_MINUTES: int = 10

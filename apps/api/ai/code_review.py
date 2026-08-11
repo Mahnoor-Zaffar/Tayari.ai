@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ai.openai_provider import OpenAIProvider
+from ai.gateway import get_model_gateway
 from ai.provider import AIProvider
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class CodeReviewService:
     """
 
     def __init__(self, provider: AIProvider | None = None) -> None:
-        self._provider = provider or OpenAIProvider()
+        self._provider = provider or get_model_gateway()
 
     async def generate_review(
         self,

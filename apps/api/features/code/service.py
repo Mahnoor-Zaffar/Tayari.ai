@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from ai.code_review import get_code_review_service
+from core.errors import NotFoundError
 from features.code.repository import CodeRepository
 from features.code.schemas import RunCodeResponse
 from judge.judge import judge_test_cases
@@ -75,6 +76,13 @@ class CodeExecutionService:
         config = get_language(language)
         if config is None:
             raise ValueError(f"Unsupported language: {language}")
+
+        # Ownership check: only the interview owner may attach a submission.
+        # A missing interview and another user's interview are indistinguishable
+        # (both 404) so we don't leak which interviews exist.
+        owns_interview = await self._repo.interview_belongs_to(interview_id, user_id)
+        if not owns_interview:
+            raise NotFoundError("Interview not found")
 
         problem_test_cases: list[dict] | None = None
         if problem_id is not None:

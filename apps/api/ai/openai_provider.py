@@ -1,7 +1,8 @@
-import json
+import time
 
 from openai import AsyncOpenAI
 
+from ai.structured import parse_json_response
 from core.config import settings
 
 from .provider import AIProvider, AIResponse
@@ -14,14 +15,18 @@ class OpenAIProvider(AIProvider):
             base_url=settings.OPENAI_BASE_URL,
         )
 
-    async def chat(self, messages, system_prompt=None, max_tokens=1000):
+    async def chat(self, messages, system_prompt=None, max_tokens=1000, model=None):
         full_messages = [{"role": "system", "content": system_prompt}] if system_prompt else []
         full_messages.extend(messages)
-        response = await self.client.chat.completions.create(
-            model=settings.AI_INTERVIEWER_MODEL,
-            messages=full_messages,  # type: ignore[arg-type]
-            max_tokens=max_tokens,
-        )
+        started = time.monotonic()
+        try:
+            response = await self.client.chat.completions.create(
+                model=model or settings.AI_INTERVIEWER_MODEL,
+                messages=full_messages,  # type: ignore[arg-type]
+                max_tokens=max_tokens,
+            )
+        finally:
+            latency_ms = int((time.monotonic() - started) * 1000)
         content = response.choices[0].message.content or ""
         return AIResponse(
             content=content,
@@ -32,13 +37,14 @@ class OpenAIProvider(AIProvider):
             }
             if response.usage
             else None,
+            latency_ms=latency_ms,
         )
 
-    async def chat_stream(self, messages, system_prompt=None):
+    async def chat_stream(self, messages, system_prompt=None, model=None):
         full_messages = [{"role": "system", "content": system_prompt}] if system_prompt else []
         full_messages.extend(messages)
         stream = await self.client.chat.completions.create(
-            model=settings.AI_INTERVIEWER_MODEL,
+            model=model or settings.AI_INTERVIEWER_MODEL,
             messages=full_messages,  # type: ignore[arg-type]
             stream=True,
         )
@@ -46,12 +52,12 @@ class OpenAIProvider(AIProvider):
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
-    async def structured_output(self, messages, response_model, system_prompt=None):
+    async def structured_output(self, messages, response_model, system_prompt=None, model=None):
         full_messages = [{"role": "system", "content": system_prompt}] if system_prompt else []
         full_messages.extend(messages)
         response = await self.client.chat.completions.create(  # type: ignore[call-overload]
-            model=settings.AI_EVALUATOR_MODEL,
+            model=model or settings.AI_EVALUATOR_MODEL,
             messages=full_messages,
             response_format={"type": "json_object"},
         )
-        return json.loads(response.choices[0].message.content)
+        return parse_json_response(response_model, response.choices[0].message.content or "{}")

@@ -81,6 +81,11 @@ class RedisRateLimiter:
 
 
 def _build_default() -> RedisRateLimiter | InMemoryRateLimiter:
+    # Production always uses Redis so brute-force backoff is shared across
+    # workers/replicas and survives restarts; a local hostname is not a reason
+    # to downgrade. Non-production uses Redis only for a non-local URL.
+    if settings.is_production:
+        return RedisRateLimiter()
     if settings.REDIS_URL and not settings.REDIS_URL.startswith("redis://localhost"):
         return RedisRateLimiter()
     return InMemoryRateLimiter()

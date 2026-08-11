@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 from uuid import UUID
 
+from core.config import settings
 from core.errors import ConflictError, NotFoundError, ValidationError
 from core.storage import get_storage_service
 from features.interview.models import Interview as InterviewORM
@@ -36,8 +37,6 @@ from features.interview.schemas import (
     ValidateConfigResponse,
 )
 
-FREE_TIER_INTERVIEW_LIMIT = 10
-
 
 class InterviewService:
     """Orchestrates interview setup operations.
@@ -51,11 +50,18 @@ class InterviewService:
 
     # ── Create Interview ─────────────────────────────────────────────────
 
-    async def create_interview(self, user_id: UUID, request: CreateInterviewRequest) -> InterviewResponse:
+    async def create_interview(
+        self,
+        user_id: UUID,
+        request: CreateInterviewRequest,
+        *,
+        is_admin: bool = False,
+    ) -> InterviewResponse:
         """Validate the setup, persist configuration, and create the interview.
 
         Checks:
-            - Free-tier users are limited to one interview (FR-05.1).
+            - Non-admin users are limited to ``FREE_TIER_INTERVIEW_LIMIT``
+              (0 = unlimited). Admins always bypass the cap.
             - Referenced resume/JD belong to the user.
             - Duplicate pending interview guard (same config within 2 minutes).
         """
@@ -75,10 +81,12 @@ class InterviewService:
         if duplicate is not None:
             return _interview_to_response(duplicate)
 
-        # Free-tier eligibility
-        existing = await self._repo.count_user_interviews(user_id)
-        if existing >= FREE_TIER_INTERVIEW_LIMIT:
-            raise ConflictError("Free-tier limit reached. Upgrade to create more interviews.")
+        # Free-tier cap (admins exempt; limit <= 0 means unlimited)
+        limit = settings.FREE_TIER_INTERVIEW_LIMIT
+        if not is_admin and limit > 0:
+            existing = await self._repo.count_user_interviews(user_id)
+            if existing >= limit:
+                raise ConflictError("Free-tier limit reached. Upgrade to create more interviews.")
 
         # Validate resume ownership
         if request.resume_id:

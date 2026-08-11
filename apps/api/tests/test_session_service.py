@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 
 from ai.realtime.session_manager import SessionNotFoundError
+from core.errors import AuthorizationError
 from features.sessions.service import SessionService
 
 
@@ -141,14 +142,20 @@ class TestSessionStatus:
             started_at=1000,
             completed_at=None,
         )
-        result = await service.get_status("s1")
+        result = await service.get_status("s1", user_id="u1")
         assert result["state"] == "active"
 
     @pytest.mark.asyncio
     async def test_get_status_raises_on_missing(self, service, mock_manager):
         mock_manager.get_session.return_value = None
         with pytest.raises(SessionNotFoundError):
-            await service.get_status("missing")
+            await service.get_status("missing", user_id="u1")
+
+    @pytest.mark.asyncio
+    async def test_get_status_rejects_wrong_owner(self, service, mock_manager):
+        mock_manager.get_session.return_value = MagicMock(user_id="u1")
+        with pytest.raises(AuthorizationError):
+            await service.get_status("s1", user_id="u2")
 
 
 class TestSessionPause:
@@ -156,11 +163,19 @@ class TestSessionPause:
     async def test_pauses_session(self, service, mock_manager):
         mock_session = MagicMock()
         mock_session.session_id = "s1"
+        mock_session.user_id = "u1"
         mock_session.state = MagicMock(value="paused")
         mock_session.remaining_seconds = 1500
+        mock_manager.get_session.return_value = mock_session
         mock_manager.pause_session.return_value = mock_session
-        result = await service.pause_session("s1")
+        result = await service.pause_session("s1", user_id="u1")
         assert result["state"] == "paused"
+
+    @pytest.mark.asyncio
+    async def test_pause_rejects_wrong_owner(self, service, mock_manager):
+        mock_manager.get_session.return_value = MagicMock(user_id="u1")
+        with pytest.raises(AuthorizationError):
+            await service.pause_session("s1", user_id="u2")
 
 
 class TestSessionEnd:
@@ -169,6 +184,7 @@ class TestSessionEnd:
         mock_session = MagicMock()
         mock_session.session_id = "s1"
         mock_session.interview_id = str(uuid4())
+        mock_session.user_id = "u1"
         mock_session.state = MagicMock(value="completed")
         mock_session.elapsed_seconds = 600
         mock_session.transcript = MagicMock()
@@ -176,14 +192,20 @@ class TestSessionEnd:
         mock_manager.get_session.return_value = mock_session
         mock_manager.complete_session.return_value = mock_session
 
-        result = await service.end_session("s1")
+        result = await service.end_session("s1", user_id="u1")
         assert result["state"] == "completed"
 
     @pytest.mark.asyncio
     async def test_raises_on_missing_session(self, service, mock_manager):
         mock_manager.get_session.return_value = None
         with pytest.raises(SessionNotFoundError):
-            await service.end_session("missing")
+            await service.end_session("missing", user_id="u1")
+
+    @pytest.mark.asyncio
+    async def test_end_rejects_wrong_owner(self, service, mock_manager):
+        mock_manager.get_session.return_value = MagicMock(user_id="u1")
+        with pytest.raises(AuthorizationError):
+            await service.end_session("s1", user_id="u2")
 
 
 class TestAnswer:
@@ -235,9 +257,16 @@ class TestHint:
 class TestReconnect:
     @pytest.mark.asyncio
     async def test_can_reconnect_delegates(self, service, mock_manager):
+        mock_manager.get_session.return_value = MagicMock(user_id="u1")
         mock_manager.can_reconnect.return_value = True
-        result = await service.can_reconnect("s1")
+        result = await service.can_reconnect("s1", user_id="u1")
         assert result is True
+
+    @pytest.mark.asyncio
+    async def test_can_reconnect_rejects_wrong_owner(self, service, mock_manager):
+        mock_manager.get_session.return_value = MagicMock(user_id="u1")
+        with pytest.raises(AuthorizationError):
+            await service.can_reconnect("s1", user_id="u2")
 
     def test_record_reconnect_handles_missing(self, service, mock_manager):
         mock_manager.record_reconnect.side_effect = Exception("gone")

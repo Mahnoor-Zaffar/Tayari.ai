@@ -92,10 +92,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Auth failure handler (called by API client interceptor) ──────────
 
   const logout = useCallback(() => {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      authApi.logout(refreshToken).catch(() => {});
+    }
     clearRefreshToken();
     setAccessToken(null);
     setUser(null);
-    authApi.logout().catch(() => {});
     window.location.href = "/auth/login";
   }, []);
 
