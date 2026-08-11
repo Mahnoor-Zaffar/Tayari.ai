@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from ai.openai_provider import OpenAIProvider
+from ai.gateway import get_model_gateway
 from ai.provider import AIProvider
 from ai.realtime.event_dispatcher import (
     EVENT_SESSION_ARCHIVED,
@@ -133,7 +133,7 @@ class SessionManager:
         self._dispatcher = dispatcher
         self._heartbeat = heartbeat_monitor
         self._prompt_builder = prompt_builder or PromptBuilder()
-        self._ai_provider = ai_provider or OpenAIProvider()
+        self._ai_provider = ai_provider or get_model_gateway()
         self._sessions: dict[str, Session] = {}
         self._telemetry = PerformanceTelemetry()
 
@@ -171,6 +171,18 @@ class SessionManager:
         self._transition(session, SessionState.PREPARING)
         session.preparing_at = time.time()
 
+        await self._build_orchestrator(session)
+
+        self._add_marker(session, "session.prepare.complete")
+        await self._dispatcher.emit(session_id, EVENT_SESSION_PREPARING)
+        return session
+
+    async def _build_orchestrator(self, session: Session) -> None:
+        """Attach memory, transcript, and AI orchestrator to a session.
+
+        Shared by ``prepare_session`` and the reconnect path so that
+        restored (bare) sessions can be re-armed without changing state.
+        """
         config = session.config or {}
         self._add_marker(session, "session.prepare.start")
 
@@ -205,9 +217,16 @@ class SessionManager:
         session.transcript = transcript
         session.orchestrator = orchestrator
 
-        self._add_marker(session, "session.prepare.complete")
-        await self._dispatcher.emit(session_id, EVENT_SESSION_PREPARING)
-        return session
+    async def ensure_orchestrator(self, session_id: str) -> bool:
+        """Re-arm a bare or restored session without changing its state.
+
+        Returns True once the session has a usable orchestrator.
+        """
+        session = self._get(session_id)
+        if session.orchestrator is None:
+            await self._build_orchestrator(session)
+            logger.info("Rebuilt orchestrator for restored session %s", session_id[:8])
+        return session.orchestrator is not None
 
     async def start_session(self, session_id: str) -> Session:
         """Transition from PREPARING → ACTIVE.  Generate first question."""

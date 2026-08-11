@@ -69,8 +69,17 @@ class Settings(BaseSettings):
     # https://api.tayari.ai
     PUBLIC_API_URL: str = "http://localhost:8000"
 
-    AI_INTERVIEWER_MODEL: str = "gpt-4o-mini"
-    AI_EVALUATOR_MODEL: str = "gpt-4o"
+    AI_INTERVIEWER_MODEL: str = "openai/gpt-4o-mini"
+    AI_EVALUATOR_MODEL: str = "openai/gpt-4o-mini"
+
+    # Model gateway routing. Empty model overrides mean "use the task default"
+    # (AI_INTERVIEWER_MODEL for chat, AI_EVALUATOR_MODEL for structured output).
+    MODEL_GATEWAY_CHAT_MODEL: str = ""
+    MODEL_GATEWAY_STRUCTURED_MODEL: str = ""
+
+    # Observability — per-call AI usage telemetry persisted to the ai_usage table.
+    AI_USAGE_ENABLED: bool = True
+    AI_USAGE_FLUSH_INTERVAL_S: int = 15
     AI_MAX_TOKENS_PER_INTERVIEW: int = 10000
     AI_COST_CAP_DOLLARS: float = 0.30
 

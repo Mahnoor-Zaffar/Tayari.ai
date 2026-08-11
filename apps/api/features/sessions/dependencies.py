@@ -9,8 +9,7 @@ from __future__ import annotations
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai.mock_provider import MockProvider
-from ai.openai_provider import OpenAIProvider
+from ai.gateway import get_model_gateway
 from ai.realtime.event_dispatcher import EventDispatcher
 from ai.realtime.heartbeat import HeartbeatMonitor
 from ai.realtime.prompt_builder import PromptBuilder
@@ -49,15 +48,8 @@ def get_session_manager() -> SessionManager:
         dispatcher = get_event_dispatcher()
         heartbeat = get_heartbeat_monitor()
         prompt_builder = PromptBuilder()
-        from core.config import settings
 
-        if settings.OPENAI_API_KEY:
-            ai_provider = OpenAIProvider()
-        else:
-            ai_provider = MockProvider()
-            import logging
-
-            logging.getLogger(__name__).warning("No OPENAI_API_KEY set — using MockProvider")
+        ai_provider = get_model_gateway()
         _session_manager = SessionManager(
             dispatcher=dispatcher,
             heartbeat_monitor=heartbeat,

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ai.prompt_registry import PromptRegistry
+
 PROMPTS_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent / "packages" / "prompts"
 
 INTERVIEWER_DIR = PROMPTS_ROOT / "interviewers"
@@ -24,6 +26,7 @@ class PromptBuilder:
 
     def __init__(self) -> None:
         self._cache: dict[int, str] = {}
+        self._registry = PromptRegistry()
 
     def _config_hash(self, **kwargs: str | None) -> int:
         return hash(frozenset((k, v or "") for k, v in kwargs.items()))
@@ -152,25 +155,13 @@ class PromptBuilder:
         )
 
     def _load_interviewer_prompt(self, interview_type: str) -> str:
-        path = INTERVIEWER_DIR / f"{interview_type}.md"
-        if not path.exists():
-            msg = f"Interviewer prompt not found: {path}"
-            raise FileNotFoundError(msg)
-        return path.read_text(encoding="utf-8")
+        return self._registry.get_interview_prompt(interview_type)
 
     def _load_evaluator_prompt(self, interview_type: str) -> str:
-        path = EVALUATOR_DIR / f"{interview_type}.md"
-        if not path.exists():
-            msg = f"Evaluator prompt not found: {path}"
-            raise FileNotFoundError(msg)
-        return path.read_text(encoding="utf-8")
+        return self._registry.get_evaluator_prompt(interview_type)
 
     def _load_company_template(self, company: str) -> str | None:
-        company_lower = company.lower().replace(" ", "-")
-        path = TEMPLATE_DIR / f"{company_lower}.md"
-        if path.exists():
-            return path.read_text(encoding="utf-8")
-        return None
+        return self._registry.get_company_template(company)
 
     def get_supported_interview_types(self) -> list[str]:
         """Return interview types that have prompt files."""

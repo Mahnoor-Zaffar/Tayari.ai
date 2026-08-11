@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from ai.openai_provider import OpenAIProvider
+from ai.gateway import get_model_gateway
 from evaluation.pipeline import EvaluationPipeline
 from features.interview.repository import InterviewRepository
 from features.reports.repository import EvaluationRepository
@@ -27,7 +27,7 @@ class EvaluationService:
     ) -> None:
         self._eval_repo = eval_repo
         self._interview_repo = interview_repo
-        self._pipeline = pipeline or EvaluationPipeline(provider=OpenAIProvider())
+        self._pipeline = pipeline or EvaluationPipeline(provider=get_model_gateway())
 
     async def evaluate_interview(self, interview_id: UUID, user_id: UUID) -> dict:
         """Run the full evaluation pipeline for an interview.

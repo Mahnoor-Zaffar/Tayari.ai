@@ -279,7 +279,19 @@ async def interview_websocket(
                 await _send(websocket, "error", {"code": "INVALID_MESSAGE", "message": str(exc)})
                 continue
 
-            await _handle_message(websocket, msg, session_id, service, user_id)
+            try:
+                await _handle_message(websocket, msg, session_id, service, user_id)
+            except ValueError as exc:
+                # Transient (e.g. session not yet orchestrator-ready). Report
+                # to the client but keep the connection alive for retry.
+                await _send(websocket, "error", {"code": "SESSION_NOT_READY", "message": str(exc)})
+            except Exception as exc:
+                logger.error("Failed to process message type=%s: %s", msg.type, exc)
+                await _send(
+                    websocket,
+                    "error",
+                    {"code": "INTERNAL_ERROR", "message": "Unable to process message"},
+                )
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected: session=%s", session_id[:8])

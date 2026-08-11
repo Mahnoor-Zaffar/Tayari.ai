@@ -33,7 +33,7 @@ import json
 import logging
 from typing import Any
 
-from ai.openai_provider import OpenAIProvider
+from ai.gateway import get_model_gateway
 from evaluation.aggregator import ScoreAggregator
 from evaluation.composer import ReportComposer
 from evaluation.evaluators import get_evaluators
@@ -58,7 +58,7 @@ class EvaluationPipeline:
     """
 
     def __init__(self, provider=None) -> None:
-        self._provider = provider or OpenAIProvider()
+        self._provider = provider or get_model_gateway()
         self._transcript_analyzer = TranscriptAnalyzer()
         self._aggregator = ScoreAggregator()
         self._composer = ReportComposer()

@@ -215,6 +215,10 @@ class SessionService:
     async def process_answer(self, session_id: str, text: str) -> str | None:
         """Process a user answer and return the next AI question."""
         session = self._manager.get_session(session_id)
+        if session is not None and session.orchestrator is None:
+            # Restored sessions are bare until a client reconnects; re-arm them.
+            await self._manager.ensure_orchestrator(session_id)
+            session = self._manager.get_session(session_id)
         if session is None or session.orchestrator is None:
             raise ValueError("Session or orchestrator not found")
 

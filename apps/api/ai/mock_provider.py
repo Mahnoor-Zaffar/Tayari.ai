@@ -42,6 +42,7 @@ class MockProvider(AIProvider):
         messages: list[dict],
         system_prompt: str | None = None,
         max_tokens: int = 1000,
+        model: str | None = None,
     ) -> AIResponse:
         idx = self._question_index
         self._question_index += 1
@@ -57,7 +58,7 @@ class MockProvider(AIProvider):
             latency_ms=200,
         )
 
-    async def chat_stream(self, messages: list[dict], system_prompt: str | None = None):
+    async def chat_stream(self, messages: list[dict], system_prompt: str | None = None, model: str | None = None):
         yield "Mock streaming response"
 
     async def structured_output(
@@ -65,5 +66,6 @@ class MockProvider(AIProvider):
         messages: list[dict],
         response_model: type,
         system_prompt: str | None = None,
+        model: str | None = None,
     ) -> dict:
         return MOCK_EVALUATION
