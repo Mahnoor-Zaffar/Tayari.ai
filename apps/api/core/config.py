@@ -99,6 +99,12 @@ class Settings(BaseSettings):
     DEEPGRAM_MODEL: str = "nova-3"
     DEEPGRAM_ENDPOINTING: int = 300  # ms of silence before finalizing speech
 
+    # Audio media layer — provider selection for the realtime voice stack.
+    STT_PROVIDER: str = "deepgram"
+    TTS_PROVIDER: str = "openai"
+    TTS_MODEL: str = "tts-1"
+    TTS_VOICE: str = "nova"
+
     SENTRY_DSN: str = ""
 
     SUPABASE_URL: str = ""

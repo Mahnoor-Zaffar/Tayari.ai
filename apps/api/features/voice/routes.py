@@ -7,12 +7,11 @@ import json
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
+from ai.audio.deepgram_provider import DeepgramTranscriptionProvider as DeepgramProxy
 from core.logging import get_logger
 from features.auth.dependencies import get_token_service
 from features.auth.jwt.service import TokenService
 from features.auth.ws import verify_ws_token
-
-from .deepgram_service import DeepgramProxy
 
 router = APIRouter(tags=["voice"])
 log = get_logger("voice")
@@ -114,27 +113,27 @@ async def voice_stream(
             try:
                 async for event in deepgram.receive():
                     try:
-                        if event["speech_final"]:
+                        if event.speech_final:
                             await websocket.send_json(
                                 {
                                     "type": "final",
-                                    "text": event["transcript"],
+                                    "text": event.text,
                                     "speech_final": True,
                                 }
                             )
-                        elif event["is_final"] and event["transcript"].strip():
+                        elif event.is_final and event.text.strip():
                             await websocket.send_json(
                                 {
                                     "type": "final",
-                                    "text": event["transcript"],
+                                    "text": event.text,
                                     "speech_final": False,
                                 }
                             )
-                        elif event["transcript"].strip():
+                        elif event.text.strip():
                             await websocket.send_json(
                                 {
                                     "type": "partial",
-                                    "text": event["transcript"],
+                                    "text": event.text,
                                 }
                             )
                     except (WebSocketDisconnect, RuntimeError):
