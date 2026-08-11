@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-PROMPTS_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent / "packages" / "prompts"
+PROMPTS_ROOT = Path(__file__).resolve().parent.parent.parent.parent / "packages" / "prompts"
 
 INTERVIEWER_DIR = PROMPTS_ROOT / "interviewers"
 EVALUATOR_DIR = PROMPTS_ROOT / "evaluators"
