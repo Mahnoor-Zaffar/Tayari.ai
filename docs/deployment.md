@@ -28,10 +28,19 @@ Browser ──► Vercel (Next.js) ──REST/WS──► Traefik :443 ──►
 3. **Root Directory: `apps/web`** so Vercel builds the Next.js app.
 4. Framework preset: **Next.js**; leave build/output commands at their defaults
    (Vercel builds directly, no Dockerfile involved).
-5. Add environment variables (baked at build time):
-   - `NEXT_PUBLIC_API_URL=https://api.YOURDOMAIN.com`
+5. Add environment variables (Runtime → Production → **Settings → Environment
+   Variables**). Use the values in `infrastructure/vercel.env.example` (replace
+   `YOURDOMAIN`); core ones:
+   - `NEXT_PUBLIC_API_URL=https://api.YOURDOMAIN.com/api/v1` — drives REST **and**
+     WebSockets (the frontend derives `wss://` from it)
+   - `NEXT_PUBLIC_SITE_URL=https://YOURDOMAIN.com` (metadata/SEO base URL)
    - `NEXT_PUBLIC_APP_VERSION=0.1.0`
-   - The `NEXT_PUBLIC_FF_*` feature flags (see `infrastructure/.env.example`).
+   - `NEXT_PUBLIC_FF_INTERVIEWS=1`, `NEXT_PUBLIC_FF_REPORTS=1`,
+     `NEXT_PUBLIC_FF_SETTINGS=1`, `NEXT_PUBLIC_FF_NEW_INTERVIEW=1`,
+     `NEXT_PUBLIC_FF_ANALYTICS=1`
+   - Leave `NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY` **blank** unless you want
+     Google/GitHub social login (email+password auth needs no Supabase)
+   - `NEXT_PUBLIC_SENTRY_DSN` — optional
 6. Deploy. Note the web service expects its backend split by the same origin —
    CORS must allow your Vercel domain.
 
