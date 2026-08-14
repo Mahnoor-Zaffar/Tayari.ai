@@ -276,8 +276,11 @@ ownership check (docstring claims otherwise). Also note the double
   and `CodingInterviewLayout.tsx` fetch and render the API problem.
 - **Runner images must be prebuilt**: Docker mode runs
   `tayari-runner-{lang}` images. Nothing in this repo builds them; without
-  them, execution fails with a "missing sandbox image" error (subprocess
-  fallback is used only when Docker is unavailable).
+  them, execution fails with a "missing sandbox image" error (the unisolated
+  subprocess fallback is used only when Docker itself is unavailable). CI
+  runs the code-execution tests against that subprocess fallback
+  (`TAYARI_SANDBOX_USE_DOCKER=false`), since GitHub runners have Docker but
+  not the images.
 
 ### 3.5 Evaluation pipeline
 

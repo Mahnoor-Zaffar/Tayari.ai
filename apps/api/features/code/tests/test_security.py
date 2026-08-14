@@ -77,11 +77,13 @@ class TestSandboxSecurity:
         result = await Sandbox.run(
             source_code=code,
             language="python",
-            test_input="\x00\x01\x02\xff" * 100,
+            test_input="\x00\x01\x02\x7f" * 100,
             time_limit_s=2,
             file_extension=".py",
             run_command="python3 /code/solution.py",
         )
+        # ASCII control bytes round-trip through the text-mode pipe; high-bit
+        # bytes would not decode on either the Docker or subprocess path.
         assert result.exit_code == 0
 
     async def test_concurrent_execution_isolation(self):

@@ -20,7 +20,7 @@
  *   - Any other page: 300 kB
  */
 
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -98,11 +98,12 @@ if (manifest) {
 // Check shared chunks
 const sharedPath = resolve(ROOT, ".next/static/chunks");
 if (existsSync(sharedPath)) {
-  const { readdirSync } = await import("fs");
   let sharedSize = 0;
   for (const file of readdirSync(sharedPath)) {
-    const stat = readFileSync(resolve(sharedPath, file)).length;
-    sharedSize += stat;
+    const filePath = resolve(sharedPath, file);
+    // Next.js nests route chunk files in subdirectories — skip those dirs
+    if (!statSync(filePath).isFile()) continue;
+    sharedSize += statSync(filePath).size;
   }
   // Shared chunks are aggregated — approximate
   if (sharedSize > BUDGETS.shared * 2) {

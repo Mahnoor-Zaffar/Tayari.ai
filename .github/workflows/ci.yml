@@ -138,6 +138,9 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET_KEY: test-secret-key-at-least-32-characters-long
           ENVIRONMENT: test
+          # GitHub runners have Docker but not the prebuilt tayari-runner-*
+          # images; run code-execution tests against the subprocess fallback.
+          TAYARI_SANDBOX_USE_DOCKER: "false"
 
   build:
     name: Build
