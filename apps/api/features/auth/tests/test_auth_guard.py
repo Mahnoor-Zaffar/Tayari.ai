@@ -22,10 +22,10 @@ from features.auth.jwt.models import TokenPayload
 from features.auth.repositories import UserRepository
 
 
-def _make_user() -> User:
+def _make_user(email: str = "alice@example.com") -> User:
     return User(
         id=uuid4(),
-        email="alice@example.com",
+        email=email,
         username="alice",
         display_name="Alice Smith",
         password_hash="$2b$12$hashed",
@@ -121,8 +121,8 @@ class TestGetCurrentUser:
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
     ) -> None:
-        user = _make_user()
-        payload = _make_payload(sub=str(user.id), roles=["admin"], permissions=["users:write"])
+        user = _make_user(email="admin@tayari.ai")
+        payload = _make_payload(sub=str(user.id), roles=["user"], permissions=[])
         mock_token_service.verify.return_value = payload
         mock_user_repo.find_by_id.return_value = user
 
@@ -141,9 +141,35 @@ class TestGetCurrentUser:
 
         assert resp.status_code == 200
         body = resp.json()
-        assert body["email"] == "alice@example.com"
-        assert body["roles"] == ["admin"]
-        assert body["permissions"] == ["users:write"]
+        assert body["email"] == "admin@tayari.ai"
+        assert body["roles"] == ["admin", "user"]
+        assert body["permissions"] == ["users:read", "users:write", "users:delete"]
+
+    async def test_ignores_payload_roles_for_unverified_admin_email(
+        self,
+        app: FastAPI,
+        override_deps: None,
+        mock_token_service: MagicMock,
+        mock_user_repo: MagicMock,
+    ) -> None:
+        user = _make_user(email="admin@tayari.ai")
+        user.email_verified = False
+        payload = _make_payload(sub=str(user.id), roles=["admin"], permissions=["users:write"])
+        mock_token_service.verify.return_value = payload
+        mock_user_repo.find_by_id.return_value = user
+
+        @app.get("/test/me-unverified")
+        async def _test_me_unverified(authed_user=Depends(get_current_user)):
+            return {"roles": authed_user.roles, "permissions": authed_user.permissions}
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/test/me-unverified", headers={"Authorization": "Bearer valid-token"})
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["roles"] == ["user"]
+        assert body["permissions"] == []
 
     async def test_raises_401_on_missing_header(
         self,
@@ -322,8 +348,8 @@ class TestRoleChecker:
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
     ) -> None:
-        user = _make_user()
-        payload = _make_payload(sub=str(user.id), roles=["admin"])
+        user = _make_user(email="admin@tayari.ai")
+        payload = _make_payload(sub=str(user.id), roles=["user"])
         mock_token_service.verify.return_value = payload
         mock_user_repo.find_by_id.return_value = user
 
@@ -369,8 +395,8 @@ class TestRoleChecker:
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
     ) -> None:
-        user = _make_user()
-        payload = _make_payload(sub=str(user.id), roles=["moderator"])
+        user = _make_user(email="admin@tayari.ai")
+        payload = _make_payload(sub=str(user.id), roles=["user"])
         mock_token_service.verify.return_value = payload
         mock_user_repo.find_by_id.return_value = user
 
@@ -383,7 +409,7 @@ class TestRoleChecker:
             resp = await client.get("/test/multi-role", headers={"Authorization": "Bearer t"})
 
         assert resp.status_code == 200
-        assert resp.json()["role"] == "moderator"
+        assert resp.json()["role"] == "admin"
 
 
 class TestPermissionChecker:
@@ -394,8 +420,8 @@ class TestPermissionChecker:
         mock_token_service: MagicMock,
         mock_user_repo: MagicMock,
     ) -> None:
-        user = _make_user()
-        payload = _make_payload(sub=str(user.id), permissions=["users:delete"])
+        user = _make_user(email="admin@tayari.ai")
+        payload = _make_payload(sub=str(user.id), permissions=[])
         mock_token_service.verify.return_value = payload
         mock_user_repo.find_by_id.return_value = user
 
@@ -408,7 +434,7 @@ class TestPermissionChecker:
             resp = await client.get("/test/perm-ok", headers={"Authorization": "Bearer t"})
 
         assert resp.status_code == 200
-        assert resp.json()["perm"] == "users:delete"
+        assert resp.json()["perm"] == "users:read"
 
     async def test_raises_403_without_matching_permission(
         self,

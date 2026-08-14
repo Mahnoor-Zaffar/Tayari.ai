@@ -24,6 +24,7 @@ class UserCreate(BaseModel):
     username: str
     display_name: str
     password_hash: str
+    email_verified: bool = False
 
 
 class UserUpdate(BaseModel):

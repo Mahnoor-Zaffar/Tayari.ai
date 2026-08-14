@@ -10,6 +10,7 @@ from features.auth.dependencies import get_token_service
 from features.auth.exceptions import InvalidTokenError
 from features.auth.jwt.service import TokenService
 from features.auth.repositories import UserRepository
+from features.auth.roles import user_roles
 
 
 async def get_user_repo(db: AsyncSession = Depends(get_db)) -> UserRepository:
@@ -69,6 +70,7 @@ async def get_current_user(
     if not user.is_active:
         raise AuthorizationError("Account is disabled")
 
+    roles, permissions = user_roles(user.email, email_verified=user.email_verified)
     return CurrentUser(
         id=user.id,
         email=user.email,
@@ -76,8 +78,8 @@ async def get_current_user(
         display_name=user.display_name,
         email_verified=user.email_verified,
         is_active=user.is_active,
-        roles=payload.roles,
-        permissions=payload.permissions,
+        roles=roles,
+        permissions=permissions,
     )
 
 
@@ -110,6 +112,7 @@ async def get_optional_user(
     if user is None or not user.is_active:
         return None
 
+    roles, permissions = user_roles(user.email, email_verified=user.email_verified)
     return CurrentUser(
         id=user.id,
         email=user.email,
@@ -117,8 +120,8 @@ async def get_optional_user(
         display_name=user.display_name,
         email_verified=user.email_verified,
         is_active=user.is_active,
-        roles=payload.roles,
-        permissions=payload.permissions,
+        roles=roles,
+        permissions=permissions,
     )
 
 
