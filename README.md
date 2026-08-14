@@ -88,28 +88,47 @@
 
 ## Screenshots
 
+> Screenshots are real captures from the running platform; a few session views
+> are product mockups until live captures are available.
+
 <p align="center">
-  <img src="assets/screenshots/hero.svg" alt="Landing Page" width="49%" />
-  <img src="assets/screenshots/dashboard.svg" alt="Dashboard" width="49%" />
+  <img src="assets/screenshots/real/landing.png" alt="Landing Page" width="49%" />
+  <img src="assets/screenshots/real/login.png" alt="Sign in" width="49%" />
 </p>
 <p align="center">
-  <em>Landing page</em> · <em>Dashboard with stats and activity</em>
+  <em>Landing page</em> · <em>Sign in</em>
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/interview-setup.svg" alt="Interview Setup Wizard" width="49%" />
-  <img src="assets/screenshots/live-interview.svg" alt="Live Interview Session" width="49%" />
+  <img src="assets/screenshots/real/dashboard.png" alt="Dashboard" width="49%" />
+  <img src="assets/screenshots/real/interview-setup.png" alt="Interview Setup Wizard" width="49%" />
 </p>
 <p align="center">
-  <em>Setup wizard</em> · <em>Live interview session</em>
+  <em>Dashboard with stats and activity</em> · <em>Setup wizard</em>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/real/analytics.png" alt="Analytics" width="49%" />
+  <img src="assets/screenshots/real/reports.png" alt="Evaluation Reports" width="49%" />
+</p>
+<p align="center">
+  <em>Progress analytics</em> · <em>Evaluation reports</em>
 </p>
 
 <p align="center">
   <img src="assets/screenshots/coding-interview.svg" alt="Coding Interview" width="49%" />
-  <img src="assets/screenshots/evaluation-report.svg" alt="Evaluation Report" width="49%" />
+  <img src="assets/screenshots/live-interview.svg" alt="Live Interview Session" width="49%" />
 </p>
 <p align="center">
-  <em>Coding interview with Monaco editor</em> · <em>Post-interview evaluation report</em>
+  <em>Coding interview with Monaco editor</em> · <em>Live interview session</em>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/evaluation-report.svg" alt="Evaluation Report" width="49%" />
+  <img src="assets/screenshots/architecture.svg" alt="Architecture" width="49%" />
+</p>
+<p align="center">
+  <em>Post-interview evaluation report</em> · <em>System architecture</em>
 </p>
 
 ---
