@@ -14,9 +14,7 @@ class UserProfileResponse(BaseModel):
     email: str
     display_name: str
     email_verified: bool = False
-    # CurrentUser (from the guard) doesn't carry created_at yet — optional
-    # until the value is plumbed through, so /users/me doesn't 500 on None.
-    created_at: datetime | None = None
+    created_at: datetime
 
 
 class UserAdminResponse(BaseModel):

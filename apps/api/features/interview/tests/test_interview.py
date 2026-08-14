@@ -41,6 +41,7 @@ def _make_user() -> CurrentUser:
         display_name="Test User",
         email_verified=True,
         is_active=True,
+        created_at=datetime.now(UTC),
         roles=["user"],
         permissions=[],
     )

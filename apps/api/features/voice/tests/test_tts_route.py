@@ -6,6 +6,8 @@ content, and per-user rate limiting on synthesis.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -24,6 +26,7 @@ def _make_user() -> CurrentUser:
         display_name="Test User",
         email_verified=True,
         is_active=True,
+        created_at=datetime.now(UTC),
         roles=["user"],
         permissions=["interview:read", "interview:write"],
     )

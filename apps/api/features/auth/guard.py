@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import Depends, Request
@@ -31,6 +32,7 @@ class CurrentUser(BaseModel):
     display_name: str
     email_verified: bool
     is_active: bool
+    created_at: datetime
     roles: list[str]
     permissions: list[str]
 
@@ -78,6 +80,7 @@ async def get_current_user(
         display_name=user.display_name,
         email_verified=user.email_verified,
         is_active=user.is_active,
+        created_at=user.created_at,
         roles=roles,
         permissions=permissions,
     )
@@ -120,6 +123,7 @@ async def get_optional_user(
         display_name=user.display_name,
         email_verified=user.email_verified,
         is_active=user.is_active,
+        created_at=user.created_at,
         roles=roles,
         permissions=permissions,
     )
