@@ -30,7 +30,7 @@ class Problem(Base):
     examples: Mapped[dict] = mapped_column(JSONBType, default=list)
     constraints: Mapped[dict] = mapped_column(JSONBType, default=list)
     # Each test case: {"id", "input", "expected_output", "is_hidden"}
-    test_cases: Mapped[dict] = mapped_column(JSONBType, default=list)
+    test_cases: Mapped[list[dict]] = mapped_column(JSONBType, default=list)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 

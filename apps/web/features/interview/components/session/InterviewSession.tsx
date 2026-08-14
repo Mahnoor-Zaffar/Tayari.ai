@@ -96,14 +96,16 @@ export function InterviewSession({
 
   // Auto-start mic when a new question arrives.
   // When real TTS is available, the TTS hook starts the mic after the question
-  // has been spoken (handleQuestionSpoken); otherwise start listening now so
-  // the text-based flow is unchanged.
+  // has been spoken (handleQuestionSpoken); otherwise (TTS confirmed
+  // unavailable) start listening now so the text-based flow is unchanged.
+  // Wait for the availability probe: `tts.supported === null` means the check
+  // is still running, and starting the mic then records the question audio.
   useEffect(() => {
     const questionCount = state.questions.length;
     if (questionCount > questionCountRef.current && state.state === "active") {
       questionCountRef.current = questionCount;
       if (
-        !tts.supported &&
+        tts.supported === false &&
         !userStoppedMicRef.current &&
         !speech.isListening &&
         speech.isSupported

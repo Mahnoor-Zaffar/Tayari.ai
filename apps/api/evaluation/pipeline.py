@@ -107,7 +107,7 @@ class EvaluationPipeline:
         for evaluator in evaluators:
             for attempt in range(MAX_RETRIES + 1):
                 try:
-                    result = await evaluator.evaluate(
+                    evaluator_result = await evaluator.evaluate(
                         interview_id=interview_id,
                         company=company,
                         role=role,
@@ -117,8 +117,8 @@ class EvaluationPipeline:
                         code_submission=code_text,
                         test_results=test_results,
                     )
-                    if result and "dimensions" in result:
-                        evaluator_results.append(result)
+                    if evaluator_result and "dimensions" in evaluator_result:
+                        evaluator_results.append(evaluator_result)
                     break
                 except Exception as exc:
                     last_error = exc

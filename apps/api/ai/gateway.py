@@ -23,6 +23,7 @@ from .openai_provider import OpenAIProvider
 from .provider import AIProvider, AIResponse
 from .usage.recorder import (
     DEFAULT_PROMPT_VERSION,
+    UsageRecord,
     UsageRecorder,
     estimate_cost_cents,
     get_usage_recorder,
@@ -209,10 +210,8 @@ class ModelGateway(AIProvider):
         )
 
 
-def _make_record(**kwargs):
-    from .usage.recorder import UsageRecord
-
-    record = UsageRecord(**kwargs)
+def _make_record(**kwargs: object) -> UsageRecord:
+    record: UsageRecord = UsageRecord(**kwargs)  # type: ignore[arg-type]
     record.estimated_cost_cents = estimate_cost_cents(record.model, record.prompt_tokens, record.completion_tokens)
     return record
 

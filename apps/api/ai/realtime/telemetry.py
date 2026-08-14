@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
@@ -73,7 +73,7 @@ class PerformanceTelemetry:
 
 
 @contextmanager
-def measure_timer(label: str) -> Callable[[], float]:
+def measure_timer(label: str) -> Iterator[Callable[[], float]]:
     """Context manager that measures elapsed time.
 
     Usage:

@@ -1,4 +1,5 @@
 import time
+from collections.abc import AsyncIterator
 
 from openai import AsyncOpenAI
 
@@ -9,13 +10,19 @@ from .provider import AIProvider, AIResponse
 
 
 class OpenAIProvider(AIProvider):
-    def __init__(self):
+    def __init__(self) -> None:
         self.client = AsyncOpenAI(
             api_key=settings.OPENAI_API_KEY,
             base_url=settings.OPENAI_BASE_URL,
         )
 
-    async def chat(self, messages, system_prompt=None, max_tokens=1000, model=None):
+    async def chat(
+        self,
+        messages: list[dict],
+        system_prompt: str | None = None,
+        max_tokens: int = 1000,
+        model: str | None = None,
+    ) -> AIResponse:
         full_messages = [{"role": "system", "content": system_prompt}] if system_prompt else []
         full_messages.extend(messages)
         started = time.monotonic()
@@ -40,7 +47,12 @@ class OpenAIProvider(AIProvider):
             latency_ms=latency_ms,
         )
 
-    async def chat_stream(self, messages, system_prompt=None, model=None):
+    async def chat_stream(
+        self,
+        messages: list[dict],
+        system_prompt: str | None = None,
+        model: str | None = None,
+    ) -> AsyncIterator[str]:
         full_messages = [{"role": "system", "content": system_prompt}] if system_prompt else []
         full_messages.extend(messages)
         stream = await self.client.chat.completions.create(
@@ -52,7 +64,13 @@ class OpenAIProvider(AIProvider):
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
-    async def structured_output(self, messages, response_model, system_prompt=None, model=None):
+    async def structured_output(
+        self,
+        messages: list[dict],
+        response_model: type,
+        system_prompt: str | None = None,
+        model: str | None = None,
+    ) -> dict:
         full_messages = [{"role": "system", "content": system_prompt}] if system_prompt else []
         full_messages.extend(messages)
         response = await self.client.chat.completions.create(  # type: ignore[call-overload]
@@ -60,4 +78,7 @@ class OpenAIProvider(AIProvider):
             messages=full_messages,
             response_format={"type": "json_object"},
         )
-        return parse_json_response(response_model, response.choices[0].message.content or "{}")
+        result = parse_json_response(response_model, response.choices[0].message.content or "{}")
+        if not isinstance(result, dict):
+            raise ValueError(f"Expected a JSON object from structured output, got {type(result).__name__}")
+        return result

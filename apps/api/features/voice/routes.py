@@ -166,7 +166,7 @@ async def voice_stream(
         log.info("Voice stream started: language=%s", language)
 
         # ── Proxy audio + results concurrently ────────────────────────
-        async def _forward_audio():
+        async def _forward_audio() -> None:
             """Read binary audio from browser and send to Deepgram."""
             try:
                 while True:
@@ -202,10 +202,23 @@ async def voice_stream(
             except asyncio.CancelledError:
                 pass
 
-        async def _forward_results():
+        async def _forward_results() -> None:
             """Read transcripts from Deepgram and send to browser."""
             try:
                 async for event in deepgram.receive():
+                    if event.type == "error":
+                        # Terminal Deepgram failure — tell the browser so it can
+                        # leave the recording state (it won't get any more data).
+                        try:
+                            await websocket.send_json(
+                                {
+                                    "type": "error",
+                                    "message": "Voice connection lost. Please restart microphone.",
+                                }
+                            )
+                        except (WebSocketDisconnect, RuntimeError):
+                            pass
+                        break
                     try:
                         if event.speech_final:
                             await websocket.send_json(

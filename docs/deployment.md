@@ -1,7 +1,15 @@
 # Deploying Tayari AI for free (Vercel + GCP e2-micro)
 
-The app does not need any paid hosting. The chosen **$0/month** stack splits the
-monorepo across two always-free services:
+> **Free-tier scope.** This is a **non-commercial / evaluation** deployment.
+> Vercel Hobby is for personal, non-commercial use; commercial deployments need
+> a paid Vercel plan. GCP's Always Free allowance covers **one** `e2-micro`
+> instance, up to 30 GB of standard persistent disk, and **1 GB outbound
+> transfer per month** — charges are incurred for anything beyond those limits
+> (see [Part E](#part-e--verify)). Treat any "$0" claim below as *"free within
+> these limits and for non-commercial use"*.
+
+The stack splits the monorepo across two always-free services (within the
+limits above):
 
 | Piece | Hosts it | Runs | Cost |
 | --- | --- | --- | --- |
@@ -41,13 +49,19 @@ Browser ──► Vercel (Next.js) ──REST/WS──► Traefik :443 ──►
    - Leave `NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY` **blank** unless you want
      Google/GitHub social login (email+password auth needs no Supabase)
    - `NEXT_PUBLIC_SENTRY_DSN` — optional
-6. Deploy. Note the web service expects its backend split by the same origin —
-   CORS must allow your Vercel domain.
+6. Deploy. **Set CORS before testing the frontend:** the default
+   `infrastructure/.env.example` only allows `https://tayari.ai` /
+   `https://www.tayari.ai`. Put your **exact** Vercel origin
+   (`https://your-app.vercel.app`, or your custom domain) into the API VM's
+   `.env` `CORS_ORIGINS` (JSON list) and restart the API, or every browser API
+   call from Vercel will be blocked.
 
 ## Part B — Backend on Google Cloud (e2-micro, Always Free)
 
-1. **Sign up** at `cloud.google.com` (card validates with a $0–$1 hold that is
-   released; **never billed**).
+1. **Sign up** at `cloud.google.com`. GCP requires a billing account (card) to
+   use Always Free resources; signup is not a charge, but anything **beyond**
+   the free-tier allowance (extra disk, egress >1 GB/mo, non-free machine
+   types) is billed — keep an eye on the Billing dashboard.
 2. Console → **Compute Engine → Create instance**:
    - Name `tayari-api`, region **us-east1 / us-central1 / us-west1**
    - Machine type **e2-micro** (1 vCPU burstable, 1 GB RAM — this is the
@@ -102,7 +116,10 @@ the one free VM.
 
 ## Costs & caveats
 
-- **$0.00/mo** across Vercel + GCP. You only pay OpenAI / Deepgram / Resend
+- **$0/mo within the free-tier limits, non-commercial use only.** Charges are
+  possible if you exceed GCP's Always Free allowance (machine hours, 30 GB
+  disk, **1 GB outbound/month**) or if you ship commercially on Vercel Hobby —
+  pick paid tiers when that happens. You also pay OpenAI / Deepgram / Resend
   usage per interview.
 - e2-micro bursts; sustained interviews throughput is fine for single users but
   don't expect multi-user load-testing scale.

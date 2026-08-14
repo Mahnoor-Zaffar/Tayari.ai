@@ -18,8 +18,12 @@ interface UseQuestionTtsOptions {
 }
 
 interface UseQuestionTtsResult {
-  /** Whether real TTS is available (mock fallback is silent and skipped). */
-  supported: boolean;
+  /**
+   * Whether real TTS is available. `null` while the status is being probed so
+   * callers must not assume "unavailable" during the check (which would start
+   * the mic and record the synthesized question as the answer).
+   */
+  supported: boolean | null;
   /** True while synthesized audio is playing. */
   isPlaying: boolean;
   /** Stop current playback (barge-in) and ignore in-flight fetches. */
@@ -41,7 +45,7 @@ export function useQuestionTts({
   currentQuestion,
   onQuestionEnd,
 }: UseQuestionTtsOptions): UseQuestionTtsResult {
-  const [supported, setSupported] = useState(false);
+  const [supported, setSupported] = useState<boolean | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -62,6 +66,9 @@ export function useQuestionTts({
       URL.revokeObjectURL(urlRef.current);
       urlRef.current = null;
     }
+    // Un-mark the current question as played so a resumed/replayed session
+    // speaks it again instead of stalling with no audio and no mic start.
+    playedTimestampRef.current = 0;
     setIsPlaying(false);
   }, []);
 
@@ -96,7 +103,7 @@ export function useQuestionTts({
 
   // Speak each new question.
   useEffect(() => {
-    if (!currentQuestion || !supported) return;
+    if (!currentQuestion || supported !== true) return;
     if (currentQuestion.timestamp === playedTimestampRef.current) return;
     playedTimestampRef.current = currentQuestion.timestamp;
 

@@ -47,5 +47,5 @@ def parse_json_response(response_model: type, content: str) -> dict | list:
     raw = extract_json_content(content)
     data = json.loads(raw)
     if response_model is not None and hasattr(response_model, "model_validate"):
-        return response_model.model_validate(data)  # type: ignore[return-value]
+        return response_model.model_validate(data)
     return data

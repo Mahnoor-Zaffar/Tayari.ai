@@ -336,8 +336,8 @@ Frontend (Next.js 15, Vercel Hobby)
        │
        ├── REST API ──→ FastAPI (modular monolith, GCP e2-micro VM)
        │                     │
-       │                     ├── Neon PostgreSQL 17
-       │                     ├── Cloudflare R2
+       │                     ├── PostgreSQL 17 (same VM via Compose `db` service)
+       │                     ├── S3-compatible storage (MinIO locally, R2/S3 in prod)
        │                     └── APScheduler (bg tasks)
        │
        ├── WebSocket ──→ FastAPI (real-time interview events)

@@ -22,6 +22,10 @@ WRAP_UP_MESSAGE = (
     "The interviewer will now step out while the evaluation is prepared."
 )
 
+DEFAULT_INITIAL_QUESTION = (
+    "Welcome! Let's start with an easy one. Can you describe your approach to designing a scalable web application?"
+)
+
 
 class AIOrchestrator:
     """Manages the AI-driven turn loop for a single interview session."""
@@ -48,10 +52,13 @@ class AIOrchestrator:
         self._question_count = 0
 
     async def generate_initial_question(self) -> str:
-        """Generate the opening question from the AI interviewer."""
+        """Return the opening question from the AI interviewer (with fallback)."""
         self._current_question_id += 1
         self._question_count += 1
         question = await self._generate_question(is_initial=True)
+        if not question:
+            logger.warning("AI provider returned no initial question — using fallback")
+            question = DEFAULT_INITIAL_QUESTION
         self._last_question = question
         self._memory.append("assistant", question)
         self._transcript.append_static("ai", question)

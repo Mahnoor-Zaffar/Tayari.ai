@@ -596,11 +596,14 @@ flowchart LR
 
 ### Deployment
 
-The stack deploys to **$0/month** hosting:
+The stack deploys to **$0/month** hosting within provider free-tier limits and
+for **personal / non-commercial use**:
 
-- **Frontend (Next.js)** → **Vercel** Hobby (free), root directory `apps/web`
+- **Frontend (Next.js)** → **Vercel** Hobby (free; personal, non-commercial
+  only), root directory `apps/web`
 - **Backend (FastAPI + Redis + Postgres)** → **Google Cloud `e2-micro`**
-  (Always Free) via `infrastructure/docker-compose.prod.yml`
+  (Always Free: one instance, ≤30 GB disk, ≤1 GB egress/mo — costs accrue
+  beyond these limits) via `infrastructure/docker-compose.prod.yml`
   (Traefik = TLS; embedded Redis; `postgres:17` in a volume)
 - **Feature branches / CI**: runs all checks, no deployment
 

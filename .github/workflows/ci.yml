@@ -61,6 +61,11 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
 
+      - name: Lint Python (API)
+        run: uv run --directory apps/api ruff check .
+      - name: Type-check Python (API)
+        run: uv run --directory apps/api mypy .
+
   js-tests:
     name: JS Tests
     runs-on: ubuntu-latest

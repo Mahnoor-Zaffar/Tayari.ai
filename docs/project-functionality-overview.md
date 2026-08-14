@@ -658,15 +658,17 @@ snapshots to `session_events` and interview status.
 
 ### 10.2 CI/CD
 
-- `ci.yml`: lint-and-typecheck (pnpm lint/typecheck; **ruff/mypy are not
-  actually run** despite the job name), js-tests (vitest), python-tests
+- `ci.yml`: lint-and-typecheck (**pnpm** lint/typecheck **+ API `ruff check .` and `mypy .`** — the job name matches now), js-tests (vitest), python-tests
   (pytest on Postgres+Redis services, excluding E2E), build (next build +
   perf budget), and `deploy` (**placeholder — echo only**).
-- `docker.yml`: builds `tayari-api:latest` / `tayari-web:latest`, **never
-  pushed to any registry**.
-- **No external CD, no image registry, no staging, no rollback.** The prod
-  stack (`infrastructure/docker-compose.prod.yml`) is deployed manually; README
-  no longer claims auto-deploys.
+- `docker.yml`: builds `tayari-api` / `tayari-web` and **pushes both to GHCR
+  (`ghcr.io/<owner>/<repo>-api|-web:latest`, plus `:$sha`) on pushes to `main`**
+  (pull requests build + smoke-test locally only), then boot-smoke-tests the
+  pushed API/Web images against throwaway Postgres/Redis.
+- **No external CD, no staging, no rollback.** The prod stack
+  (`infrastructure/docker-compose.prod.yml`) is deployed manually (`README` no
+  longer claims auto-deploys); `ci.yml`'s `deploy` job is a naming-only
+  placeholder.
 
 ### 10.3 Hosting & environment
 
@@ -703,8 +705,8 @@ snapshots to `session_events` and interview status.
 2. **Billing entirely stubbed** — 4 endpoints return "Not implemented"
    (`features/billing/routes.py`); no `/dashboard/billing` route; free-tier is
    a hardcoded count of 10 with no subscription model behind it.
-3. **No deployment path** — CI deploy job is a placeholder; images never
-   pushed; no CD. README/ARCHITECTURE claim otherwise.
+3. **No deployment path** — CI `deploy` job is a placeholder; images are
+   pushed to GHCR but nothing runs them in production; no CD.
 
 ### High priority (security & reliability)
 
@@ -796,7 +798,8 @@ From a Principal Engineer perspective — incremental, not rewrite.
 10. Wire `NEXT_PUBLIC_*` build args into `apps/web/Dockerfile`; fix the compose
     web build (copy lockfile from root + mount `packages/`); fix/remove
     `netlify.toml` redirects; delete the broken Traefik config or fix it.
-11. Make CI run ruff + mypy (the job claims to), push images to GHCR/ECR, and
+11. Extend CI mypy coverage to the test suite (today it type-checks app source
+    only) and
     replace the placeholder `deploy` with a real target (Vercel for the web +
     `infrastructure/docker-compose.prod.yml` on GCP e2-micro for the API).
 12. Export metrics (`/metrics` Prometheus or vendor SDK), ship logs to a sink,

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 
@@ -18,17 +19,16 @@ class AIProvider(ABC):
         system_prompt: str | None = None,
         max_tokens: int = 1000,
         model: str | None = None,
-    ) -> AIResponse:
-        pass
+    ) -> AIResponse: ...
 
     @abstractmethod
-    async def chat_stream(
+    def chat_stream(
         self,
         messages: list[dict],
         system_prompt: str | None = None,
         model: str | None = None,
-    ):
-        pass
+    ) -> AsyncIterator[str]:
+        """Stream response chunks. Implementations are async generators."""
 
     @abstractmethod
     async def structured_output(
@@ -37,5 +37,4 @@ class AIProvider(ABC):
         response_model: type,
         system_prompt: str | None = None,
         model: str | None = None,
-    ) -> dict:
-        pass
+    ) -> dict: ...

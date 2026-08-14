@@ -38,7 +38,8 @@ class TranscriptionProvider(ABC):
     async def send_audio(self, data: bytes) -> None: ...
 
     @abstractmethod
-    def receive(self) -> AsyncIterator[TranscriptionEvent]: ...
+    def receive(self) -> AsyncIterator[TranscriptionEvent]:
+        """Return an async iterator of transcript events from the provider."""
 
     @abstractmethod
     async def close(self) -> None: ...

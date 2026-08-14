@@ -53,6 +53,13 @@ select = ["E", "F", "I", "N", "W", "UP"]
 python_version = "3.13"
 strict = true
 ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+exclude = [
+    "alembic/",
+    "tests/",
+    "/tests/",
+    "conftest.py",
+]
 disable_error_code = [
     "no-untyped-def",    # Stub routes — typed when implemented
     "type-arg",          # Python 3.12+ allows bare dict/list generics

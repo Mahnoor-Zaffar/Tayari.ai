@@ -128,9 +128,15 @@ class DeepgramTranscriptionProvider(TranscriptionProvider):
                     log.debug("Deepgram metadata: %s", msg.get("duration", 0))
 
         except websockets.ConnectionClosed as exc:
+            self._connected = False
+            self._dropped = True
             log.warning("Deepgram connection closed: %s", exc)
-        except Exception:
+            yield TranscriptionEvent(type="error", error=f"Deepgram connection closed: {exc}")
+        except Exception as exc:
+            self._connected = False
+            self._dropped = True
             log.exception("Deepgram receive error")
+            yield TranscriptionEvent(type="error", error=f"Deepgram receive error: {exc}")
         finally:
             self._connected = False
 

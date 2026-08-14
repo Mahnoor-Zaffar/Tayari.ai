@@ -263,6 +263,8 @@ class InterviewService:
                     f"Unsupported file type: {request.mime_type}. Allowed: PDF, TXT, DOCX.",
                 )
 
+            if request.file_hash is None:
+                raise ValidationError("File hash required for uploaded job description.")
             existing = await self._repo.find_job_description_by_hash(user_id, request.file_hash)
             if existing is not None:
                 return JobDescriptionResponse(
@@ -769,7 +771,7 @@ def _suggest_language(text: str) -> str | None:
     scores: dict[str, int] = {}
     for lang, keywords in TECH_KEYWORDS.items():
         scores[lang] = sum(1 for kw in keywords if kw in text_lower)
-    best = max(scores, key=scores.get) if scores else None
+    best = max(scores, key=lambda k: scores[k]) if scores else None
     return best if best and scores[best] > 0 else None
 
 

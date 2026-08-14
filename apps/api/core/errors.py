@@ -1,4 +1,5 @@
 from fastapi import HTTPException
+from pydantic import BaseModel
 
 # ── Error codes ─────────────────────────────────────────────────────────────
 
@@ -119,5 +120,5 @@ class InternalError(AppError):
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 
-def success_response(data: dict) -> dict:
+def success_response(data: dict | BaseModel) -> dict:
     return {"success": True, "data": data}

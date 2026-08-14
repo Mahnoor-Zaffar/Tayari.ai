@@ -39,7 +39,7 @@ class CodeAnalysisService:
             "summary": self._summarize_test_results(passed, total),
             "code": source,
             "lines_of_code": len(lines),
-            "test_results": self._format_test_results(test_results),
+            "test_results": self.format_test_results(test_results),
             "compiler_output": submission.get("compiler_output", ""),
             "execution_ms": submission.get("execution_ms"),
         }

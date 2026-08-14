@@ -41,4 +41,4 @@ class OpenAISpeechProvider(SpeechProvider):
             voice=voice or self._voice,
             input=text,
         )
-        return await response.read()
+        return response.read()
