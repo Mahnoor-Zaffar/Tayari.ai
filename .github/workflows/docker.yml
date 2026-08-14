@@ -74,7 +74,6 @@ jobs:
         shell: bash
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_WS_URL: ${{ secrets.NEXT_PUBLIC_WS_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
@@ -89,7 +88,6 @@ jobs:
           : > "$args_file"
           for key in \
             NEXT_PUBLIC_API_URL \
-            NEXT_PUBLIC_WS_URL \
             NEXT_PUBLIC_SUPABASE_URL \
             NEXT_PUBLIC_SUPABASE_ANON_KEY \
             NEXT_PUBLIC_SENTRY_DSN \
@@ -108,7 +106,7 @@ jobs:
       - name: Build and push API image
         uses: docker/build-push-action@v6
         with:
-          context: apps/api
+          context: .
           file: apps/api/Dockerfile
           push: ${{ github.event_name == 'push' }}
           load: true
@@ -175,7 +173,9 @@ jobs:
             -e DATABASE_URL=postgresql+asyncpg://tayari:tayari_dev@smoke-db:5432/tayari \
             -e REDIS_URL=redis://smoke-redis:6379/0 \
             -e ENVIRONMENT=production \
+            -e JWT_ALGORITHM=HS256 \
             -e JWT_SECRET_KEY=smoke_test_SECRET_KEY_0123456789abcdefgh \
+            -e 'CORS_ORIGINS=["https://tayari.ai"]' \
             -p 8000:8000 \
             "$API_IMAGE"
 

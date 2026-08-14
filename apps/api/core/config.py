@@ -35,23 +35,19 @@ class Settings(BaseSettings):
     JWT_EMAIL_VERIFY_EXPIRY_HOURS: int = 24
     JWT_PASSWORD_RESET_EXPIRY_HOURS: int = 1
 
-    @computed_field
-    @property
+    @computed_field(return_type=timedelta)
     def jwt_access_token_ttl(self) -> timedelta:
         return timedelta(hours=self.JWT_EXPIRY_HOURS)
 
-    @computed_field
-    @property
+    @computed_field(return_type=timedelta)
     def jwt_refresh_token_ttl(self) -> timedelta:
         return timedelta(days=self.JWT_REFRESH_EXPIRY_DAYS)
 
-    @computed_field
-    @property
+    @computed_field(return_type=timedelta)
     def jwt_email_verify_ttl(self) -> timedelta:
         return timedelta(hours=self.JWT_EMAIL_VERIFY_EXPIRY_HOURS)
 
-    @computed_field
-    @property
+    @computed_field(return_type=timedelta)
     def jwt_password_reset_ttl(self) -> timedelta:
         return timedelta(hours=self.JWT_PASSWORD_RESET_EXPIRY_HOURS)
 
@@ -98,6 +94,12 @@ class Settings(BaseSettings):
     DEEPGRAM_API_KEY: str = ""
     DEEPGRAM_MODEL: str = "nova-3"
     DEEPGRAM_ENDPOINTING: int = 300  # ms of silence before finalizing speech
+
+    # Audio media layer — provider selection for the realtime voice stack.
+    STT_PROVIDER: str = "deepgram"
+    TTS_PROVIDER: str = "openai"
+    TTS_MODEL: str = "tts-1"
+    TTS_VOICE: str = "nova"
 
     SENTRY_DSN: str = ""
 

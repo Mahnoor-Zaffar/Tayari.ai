@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
@@ -31,6 +32,7 @@ def _auth_override():
         display_name="Test User",
         email_verified=True,
         is_active=True,
+        created_at=datetime.now(UTC),
         roles=["user"],
         permissions=["interview:read", "interview:write"],
     )
@@ -69,6 +71,7 @@ async def test_run_code_requires_auth():
             display_name="Test User",
             email_verified=True,
             is_active=True,
+            created_at=datetime.now(UTC),
             roles=["user"],
             permissions=[],
         )

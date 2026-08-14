@@ -276,8 +276,11 @@ ownership check (docstring claims otherwise). Also note the double
   and `CodingInterviewLayout.tsx` fetch and render the API problem.
 - **Runner images must be prebuilt**: Docker mode runs
   `tayari-runner-{lang}` images. Nothing in this repo builds them; without
-  them, execution fails with a "missing sandbox image" error (subprocess
-  fallback is used only when Docker is unavailable).
+  them, execution fails with a "missing sandbox image" error (the unisolated
+  subprocess fallback is used only when Docker itself is unavailable). CI
+  runs the code-execution tests against that subprocess fallback
+  (`TAYARI_SANDBOX_USE_DOCKER=false`), since GitHub runners have Docker but
+  not the images.
 
 ### 3.5 Evaluation pipeline
 
@@ -658,14 +661,17 @@ snapshots to `session_events` and interview status.
 
 ### 10.2 CI/CD
 
-- `ci.yml`: lint-and-typecheck (pnpm lint/typecheck; **ruff/mypy are not
-  actually run** despite the job name), js-tests (vitest), python-tests
+- `ci.yml`: lint-and-typecheck (**pnpm** lint/typecheck **+ API `ruff check .` and `mypy .`** — the job name matches now), js-tests (vitest), python-tests
   (pytest on Postgres+Redis services, excluding E2E), build (next build +
   perf budget), and `deploy` (**placeholder — echo only**).
-- `docker.yml`: builds `tayari-api:latest` / `tayari-web:latest`, **never
-  pushed to any registry**.
-- **No CD, no image registry, no staging, no rollback.** README claims of
-  "Railway auto-deploys" are false.
+- `docker.yml`: builds `tayari-api` / `tayari-web` and **pushes both to GHCR
+  (`ghcr.io/<owner>/<repo>-api|-web:latest`, plus `:$sha`) on pushes to `main`**
+  (pull requests build + smoke-test locally only), then boot-smoke-tests the
+  pushed API/Web images against throwaway Postgres/Redis.
+- **No external CD, no staging, no rollback.** The prod stack
+  (`infrastructure/docker-compose.prod.yml`) is deployed manually (`README` no
+  longer claims auto-deploys); `ci.yml`'s `deploy` job is a naming-only
+  placeholder.
 
 ### 10.3 Hosting & environment
 
@@ -702,8 +708,8 @@ snapshots to `session_events` and interview status.
 2. **Billing entirely stubbed** — 4 endpoints return "Not implemented"
    (`features/billing/routes.py`); no `/dashboard/billing` route; free-tier is
    a hardcoded count of 10 with no subscription model behind it.
-3. **No deployment path** — CI deploy job is a placeholder; images never
-   pushed; no CD. README/ARCHITECTURE claim otherwise.
+3. **No deployment path** — CI `deploy` job is a placeholder; images are
+   pushed to GHCR but nothing runs them in production; no CD.
 
 ### High priority (security & reliability)
 
@@ -795,9 +801,10 @@ From a Principal Engineer perspective — incremental, not rewrite.
 10. Wire `NEXT_PUBLIC_*` build args into `apps/web/Dockerfile`; fix the compose
     web build (copy lockfile from root + mount `packages/`); fix/remove
     `netlify.toml` redirects; delete the broken Traefik config or fix it.
-11. Make CI run ruff + mypy (the job claims to), push images to GHCR/ECR, and
-    replace the placeholder `deploy` with a real target (Fly/Render/Railway or
-    a managed VPS + systemd).
+11. Extend CI mypy coverage to the test suite (today it type-checks app source
+    only) and
+    replace the placeholder `deploy` with a real target (Vercel for the web +
+    `infrastructure/docker-compose.prod.yml` on GCP e2-micro for the API).
 12. Export metrics (`/metrics` Prometheus or vendor SDK), ship logs to a sink,
     and set alerting on 5xx + AI-provider error rate. Add Sentry to SSR via
     `@sentry/nextjs`.
@@ -826,7 +833,7 @@ From a Principal Engineer perspective — incremental, not rewrite.
 | Claim (docs) | Reality (code) |
 |---|---|
 | "CI runs ruff + mypy" | `ci.yml` lint job runs pnpm lint/typecheck only; no ruff/mypy step |
-| "Railway auto-deploys API, Netlify auto-deploys frontend" | No deploy workflow; CI `deploy` is an echo; `netlify.toml` broken |
+| "Railway auto-deploys API, Netlify auto-deploys frontend" | No deploy workflow; CI `deploy` is an echo; deployment targets are now Vercel (web) + GCP e2-micro compose (API) |
 | "Celery dependency" | Celery absent from `pyproject.toml` |
 | "Sentry not initialized" (older) | Sentry initialized in `main.py` lifespan (API) + `@sentry/browser` (web) |
 | "8 migrations" | 10 migrations, head `0010`; PG 17 (not 18) |

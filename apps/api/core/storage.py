@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 import logging
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from core.config import settings
@@ -44,7 +45,7 @@ class StorageService:
     def __init__(self) -> None:
         self._bucket = settings.STORAGE_BUCKET
         self._use_s3 = bool(settings.STORAGE_ENDPOINT and settings.STORAGE_ACCESS_KEY)
-        self._client = None
+        self._client: Any = None
         if self._use_s3:
             self._client = self._init_s3()
 
@@ -118,7 +119,7 @@ class StorageService:
 
     # ── S3 implementation ─────────────────────────────────────────────────
 
-    def _init_s3(self):
+    def _init_s3(self) -> Any:
         import boto3
 
         session = boto3.Session(
@@ -133,7 +134,7 @@ class StorageService:
         self._ensure_bucket(client)
         return client
 
-    def _ensure_bucket(self, client) -> None:
+    def _ensure_bucket(self, client: Any) -> None:
         try:
             client.head_bucket(Bucket=self._bucket)
         except Exception:
@@ -146,7 +147,7 @@ class StorageService:
     async def _store_s3(self, key: str, content: bytes, content_type: str) -> str:
         try:
             buf = io.BytesIO(content)
-            self._client.upload_fileobj(  # type: ignore[union-attr]
+            self._client.upload_fileobj(
                 buf,
                 self._bucket,
                 key,
@@ -161,7 +162,7 @@ class StorageService:
     async def _retrieve_s3(self, key: str) -> bytes | None:
         try:
             buf = io.BytesIO()
-            self._client.download_fileobj(self._bucket, key, buf)  # type: ignore[union-attr]
+            self._client.download_fileobj(self._bucket, key, buf)
             return buf.getvalue()
         except Exception as exc:
             if "404" in str(exc) or "Not Found" in str(exc):
@@ -171,7 +172,7 @@ class StorageService:
 
     async def _delete_s3(self, key: str) -> None:
         try:
-            self._client.delete_object(Bucket=self._bucket, Key=key)  # type: ignore[union-attr]
+            self._client.delete_object(Bucket=self._bucket, Key=key)
         except Exception as exc:
             log.warning("S3 delete failed for key=%s: %s", key, exc)
 

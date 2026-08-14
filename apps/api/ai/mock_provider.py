@@ -6,6 +6,8 @@ without calling any external AI service.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+
 from ai.provider import AIProvider, AIResponse
 
 MOCK_QUESTIONS = [
@@ -58,7 +60,9 @@ class MockProvider(AIProvider):
             latency_ms=200,
         )
 
-    async def chat_stream(self, messages: list[dict], system_prompt: str | None = None, model: str | None = None):
+    async def chat_stream(
+        self, messages: list[dict], system_prompt: str | None = None, model: str | None = None
+    ) -> AsyncIterator[str]:
         yield "Mock streaming response"
 
     async def structured_output(

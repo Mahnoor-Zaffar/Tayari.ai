@@ -24,7 +24,7 @@ async def get_current_user(
             email=current_user.email,
             display_name=current_user.display_name,
             email_verified=current_user.email_verified,
-            created_at=current_user.created_at if hasattr(current_user, "created_at") else None,
+            created_at=current_user.created_at,
         )
     )
 

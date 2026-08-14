@@ -14,6 +14,8 @@ import logging
 import time
 from collections import defaultdict
 
+from redis.asyncio import Redis
+
 from core.config import settings
 
 log = logging.getLogger("app.rate_limit")
@@ -52,10 +54,10 @@ class RedisRateLimiter:
         fallback: InMemoryRateLimiter | None = None,
     ) -> None:
         self._redis_url = redis_url
-        self._redis = None
+        self._redis: Redis | None = None
         self._fallback = fallback or InMemoryRateLimiter()
 
-    async def _get_redis(self):
+    async def _get_redis(self) -> Redis:
         if self._redis is None:
             from redis.asyncio import from_url
 

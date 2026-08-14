@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
+from redis.asyncio import Redis
+
 from core.config import settings
 from features.auth.jwt.interfaces import TokenBlacklistProtocol
 
@@ -31,9 +33,9 @@ class RedisBlacklist(TokenBlacklistProtocol):
 
     def __init__(self, redis_url: str = _REDIS_URL) -> None:
         self._redis_url = redis_url
-        self._redis = None
+        self._redis: Redis | None = None
 
-    async def _get_redis(self):
+    async def _get_redis(self) -> Redis:
         if self._redis is None:
             from redis.asyncio import from_url
 

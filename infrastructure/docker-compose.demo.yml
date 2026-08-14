@@ -1,0 +1,82 @@
+# Local LIVE demo via Cloudflare quick tunnels — self-contained, uses PROD images.
+# Tunnel URLs are ephemeral (a new one each quick tunnel), and the signing key
+# must never be committed, so all values come from infrastructure/.env
+# (ignored). Copy infrastructure/.env.example to .env and fill it in.
+# Start:  cloudflared quick tunnel -> copy URLs into .env -> docker compose -f docker-compose.demo.yml up -d --build
+name: tayari-demo
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: tayari
+      POSTGRES_PASSWORD: tayari_dev
+      POSTGRES_DB: tayari
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tayari"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: tayari
+      MINIO_ROOT_PASSWORD: tayari_dev
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://tayari:tayari_dev@db:5432/tayari
+      JWT_ALGORITHM: HS256
+      JWT_SECRET_KEY: ${DEMO_JWT_SECRET_KEY:?Set DEMO_JWT_SECRET_KEY in infrastructure/.env}
+      CORS_ORIGINS: ${DEMO_CORS_ORIGINS:?Set DEMO_CORS_ORIGINS (JSON list) in infrastructure/.env}
+      FRONTEND_URL: ${DEMO_FRONTEND_URL:?Set DEMO_FRONTEND_URL in infrastructure/.env}
+      PUBLIC_API_URL: ${DEMO_PUBLIC_API_URL:?Set DEMO_PUBLIC_API_URL in infrastructure/.env}
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_ACCESS_KEY: tayari
+      STORAGE_SECRET_KEY: tayari_dev
+      STORAGE_BUCKET: tayari-evaluations
+      STORAGE_REGION: us-east-1
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${DEMO_PUBLIC_API_URL:?Set DEMO_PUBLIC_API_URL in infrastructure/.env}
+        NEXT_PUBLIC_WS_URL: ${DEMO_PUBLIC_WS_URL:?Set DEMO_PUBLIC_WS_URL in infrastructure/.env}
+        NEXT_PUBLIC_SITE_URL: ${DEMO_FRONTEND_URL:?Set DEMO_FRONTEND_URL in infrastructure/.env}
+        NEXT_PUBLIC_FF_INTERVIEWS: "1"
+        NEXT_PUBLIC_FF_REPORTS: "1"
+        NEXT_PUBLIC_FF_SETTINGS: "1"
+        NEXT_PUBLIC_FF_NEW_INTERVIEW: "1"
+        NEXT_PUBLIC_FF_ANALYTICS: "1"
+        NEXT_PUBLIC_APP_VERSION: "0.1.0"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  minio_data:

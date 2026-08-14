@@ -238,7 +238,7 @@ class TestRefresh:
         assert result.user == sample_user
         mock_token_service.verify.assert_called_once_with("valid-refresh-token", "refresh")
         mock_token_service.revoke.assert_awaited_once_with("valid-refresh-token")
-        mock_token_service.create_access_token.assert_called_once_with(sample_user.id, roles=[], permissions=[])
+        mock_token_service.create_access_token.assert_called_once_with(sample_user.id, roles=["user"], permissions=[])
         mock_token_service.create_refresh_token.assert_called_once_with(sample_user.id, token_family=token_family)
 
     async def test_raises_if_token_invalid(
@@ -388,3 +388,97 @@ class TestForgotPassword:
 
         assert result is None
         mock_token_service.create_password_reset_token.assert_not_called()
+
+
+class TestAdminElevationGate:
+    """Admin must require both an admin email AND a verified address."""
+
+    async def test_register_with_admin_email_does_not_grant_admin(
+        self,
+        service: AuthenticationService,
+        mock_repository: AsyncMock,
+        mock_token_service: MagicMock,
+    ) -> None:
+        mock_repository.exists.return_value = False
+        data = RegistrationData(
+            email="ADMIN@tayari.ai",
+            username="admin_bob",
+            display_name="Bob",
+            password="plain-password",
+        )
+        new_user = User(
+            id=uuid4(),
+            email="admin@tayari.ai",
+            username="admin_bob",
+            display_name="Bob",
+            password_hash="$2b$12$hashed",
+            email_verified=False,
+            is_active=True,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        mock_repository.create_user.return_value = new_user
+
+        await service.register(data)
+
+        mock_token_service.create_access_token.assert_called_once_with(new_user.id, roles=["user"], permissions=[])
+
+    async def test_login_admin_email_unverified_no_admin(
+        self,
+        service: AuthenticationService,
+        mock_repository: AsyncMock,
+        mock_password_service: MagicMock,
+        mock_token_service: MagicMock,
+        sample_user: User,
+    ) -> None:
+        admin_user = sample_user.model_copy(update={"email": "admin@tayari.ai", "email_verified": False})
+        mock_repository.find_by_email.return_value = admin_user
+        mock_password_service.verify_password.return_value = True
+
+        await service.login("admin@tayari.ai", "correct-password")
+
+        mock_token_service.create_access_token.assert_called_once_with(admin_user.id, roles=["user"], permissions=[])
+
+    async def test_login_admin_email_verified_grants_admin(
+        self,
+        service: AuthenticationService,
+        mock_repository: AsyncMock,
+        mock_password_service: MagicMock,
+        mock_token_service: MagicMock,
+        sample_user: User,
+    ) -> None:
+        admin_user = sample_user.model_copy(update={"email": "admin@tayari.ai", "email_verified": True})
+        mock_repository.find_by_email.return_value = admin_user
+        mock_password_service.verify_password.return_value = True
+
+        await service.login("admin@tayari.ai", "correct-password")
+
+        mock_token_service.create_access_token.assert_called_once_with(
+            admin_user.id,
+            roles=["admin", "user"],
+            permissions=["users:read", "users:write", "users:delete"],
+        )
+
+    async def test_refresh_recomputes_admin_from_email_verification(
+        self,
+        service: AuthenticationService,
+        mock_repository: AsyncMock,
+        mock_token_service: MagicMock,
+        sample_user: User,
+    ) -> None:
+        admin_user = sample_user.model_copy(update={"email": "admin@tayari.ai", "email_verified": True})
+        token_family = str(uuid4())
+        payload = build_token_payload(sub=str(admin_user.id), type_="refresh")
+        payload.roles = []
+        payload.permissions = []
+        mock_token_service.verify.return_value = payload
+        mock_token_service.verify.return_value.token_family = token_family
+        mock_repository.find_by_id.return_value = admin_user
+
+        await service.refresh("valid-refresh-token")
+
+        mock_token_service.create_access_token.assert_called_once_with(
+            admin_user.id,
+            roles=["admin", "user"],
+            permissions=["users:read", "users:write", "users:delete"],
+        )

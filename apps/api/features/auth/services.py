@@ -16,21 +16,8 @@ from features.auth.interfaces import (
     TokenServiceProtocol,
     UserRepositoryProtocol,
 )
+from features.auth.roles import user_roles
 from features.email.service import send_reset_email, send_verification_email
-
-
-def _get_admin_emails() -> frozenset[str]:
-    """Return admin emails from settings, falling back to the default."""
-    raw = settings.ADMIN_EMAILS or "admin@tayari.ai"
-    return frozenset(email.strip().lower() for email in raw.split(",") if email.strip())
-
-
-def _user_roles(email: str) -> tuple[list[str], list[str]]:
-    """Return (roles, permissions) for a user based on their email."""
-    if email.lower() in _get_admin_emails():
-        return (["admin", "user"], ["users:read", "users:write", "users:delete"])
-    return (["user"], [])
-
 
 # ── Service-level models ───────────────────────────────────────────────────
 
@@ -85,7 +72,7 @@ class AuthenticationService:
             )
         )
 
-        roles, permissions = _user_roles(data.email)
+        roles, permissions = user_roles(data.email)
 
         verify_token = self._tokens.create_email_verification_token(user.id)
         verify_url = f"{settings.FRONTEND_URL}/auth/verify-email?token={verify_token}"
@@ -109,7 +96,7 @@ class AuthenticationService:
         if not user.is_active:
             raise UserNotActiveError("Account is disabled or deleted")
 
-        roles, permissions = _user_roles(email)
+        roles, permissions = user_roles(user.email, email_verified=user.email_verified)
         return AuthResult(
             user=user,
             access_token=self._tokens.create_access_token(user.id, roles=roles, permissions=permissions),
@@ -150,14 +137,16 @@ class AuthenticationService:
         if existing is not None:
             if not existing.is_active:
                 raise UserNotActiveError("Account is disabled")
-            roles, permissions = _user_roles(email)
+            roles, permissions = user_roles(existing.email, email_verified=existing.email_verified)
             return AuthResult(
                 user=existing,
                 access_token=self._tokens.create_access_token(existing.id, roles=roles, permissions=permissions),
                 refresh_token=self._tokens.create_refresh_token(existing.id),
             )
 
-        # Create new user
+        # Create new user.  OAuth providers vouch for the verified email, so
+        # the account is created pre-verified; admin elevation (if any) follows
+        # the same email_verified gate used everywhere else.
         import secrets
 
         username = email.split("@")[0][:50]
@@ -172,10 +161,11 @@ class AuthenticationService:
                 username=username,
                 display_name=display_name[:100],
                 password_hash=bcrypt.hash(secrets.token_urlsafe(32)),
+                email_verified=True,
             )
         )
 
-        roles, permissions = _user_roles(email)
+        roles, permissions = user_roles(email, email_verified=True)
         return AuthResult(
             user=user,
             access_token=self._tokens.create_access_token(user.id, roles=roles, permissions=permissions),
@@ -197,11 +187,10 @@ class AuthenticationService:
         if not user.is_active or user.deleted_at is not None:
             raise UserNotActiveError("Account is disabled or deleted")
 
+        roles, permissions = user_roles(user.email, email_verified=user.email_verified)
         return AuthResult(
             user=user,
-            access_token=self._tokens.create_access_token(
-                user.id, roles=payload.roles, permissions=payload.permissions
-            ),
+            access_token=self._tokens.create_access_token(user.id, roles=roles, permissions=permissions),
             refresh_token=self._tokens.create_refresh_token(user.id, token_family=payload.token_family),
         )
 

@@ -284,7 +284,7 @@ An AI-powered interview preparation platform where software engineers practice w
 | AI cost overruns | High | Medium | Token budget per interview, alerting at 80% threshold, auto-downgrade model |
 | Browser Speech API unreliable | Medium | Medium | Text fallback, prompt users to use Chrome |
 | WASM limitations (no Java/C++/C#) | Medium | High | Document in UI, add Piston when paying users request it |
-| WebSocket instability on free hosting | Medium | Medium | Railway over Render for persistent connections |
+| WebSocket instability on free hosting | Medium | Medium | GCP e2-micro + Vercel (free) with Traefik proxy for persistent connections |
 | Stripe integration complexity | Low | Low | Use Stripe Checkout + Customer Portal (minimal custom code) |
 | Low interview quality from 4o-mini | Medium | Medium | A/B test mini vs 4o for interviewer, evaluate switch at scale |
 | Neon free tier DB limits | Low | Medium | Monitor compute credits, index optimization, archive old interviews |
@@ -334,10 +334,10 @@ See `01_Reverse_Engineering_Report.md` (Section 11) for full architecture.
 ```
 Frontend (Next.js 15, Vercel Hobby)
        │
-       ├── REST API ──→ FastAPI (modular monolith, Railway/Fly.io)
+       ├── REST API ──→ FastAPI (modular monolith, GCP e2-micro VM)
        │                     │
-       │                     ├── Neon PostgreSQL 17
-       │                     ├── Cloudflare R2
+       │                     ├── PostgreSQL 17 (same VM via Compose `db` service)
+       │                     ├── S3-compatible storage (MinIO locally, R2/S3 in prod)
        │                     └── APScheduler (bg tasks)
        │
        ├── WebSocket ──→ FastAPI (real-time interview events)

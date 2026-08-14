@@ -17,6 +17,7 @@ Security:
 from __future__ import annotations
 
 import logging
+import os
 import shlex
 import subprocess
 import tempfile
@@ -49,6 +50,19 @@ def _docker_available() -> bool:
         return False
 
 
+def _should_use_docker() -> bool:
+    """Whether the Docker sandbox is active for this process.
+
+    ``TAYARI_SANDBOX_USE_DOCKER`` (1/true/yes/on) overrides autodetection so
+    the test suite can force the unisolated subprocess fallback even on CI
+    runners that ship Docker but lack the prebuilt ``tayari-runner-*`` images.
+    """
+    flag = os.environ.get("TAYARI_SANDBOX_USE_DOCKER")
+    if flag is not None:
+        return flag.strip().lower() in ("1", "true", "yes", "on")
+    return _docker_available()
+
+
 @dataclass
 class SandboxResult:
     stdout: str = ""
@@ -72,7 +86,7 @@ class Sandbox:
     downgrade to unsandboxed execution.
     """
 
-    USE_DOCKER = _docker_available()
+    USE_DOCKER = _should_use_docker()
 
     @classmethod
     async def run(
