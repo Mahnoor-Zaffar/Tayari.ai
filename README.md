@@ -577,9 +577,13 @@ flowchart LR
 
 ### Deployment
 
-- **Railway**: Auto-deploys the API from `apps/api/Dockerfile` on push to `main`
-- **Netlify**: Auto-deploys the frontend from `apps/web/` on push to `main`
-- **Feature branches**: CI runs all checks but no deployment
+The stack deploys to **$0/month** hosting:
+
+- **Frontend (Next.js)** → **Vercel** Hobby (free), root directory `apps/web`
+- **Backend (FastAPI + Redis + Postgres)** → **Google Cloud `e2-micro`**
+  (Always Free) via `infrastructure/docker-compose.prod.yml`
+  (Traefik = TLS; embedded Redis; `postgres:17` in a volume)
+- **Feature branches / CI**: runs all checks, no deployment
 
 ---
 

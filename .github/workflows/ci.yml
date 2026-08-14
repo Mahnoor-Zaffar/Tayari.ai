@@ -183,7 +183,6 @@ jobs:
       - name: Deploy placeholder
         run: |
           echo "Configure your deployment target here:"
-          echo "  - Render:         https://render.com/docs/deploy-fastapi"
-          echo "  - Railway:        https://railway.app/"
-          echo "  - Fly.io:         https://fly.io/docs/"
-          echo "  - Docker Compose: docker compose -f infrastructure/docker-compose.yml up -d"
+          echo "  - Frontend:       Vercel (Hobby) from apps/web"
+          echo "  - Backend:        GCP e2-micro Always Free"
+          echo "                   docker compose -f infrastructure/docker-compose.prod.yml up -d --build"

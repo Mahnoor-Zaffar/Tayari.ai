@@ -664,8 +664,9 @@ snapshots to `session_events` and interview status.
   perf budget), and `deploy` (**placeholder — echo only**).
 - `docker.yml`: builds `tayari-api:latest` / `tayari-web:latest`, **never
   pushed to any registry**.
-- **No CD, no image registry, no staging, no rollback.** README claims of
-  "Railway auto-deploys" are false.
+- **No external CD, no image registry, no staging, no rollback.** The prod
+  stack (`infrastructure/docker-compose.prod.yml`) is deployed manually; README
+  no longer claims auto-deploys.
 
 ### 10.3 Hosting & environment
 
@@ -796,8 +797,8 @@ From a Principal Engineer perspective — incremental, not rewrite.
     web build (copy lockfile from root + mount `packages/`); fix/remove
     `netlify.toml` redirects; delete the broken Traefik config or fix it.
 11. Make CI run ruff + mypy (the job claims to), push images to GHCR/ECR, and
-    replace the placeholder `deploy` with a real target (Fly/Render/Railway or
-    a managed VPS + systemd).
+    replace the placeholder `deploy` with a real target (Vercel for the web +
+    `infrastructure/docker-compose.prod.yml` on GCP e2-micro for the API).
 12. Export metrics (`/metrics` Prometheus or vendor SDK), ship logs to a sink,
     and set alerting on 5xx + AI-provider error rate. Add Sentry to SSR via
     `@sentry/nextjs`.
@@ -826,7 +827,7 @@ From a Principal Engineer perspective — incremental, not rewrite.
 | Claim (docs) | Reality (code) |
 |---|---|
 | "CI runs ruff + mypy" | `ci.yml` lint job runs pnpm lint/typecheck only; no ruff/mypy step |
-| "Railway auto-deploys API, Netlify auto-deploys frontend" | No deploy workflow; CI `deploy` is an echo; `netlify.toml` broken |
+| "Railway auto-deploys API, Netlify auto-deploys frontend" | No deploy workflow; CI `deploy` is an echo; deployment targets are now Vercel (web) + GCP e2-micro compose (API) |
 | "Celery dependency" | Celery absent from `pyproject.toml` |
 | "Sentry not initialized" (older) | Sentry initialized in `main.py` lifespan (API) + `@sentry/browser` (web) |
 | "8 migrations" | 10 migrations, head `0010`; PG 17 (not 18) |
