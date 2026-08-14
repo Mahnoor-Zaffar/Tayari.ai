@@ -1,0 +1,40 @@
+# Fly.io app for the Tayari AI web client (Next.js).
+#
+# Deploy from the repository root (the web Dockerfile's build context is the
+# whole monorepo):
+#   fly launch --no-deploy --copy-config --region <your-region>   # once, at repo root
+#   fly deploy
+#
+# NEXT_PUBLIC_* values are baked in at build time (see apps/web/Dockerfile
+# ARGs). Point them at the API app; update after adding a custom domain.
+
+app = "tayari-web"
+
+[build]
+  dockerfile = "apps/web/Dockerfile"
+
+  [build.args]
+    NEXT_PUBLIC_API_URL = "https://tayari-api.fly.dev"
+    NEXT_PUBLIC_APP_VERSION = "0.1.0"
+    NEXT_PUBLIC_FF_INTERVIEWS = "1"
+    NEXT_PUBLIC_FF_REPORTS = "1"
+    NEXT_PUBLIC_FF_SETTINGS = "1"
+    NEXT_PUBLIC_FF_NEW_INTERVIEW = "1"
+    NEXT_PUBLIC_FF_ANALYTICS = "1"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  [http_service.checks]
+    [http_service.checks.landing]
+      path = "/"
+      interval = "30s"
+      timeout = "5s"
+      grace_period = "120s"
+
+[vm]
+  size = "shared-cpu-1x"
+  memory = "256mb"
