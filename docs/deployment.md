@@ -19,20 +19,25 @@ hosting.
 
 | Component | Railway service | Source path | Builder |
 | --- | --- | --- | --- |
-| API (`FastAPI` + `Celery` workers) | `api` | `apps/api` | `Dockerfile` |
+| API (`FastAPI` + `Celery` workers + embedded Redis) | `api` | `apps/api` | `Dockerfile` |
 | Web (`Next.js`) | `web` | repo root | `Dockerfile` |
 | PostgreSQL | `Postgres` (plugin) | — | — |
-| Redis | `Redis` (plugin) | — | — |
+| Redis | embedded in the `api` container | — | — |
 
 Config-as-code lives in `apps/api/railway.json` (API service) and
 `railway.json` (web service). Railway reads the config file from each service's
 source root, so the two files do not collide.
 
+Redis is **embedded** in the API container (`redis-server` on `127.0.0.1:6379`)
+so the stack needs only one Railway plugin (Postgres) — handy on the free plan,
+which caps how many resources you can provision. The app already defaults
+`REDIS_URL` to `redis://localhost:6379/0`, so no extra variable is needed.
+
 Key baked-in settings:
 
-- **API** — `startCommand` runs `uvicorn`; `preDeployCommand` runs
-  `uv run alembic upgrade head` (schema migrations happen automatically before
-  every deploy); healthcheck is `GET /ready` (checks DB + Redis).
+- **API** — `startCommand` launches `redis-server` (background) then `uvicorn`;
+  `preDeployCommand` runs `uv run alembic upgrade head` (schema migrations run
+  automatically before every deploy); healthcheck is `GET /ready`.
 - **Web** — `startCommand` runs `next start` on Railway's injected `PORT`;
   healthcheck is `GET /`.
 
@@ -62,7 +67,14 @@ Key baked-in settings:
 3. Create the **web service**: **New → Empty Service**, set **Source → Source path**
    to the repo root (`.`). Railway builds with `apps/web/Dockerfile` per
    `railway.json`.
-4. Add **Postgres** and **Redis** plugins: **New → Database → PostgreSQL / Redis**.
+4. Add **Postgres**: **New → Database → PostgreSQL** and wait for it to be ready.
+
+   Redis is **not** added as a plugin — it runs inside the `api` container
+   (`redis-server` on `127.0.0.1:6379`, launched by the `startCommand`). The app
+   defaults `REDIS_URL` to `redis://localhost:6379/0`, which already points at
+   it. If you later want managed Redis, set `REDIS_URL` on the `api` service to
+   an external URL and it overrides the embedded instance.
+
 5. Optionally rename services (`api`, `web`) for clarity.
 
 ## Step 2 — Database URL
@@ -76,11 +88,10 @@ DATABASE_URL = postgresql+asyncpg://${{Postgres.PGUSER}}:${{Postgres.PGPASSWORD}
 ```
 
 The Postgres plugin exposes `PGUSER`, `PGPASSWORD`, `PGHOST`, `PGPORT`,
-`PGDATABASE` as reference variables. Set `REDIS_URL` to the Redis reference:
+`PGDATABASE` as reference variables.
 
-```
-REDIS_URL = ${{Redis.REDIS_URL}}
-```
+> No `REDIS_URL` variable is required — the embedded `redis-server` is already on
+> `127.0.0.1:6379`. Set it only when switching to an external/managed Redis.
 
 ## Step 3 — API service variables (secrets checklist)
 
@@ -90,7 +101,6 @@ Add these to the `api` service. Generate strong values locally, never commit the
 | --- | --- |
 | `ENVIRONMENT` | `production` |
 | `DATABASE_URL` | composed reference from Step 2 |
-| `REDIS_URL` | `${{Redis.REDIS_URL}}` |
 | `JWT_ALGORITHM` | `HS256` (simplest) — or `RS256` with a real RSA keypair |
 | `JWT_SECRET_KEY` | `openssl rand -base64 48` (see note below) |
 | `FRONTEND_URL` | `https://<your-domain>` e.g. `https://tayari.ai` |
@@ -147,6 +157,11 @@ run them manually with the CLI:
 railway service   # select api
 railway run -- uv run alembic upgrade head
 ```
+
+> Redis is embedded in the API container and ephemeral (persistence disabled).
+> A revoked-token blacklist therefore resets if the container restarts — tokens
+> stay valid until their natural expiry. This is acceptable for launch; if it
+> ever matters, set `REDIS_URL` on the API service to an external managed Redis.
 
 ## Step 6 — Custom domain + Cloudflare
 

@@ -173,7 +173,9 @@ jobs:
             -e DATABASE_URL=postgresql+asyncpg://tayari:tayari_dev@smoke-db:5432/tayari \
             -e REDIS_URL=redis://smoke-redis:6379/0 \
             -e ENVIRONMENT=production \
+            -e JWT_ALGORITHM=HS256 \
             -e JWT_SECRET_KEY=smoke_test_SECRET_KEY_0123456789abcdefgh \
+            -e 'CORS_ORIGINS=["https://tayari.ai"]' \
             -p 8000:8000 \
             "$API_IMAGE"
 
