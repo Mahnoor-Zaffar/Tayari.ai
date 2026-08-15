@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/screenshots/hero.svg" alt="Tayari AI" width="100%" />
+  <img src="assets/screenshots/real/landing-page.png" alt="Tayari AI" width="100%" />
 </p>
 
 <h1 align="center">Tayari AI</h1>
@@ -115,19 +115,19 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/coding-interview.svg" alt="Coding Interview" width="49%" />
-  <img src="assets/screenshots/live-interview.svg" alt="Live Interview Session" width="49%" />
+  <img src="assets/screenshots/real/coding-interview.png" alt="Coding Interview" width="49%" />
+  <img src="assets/screenshots/real/interview-behaviorl.png" alt="Live Interview Session" width="49%" />
 </p>
 <p align="center">
   <em>Coding interview with Monaco editor</em> · <em>Live interview session</em>
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/evaluation-report.svg" alt="Evaluation Report" width="49%" />
-  <img src="assets/screenshots/architecture.svg" alt="Architecture" width="49%" />
+  <img src="assets/screenshots/real/insights.png" alt="Evaluation Report" width="49%" />
+  <img src="assets/screenshots/real/signup.png" alt="Sign up" width="49%" />
 </p>
 <p align="center">
-  <em>Post-interview evaluation report</em> · <em>System architecture</em>
+  <em>Post-interview evaluation report</em> · <em>Registration</em>
 </p>
 
 ---
