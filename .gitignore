@@ -44,5 +44,6 @@ Thumbs.db
 .turbo/
 *.pem
 
-# Local context docs (not for GitHub)
-context/
+# Local docs & context (not for GitHub)
+/docs/
+/context/
