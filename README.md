@@ -88,11 +88,10 @@
 
 ## Screenshots
 
-> Screenshots are real captures from the running platform; a few session views
-> are product mockups until live captures are available.
+> Screenshots are real captures from the running platform.
 
 <p align="center">
-  <img src="assets/screenshots/real/landing.png" alt="Landing Page" width="49%" />
+  <img src="assets/screenshots/real/landing-page.png" alt="Landing Page" width="49%" />
   <img src="assets/screenshots/real/login.png" alt="Sign in" width="49%" />
 </p>
 <p align="center">

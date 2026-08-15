@@ -10,28 +10,115 @@ const SHOWCASE_ITEMS = [
     description:
       "Get an overview of your interview activity, performance trends, and quick access to start a new session. Your progress at a glance.",
     icon: BarChart3,
-    image: "/screenshots/dashboard.png",
+    image: (
+      <div className="grid grid-cols-2 gap-3 p-6">
+        <div className="col-span-2 rounded-xl border border-white/5 bg-card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">Total Interviews</p>
+              <p className="text-2xl font-bold">24</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Avg Score</p>
+              <p className="text-2xl font-bold text-primary">84%</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-card p-4">
+          <p className="text-xs text-muted-foreground">Streak</p>
+          <p className="text-xl font-bold">5 days</p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-card p-4">
+          <p className="text-xs text-muted-foreground">Completed</p>
+          <p className="text-xl font-bold">18</p>
+        </div>
+      </div>
+    ),
   },
   {
     title: "Interview Setup Wizard",
     description:
       "Configure every aspect of your interview — type, company, role, difficulty, and duration. Upload your resume for context-aware questions.",
     icon: Settings,
-    image: "/screenshots/interview-setup.png",
+    image: (
+      <div className="space-y-3 p-6">
+        <div className="flex gap-2">
+          {["Coding", "System Design", "Behavioral"].map((t) => (
+            <div
+              key={t}
+              className="rounded-lg border border-white/5 bg-card px-4 py-2 text-sm font-medium text-primary"
+            >
+              {t}
+            </div>
+          ))}
+        </div>
+        <div className="rounded-xl border border-white/5 bg-card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-medium">Target Company</span>
+            <span className="text-sm text-muted-foreground">Google</span>
+          </div>
+          <div className="h-2 rounded-full bg-muted">
+            <div className="h-2 w-3/4 rounded-full bg-primary/40" />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Setup progress: 75%</p>
+        </div>
+      </div>
+    ),
   },
   {
     title: "Detailed Evaluation Reports",
     description:
       "Every interview generates a multi-dimension report with scores, a hire verdict, and specific strengths and areas for improvement.",
     icon: FileText,
-    image: "/screenshots/reports.png",
+    image: (
+      <div className="space-y-3 p-6">
+        <div className="flex items-center justify-between rounded-xl border border-white/5 bg-card p-4">
+          <span className="text-sm font-medium">Overall Score</span>
+          <span className="text-2xl font-bold text-primary">4.2/5</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: "Problem Solving", score: 4.5 },
+            { label: "Communication", score: 4.0 },
+            { label: "Code Quality", score: 3.8 },
+            { label: "Technical Depth", score: 4.2 },
+          ].map((d) => (
+            <div key={d.label} className="rounded-lg border border-white/5 bg-card p-3">
+              <p className="text-xs text-muted-foreground">{d.label}</p>
+              <p className="text-lg font-semibold">{d.score}</p>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-lg border border-primary/10 bg-primary/5 p-3">
+          <p className="text-xs font-medium text-primary">Hire Verdict</p>
+          <p className="text-sm">Strong Hire — Excellent performance across all dimensions</p>
+        </div>
+      </div>
+    ),
   },
   {
     title: "Performance Analytics",
     description:
       "Track your improvement over time with daily, weekly, and monthly charts. Spot trends and focus on weak areas.",
     icon: TrendingUp,
-    image: "/screenshots/analytics.png",
+    image: (
+      <div className="p-6">
+        <div className="rounded-xl border border-white/5 bg-card p-4">
+          <p className="mb-4 text-sm font-medium">Interview Activity</p>
+          <div className="flex items-end gap-2" style={{ height: 100 }}>
+            {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 88].map((h, i) => (
+              <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                <div
+                  className="w-full rounded-t bg-gradient-to-t from-primary/60 to-primary/30"
+                  style={{ height: `${h}%` }}
+                />
+                <span className="text-[10px] text-muted-foreground">W{i + 1}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    ),
   },
 ];
 
@@ -65,12 +152,7 @@ export function Showcase() {
               </div>
               <div className="flex-1">
                 <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-card to-background shadow-2xl">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.image}
-                    alt={`${item.title} — Tayari AI screenshot`}
-                    className="block h-auto w-full object-cover"
-                  />
+                  {item.image}
                 </div>
               </div>
             </motion.div>
