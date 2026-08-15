@@ -1,6 +1,6 @@
 # Screenshot Guide
 
-Replace the placeholder SVGs in `assets/screenshots/` with real PNG screenshots following the specifications below.
+Real platform captures live in `assets/screenshots/real/`. This guide documents how each capture was produced so future screenshots stay consistent.
 
 ## Style Guidelines
 
@@ -110,7 +110,7 @@ Replace the placeholder SVGs in `assets/screenshots/` with real PNG screenshots 
 ## Upload Process
 
 1. Capture/render each image at 1200×675px
-2. Save as PNG with the filename specified above
-3. Replace the SVG placeholder in `assets/screenshots/`
+2. Save as PNG under `assets/screenshots/real/`
+3. Reference it in the README
 4. Verify the README renders the images correctly
 5. Optimize PNGs (tinyPNG or similar) to keep repo size manageable
